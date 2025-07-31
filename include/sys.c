@@ -6,7 +6,7 @@
 
 
 
-void TaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void))
+void SysTaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void))
 {
     if(SysTaskCount < sysMAX_TASK_NUM)
     {
@@ -19,7 +19,7 @@ void TaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void))
 }
 
 
-void TaskRemove(uint8_t taskID)
+void SysTaskRemove(uint8_t taskID)
 {
     uint8_t i, j;
     for(i = 0; i < SysTaskCount; i++)
@@ -37,7 +37,7 @@ void TaskRemove(uint8_t taskID)
 }
 
 
-static void TaskScheduler(void)
+static void SysTaskScheduler(void)
 {
     uint8_t i;
     for(i = 0; i < SysTaskCount; i++)
@@ -54,7 +54,7 @@ static void TaskScheduler(void)
 }
 
 
-void TaskRun(void)
+void SysTaskRun(void)
 {
     uint8_t i;
     if(SysTaskTimerTick > 0)
@@ -67,7 +67,7 @@ void TaskRun(void)
                 SysTasks[i].taskCounter--;
             }
         }
-        TaskScheduler();
+        SysTaskScheduler();
     }
 }
 
@@ -211,16 +211,16 @@ void read_dgus_vp(uint32_t addr,uint8_t *buf,uint8_t len)
 
 void write_dgus_vp(uint32_t addr,uint8_t *buf,uint8_t len)
 {
-	u16 OS_addr = 0;
-	u16 OS_addr_offset = 0;
-	u16 OS_len = 0, OS_len_offset = 0;
+	uint16_t OS_addr = 0;
+	uint16_t OS_addr_offset = 0;
+	uint16_t OS_len = 0, OS_len_offset = 0;
 	
 	EA = 0;
 	OS_addr = addr >> 1;
 	OS_addr_offset = addr & 0x01;
 	ADR_H = 0;
-	ADR_M = (u8)(OS_addr >> 8);
-	ADR_L = (u8)OS_addr;
+	ADR_M = (uint8_t)(OS_addr >> 8);
+	ADR_L = (uint8_t)OS_addr;
 	ADR_INC = 0x01; 
 	RAMMODE = 0x83;
 	while (!APP_ACK)

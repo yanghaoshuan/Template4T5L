@@ -1,5 +1,27 @@
+/**
+ * @file    modbus.c
+ * @brief   Modbus RTU通信协议驱动程序实现文件
+ * @details 本文件实现了完整的Modbus RTU协议栈，包括帧解析、CRC校验、
+ *          命令处理和数据传输功能
+ * @author  [yangming]
+ * @date    2025-07-31
+ * @version 1.0.0
+ */
+
 #include "modbus.h"
 
+/**
+ * @brief Modbus帧CRC校验函数
+ * @details 对接收到的Modbus帧进行CRC-16校验，验证数据完整性
+ * @param[in] frame 待校验的Modbus帧数据指针
+ * @param[in] len 帧数据总长度，包括CRC字节
+ * @return CRC校验结果
+ * @retval 1 CRC校验通过，数据完整
+ * @retval 0 CRC校验失败或帧长度不足
+ * @post 返回校验结果状态
+ * @note CRC校验基于帧数据的前len-2字节计算
+ * @note CRC值存储在帧的最后两字节，低字节在前
+ */
 static uint8_t prvModbusCrcCheck(uint8_t *frame, uint16_t len)
 {
     uint16_t crc16;
@@ -64,7 +86,6 @@ void UartStandardModbusRTUProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         }
     }
 }
-
 
 
 void SendModbusGenericFrame(UART_TYPE *uart, 

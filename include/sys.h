@@ -17,9 +17,9 @@ static uint8_t SysTaskCount = 0;
 
 #define COUNT_TASK_INTERVAL 1000
 void CountTask(void);
-void TaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void));
-void TaskRemove(uint8_t taskID);
-void TaskRun(void);
+void SysTaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void));
+void SysTaskRemove(uint8_t taskID);
+void SysTaskRun(void);
 
 void delay_us(const uint16_t us);
 void delay_ms(const uint16_t ms);

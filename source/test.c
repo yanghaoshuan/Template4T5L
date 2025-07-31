@@ -6,10 +6,10 @@
 #endif
 
 #define TESTUART Uart2
-void UartTest()
+void UartTest(void)
 {
     const uint8_t buf[10] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A};
-    UartReadFrame(&Uart2);
+    UartReadFrame(&TESTUART);
     UartSendData(&TESTUART, (uint8_t *)&"Hello,World!",sizeof("Hello,World!")-1);
     delay_ms(100);
     SendModbusReadCoilsFrame(&TESTUART, 0x01, 0x0000, 10);

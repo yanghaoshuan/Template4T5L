@@ -16,12 +16,13 @@ void main(void)
   T5LCpuInit();
 
   RtcInit();
-  TaskAdd(0, RTC_INTERVAL, RtcTask);
-  TaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+  SysTaskAdd(0, RTC_INTERVAL, RtcTask);
+  SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+  SysTaskAdd(2,2,UartTest);
   while(1)
   {
 
-    TaskRun();
+    SysTaskRun();
 
   }
     

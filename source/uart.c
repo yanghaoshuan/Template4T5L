@@ -1,4 +1,14 @@
 
+/**
+ * @file    uart.c
+ * @brief   UART通信接口驱动程序实现文件
+ * @details 本文件实现了多路UART通信接口的完整功能，包括硬件初始化、
+ *          中断处理、数据收发和多协议支持
+ * @author  [yangming]
+ * @date    2025-07-31
+ * @version 1.0.0
+ */
+
 #include "uart.h"
 #include "T5LOSConfig.h"
 #include <string.h>
@@ -52,7 +62,12 @@ void Uart2Init(const uint32_t bdt)
     EA = 1;
 }
 
-
+/**
+ * @brief UART2收发中断服务程序
+ * @details 处理UART2的接收和发送中断，管理数据缓冲区和传输状态
+ * @note 中断号4，处理RI0和TI0中断标志
+ * @note 自动管理RS485方向控制（如果启用）
+ */
 void Uart2TxRxIsr()   interrupt 4
 {
     if ( RI0 == 1 )
@@ -112,7 +127,11 @@ void Uart3Init(const uint32_t bdt)
     EA = 1;
 }
 
-
+/**
+ * @brief UART3收发中断服务程序
+ * @details 处理UART3的接收和发送中断，管理数据缓冲区和传输状态
+ * @note 中断号16，处理SCON1的接收和发送标志位
+ */
 void Uart3TxRxIsr()   interrupt 16
 {
     if ( (SCON1&0x01) == 0x01 )
@@ -176,7 +195,11 @@ void Uart4Init(const uint32_t bdt)
     EA   = 1;
 }
 
-
+/**
+ * @brief UART4接收中断服务程序
+ * @details 处理UART4的接收中断，管理接收数据缓冲区
+ * @note 中断号11，处理SCON2R接收标志位
+ */
 void Uart4RxIsr()   interrupt 11
 {
     if((SCON2R&0x01) == 0x01)
@@ -193,7 +216,12 @@ void Uart4RxIsr()   interrupt 11
     } 
 }
 
-
+/**
+ * @brief UART4发送中断服务程序
+ * @details 处理UART4的发送中断，管理发送数据缓冲区和传输状态
+ * @note 中断号10，处理SCON2T发送标志位
+ * @note 自动管理RS485方向控制（如果启用）
+ */
 void Uart4TxIsr()   interrupt 10
 {
     if((SCON2T&0x01) == 0x01)
@@ -248,7 +276,11 @@ void Uart5Init(const uint32_t bdt)
     EA   = 1;
 }
 
-
+/**
+ * @brief UART5接收中断服务程序
+ * @details 处理UART5的接收中断，管理接收数据缓冲区
+ * @note 中断号13，处理SCON3R接收标志位
+ */
 void Uart5RxIsr()   interrupt 13
 {
     if((SCON3R&0x01) == 0x01)
@@ -265,7 +297,12 @@ void Uart5RxIsr()   interrupt 13
     } 
 }
 
-
+/**
+ * @brief UART5发送中断服务程序
+ * @details 处理UART5的发送中断，管理发送数据缓冲区和传输状态
+ * @note 中断号12，处理SCON3T发送标志位
+ * @note 自动管理RS485方向控制（如果启用）
+ */
 void Uart5TxIsr()   interrupt 12
 {
     if((SCON3T&0x01) == 0x01)
@@ -408,6 +445,21 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 }
 
 
+/**
+ * @brief Dwin8283协议CRC校验函数
+ * @details 对Dwin8283协议帧进行CRC校验，同时检查CRC使能状态
+ * @param[in] frame 待校验的协议帧数据指针
+ * @param[in] len 帧数据总长度
+ * @param[out] CrcFlag CRC使能标志输出指针
+ * @return CRC校验结果
+ * @retval 1 校验通过或CRC未启用
+ * @retval 0 校验失败或帧长度不足
+ * @pre frame指针必须有效
+ * @pre CrcFlag指针必须有效
+ * @post CrcFlag将包含CRC使能状态
+ * @note 函数会从DGUS地址0x0081读取CRC配置
+ * @note 支持0x82和0x83两种命令的帧格式
+ */
 static uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 {
     uint16_t crc16,min_frame_len;
@@ -438,7 +490,18 @@ static uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag
     }
 }
 
-
+/**
+ * @brief 标准Dwin8283协议处理函数
+ * @details 处理接收到的Dwin8283协议帧，支持读写DGUS变量指针操作
+ * @param[in] uart UART通信接口指针
+ * @param[in,out] frame 协议帧数据缓冲区指针，会被修改用于响应
+ * @param[in] len 帧数据长度
+ * @return 无
+ * @note 支持0x82写命令和0x83读命令
+ * @note 自动处理CRC校验和响应帧生成
+ * @note 0x82命令可选择是否返回确认帧
+ * @warning frame缓冲区会被修改，调用者需注意
+ */
 static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     uint16_t i=0,CrcFlag = 0,CrcResult = 0;
@@ -457,7 +520,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
             frame[2] -= 2;
         }
         write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
-        #ifdef uartUART2_82CMD_RETURN
+        #ifdef uartUART_82CMD_RETURN
         i=0;
         frame[i++] = 0x5a;
         frame[i++] = 0xa5;
