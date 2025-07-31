@@ -42,6 +42,22 @@ extern UART_TYPE Uart5;
 void Uart5Init(const uint32_t bdt);
 #endif
 
+#define UartTimerDecrease()  \
+    do { \
+        #if uartUART2_ENABLED \
+            DECREASE_IF_POSITIVE(Uart2.RxTimeout); \
+        #endif \
+        #if uartUART3_ENABLED \
+            DECREASE_IF_POSITIVE(Uart3.RxTimeout); \
+        #endif \
+        #if uartUART4_ENABLED \
+            DECREASE_IF_POSITIVE(Uart4.RxTimeout); \
+        #endif \
+        #if uartUART5_ENABLED \
+            DECREASE_IF_POSITIVE(Uart5.RxTimeout); \
+        #endif \
+    } while(0)
+
 void UartInit(void);
 void UartSendData(UART_TYPE *uart, uint8_t *buf,uint16_t len);
 void UartReadFrame(UART_TYPE *uart);

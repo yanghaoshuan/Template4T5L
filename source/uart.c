@@ -408,7 +408,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 }
 
 
-//返回是否通过
 static uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 {
     uint16_t crc16,min_frame_len;

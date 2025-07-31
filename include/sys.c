@@ -4,6 +4,81 @@
 #include "timer.h"
 
 
+
+
+void TaskAdd(uint8_t taskID, uint16_t taskInterval, void (*taskFunction)(void))
+{
+    if(SysTaskCount < sysMAX_TASK_NUM)
+    {
+        SysTasks[SysTaskCount].taskID = taskID;
+        SysTasks[SysTaskCount].taskInterval = taskInterval;
+        SysTasks[SysTaskCount].taskCounter = 0;
+        SysTasks[SysTaskCount].taskFunction = taskFunction;
+        SysTaskCount++;
+    }
+}
+
+
+void TaskRemove(uint8_t taskID)
+{
+    uint8_t i, j;
+    for(i = 0; i < SysTaskCount; i++)
+    {
+        if(SysTasks[i].taskID == taskID)
+        {
+            for(j = i; j < SysTaskCount - 1; j++)
+            {
+                SysTasks[j] = SysTasks[j + 1];
+            }
+            SysTaskCount--;
+            return;
+        }
+    }
+}
+
+
+static void TaskScheduler(void)
+{
+    uint8_t i;
+    for(i = 0; i < SysTaskCount; i++)
+    {
+        if(SysTasks[i].taskCounter == 0)
+        {
+            SysTasks[i].taskCounter = SysTasks[i].taskInterval;
+            if(SysTasks[i].taskFunction != NULL)
+            {
+                SysTasks[i].taskFunction();
+            }
+        }
+    }
+}
+
+
+void TaskRun(void)
+{
+    uint8_t i;
+    if(SysTaskTimerTick > 0)
+    {
+        SysTaskTimerTick--;
+        for(i = 0; i < SysTaskCount; i++)
+        {
+            if(SysTasks[i].taskCounter > 0)
+            {
+                SysTasks[i].taskCounter--;
+            }
+        }
+        TaskScheduler();
+    }
+}
+
+
+void CountTask(void)
+{
+    static uint16_t j=0;
+    j++;
+    write_dgus_vp(0x5000, (uint8_t *)&j, 1);
+}
+
 void delay_us(const uint16_t us)
 {
     uint8_t i;
@@ -51,51 +126,6 @@ uint16_t crc_16 (uint8_t *pBuf, uint16_t buf_len )
     return crc;
 }
 
-
-void Timer0Isr() interrupt 1
-{
-    ET0 = 0;
-    TH0 = timeT0_TICK >> 8;
-    TL0 = timeT0_TICK;
-
-	#if uartUART2_ENABLED
-        #if uartUART2_TIMEOUT_ENABLED
-        if (Uart2.RxTimeout)
-        {
-            Uart2.RxTimeout--;
-        }
-        #endif
-    #endif
-
-    #if uartUART3_ENABLED
-        #if uartUART3_TIMEOUT_ENABLED
-        if (Uart3.RxTimeout)
-        {
-            Uart3.RxTimeout--;
-        }
-        #endif
-    #endif
-
-    #if uartUART4_ENABLED
-        #if uartUART4_TIMEOUT_ENABLED
-        if (Uart4.RxTimeout)    
-        {
-            Uart4.RxTimeout--;
-        }   
-        #endif
-    #endif
-
-    #if uartUART5_ENABLED
-        #if uartUART5_TIMEOUT_ENABLED
-        if (Uart5.RxTimeout)    
-        {
-            Uart5.RxTimeout--;
-        }   
-        #endif
-    #endif
-
-    ET0 = 1;
-}
 
 static void KernerlInit()
 {

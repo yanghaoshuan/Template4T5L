@@ -16,12 +16,20 @@ typedef unsigned short  u16;
 #define FALSE         0           
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
+#define DECREASE_IF_POSITIVE(x) ((x)>0 && (x)--)
+
+#define GPIO_BIT_SET_OUT(port, bit)          (port |= (1 << bit))
+#define GPIO_BIT_SET_IN(port, bit)           (port &= ~(1 << bit))
+#define GPIO_BYTE_SET_OUT(port, byte)        (port |= byte)
+#define GPIO_BYTE_SET_IN(port, byte)         (port &= ~byte)
 
 #define sysMUXSEL_MODE               0x60
 #define sysPORTDRV_MODE              0x01            
 #define sysWDT_ON                    MUX_SEL |= 0x02
 #define sysWDT_OFF                   MUX_SEL &= ~0x02
 #define sysWDT_RESET                 MUX_SEL |= 0x01
+
+#define sysMAX_TASK_NUM             10
 
 #define sys2K_RATIO                  1
 #if sys2K_RATIO
@@ -101,4 +109,19 @@ typedef unsigned short  u16;
     #endif
 #endif
 
+
+#define i2cI2C_ENABLED                  1
+#if i2cI2C_ENABLED
+    #define i2cGPIO_SFR_PORT            P3
+    #define i2cGPIO_SFR_PORTMDOUT       P3MDOUT
+    #define i2cSDA_GPIO_PIN             3
+    #define i2cSCL_GPIO_PIN             2
+    #define i2cDELAY_TICK               ( (const uint16_t) 5 )
+    #define i2cSLAVE_ADDRESS            0x64
+    sbit i2cSDA_PIN = i2cGPIO_SFR_PORT^i2cSDA_GPIO_PIN;
+    sbit i2cSCL_PIN = i2cGPIO_SFR_PORT^i2cSCL_GPIO_PIN;
+    #define i2cSDA_HIGH         i2cGPIO_SFR_PORTMDOUT |= (1 << i2cSDA_GPIO_PIN)
+    #define i2cSDA_LOW          i2cGPIO_SFR_PORTMDOUT &= ~(1 << i2cSDA_GPIO_PIN)
+#endif
+		
 #endif

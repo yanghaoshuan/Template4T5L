@@ -1,4 +1,7 @@
 #include "timer.h"
+#include "uart.h"
+
+uint16_t SysTaskTimerTick = 0;
 
 static void StartTimer0(void)
 {
@@ -28,4 +31,18 @@ void TimerInit(void)
     TL2   = 0x00; 
 
     StartTimer0();
+}
+
+
+void Timer0Isr() interrupt 1
+{
+    ET0 = 0;
+    TH0 = timeT0_TICK >> 8;
+    TL0 = timeT0_TICK;
+
+	UartTimerDecrease();
+
+    SysTaskTimerTick++;
+    
+    ET0 = 1;
 }
