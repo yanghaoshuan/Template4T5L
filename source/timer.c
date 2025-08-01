@@ -16,41 +16,61 @@
  */
 uint16_t SysTaskTimerTick = 0;
 
+uint32_t SysCurrentTick = 0;
+uint16_t time1_i = 0, time2_j = 0;
+
 /**
  * @brief 启动定时器0函数
- * @details 配置并启动定时器0，用于产生系统时钟节拍
+ * @details 配置并启动定时器0，用于产生系统时钟节拍，根据使能情况启动对应定时器
  * @param 无
  * @return 无
- * @post 定时器0已启动并开始产生周期性中断
- * @note 启动后会立即使能定时器0中断
+ * @post 定时器0已启动并开始产生周期性中断，根据使能情况启动对应定时器
  */
-static void StartTimer0(void)
-{
-	TMOD |= 0x01;
-	TH0   = timeT0_TICK >> 8;
-	TL0   = timeT0_TICK;
-	ET0   = 1;
-	TR0   = 1;
-}
 
 void TimerInit(void)
 {
-    TCON  = 0x0F; 
-    TMOD  = 0x11;
+    TCON |= 0x0F;
+    #if timeTIMER1_ENABLED
+    TMOD =  timeT1_GATE_DISABLE | timeT1_MODE_TIMER | timeT1_MODE_16BIT | 
+            timeT0_GATE_DISABLE | timeT0_MODE_TIMER | timeT0_MODE_16BIT; 
+    #else
+    TMOD =  timeT0_GATE_DISABLE | timeT0_MODE_TIMER | timeT0_MODE_16BIT;
+    #endif  /* timeTIMER1_ENABLED */
     
-	TH0   = 0x00;
-	TL0   = 0x00;
-	TR0   = 0x00;
+	TH0   = sysDEFAULT_ZERO;
+	TL0   = sysDEFAULT_ZERO;
+	TR0   = sysDEFAULT_ZERO;
 
-    TH1   = 0x00;
-    TL1   = 0x00;
-    TR1   = 0x00;
+    #if timeTIMER1_ENABLED
+    TH1   = sysDEFAULT_ZERO;
+    TL1   = sysDEFAULT_ZERO;
+    TR1   = sysDEFAULT_ZERO;
+    #endif /* timeTIMER1_ENABLED */
 
-    T2CON = 0x70;  
-    TH2   = 0x00; 
-    TL2   = 0x00; 
+    #if timeTIMER2_ENABLED
+    T2CON = (timeT2_FREQ_MODE >> 1) << 7 | 0xF0;
+    TH2 = sysDEFAULT_ZERO;
+    TL2 = sysDEFAULT_ZERO;
+    #endif /* timeTIMER2_ENABLED */
 
-    StartTimer0();
+    TH0 = timeT0_TICK >> 8;
+    TL0 = timeT0_TICK & 0xFF;
+    ET0 = 1;       
+    TR0 = 1; 
+
+    #if timeTIMER1_ENABLED
+    TH1 = timeT1_TICK >> 8;
+    TL1 = timeT1_TICK & 0xFF;
+    ET1 = 1;       
+    TR1 = 1;
+    #endif /* timeTIMER1_ENABLED */
+
+    #if timeTIMER2_ENABLED
+    TRL2H = timeT2_TICK >> 8;
+    TRL2L = timeT2_TICK & 0xFF;
+    T2CON |= 0x01;
+    ET2 = 1;
+    #endif /* timeTIMER2_ENABLED */
 }
 
 /**
@@ -68,22 +88,23 @@ void Timer0Isr() interrupt 1
 
 	#if uartUART2_ENABLED
     DECREASE_IF_POSITIVE(Uart2.RxTimeout);
-    #endif
+    #endif /* uartUART2_ENABLED */
 
     #if uartUART3_ENABLED
-    DECREASE_IF_POSITIVE(Uart3.RxTimeout);  
-    #endif
+    DECREASE_IF_POSITIVE(Uart3.RxTimeout);
+    #endif /* uartUART3_ENABLED */
 
     #if uartUART4_ENABLED
     DECREASE_IF_POSITIVE(Uart4.RxTimeout);
-    #endif
+    #endif /* uartUART4_ENABLED */
 
     #if uartUART5_ENABLED
     DECREASE_IF_POSITIVE(Uart5.RxTimeout);
-    #endif
+    #endif /* uartUART5_ENABLED */
 
     SysTaskTimerTick++;
 
+    SysCurrentTick++;
     ET0 = 1;
 }
 
@@ -100,23 +121,27 @@ void Timer1Isr() interrupt 3
     TH1 = timeT1_TICK >> 8;
     TL1 = timeT1_TICK;
 
+    /* use timer1*/
+    __NOP();
+    time1_i++;
     ET1 = 1;
 }
-
-/**
- * @brief 定时器1初始化函数
- * @details 配置并启动定时器1，用于用户自定义的定时任务
- * @param 无
- * @return 无
- * @post 定时器1已启动并开始产生周期性中断
- * @note 仅在timeTIMER1_ENABLED宏启用时编译
- */
-void Timer1Init(void)
-{
-    TMOD |= 0x10;  
-    TH1 = timeT1_TICK >> 8;
-    TL1 = timeT1_TICK;
-    ET1 = 1;       
-    TR1 = 1;       
-}
 #endif /* timeTIMER1_ENABLED */
+
+
+/* 定时器2支持 - 条件编译 */
+#if timeTIMER2_ENABLED
+/**
+ * @brief 定时器2中断服务程序
+ * @details 处理定时器2中断，执行用户自定义的定时任务
+ * @note 中断号5
+ */
+void Timer2Isr() interrupt 5
+{
+    TF2 = 0;
+
+    /* use timer2 */
+    __NOP();
+    time2_j++;
+}
+#endif /* timeTIMER2_ENABLED */

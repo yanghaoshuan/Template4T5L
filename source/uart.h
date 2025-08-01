@@ -55,7 +55,7 @@ extern UART_TYPE Uart2;
  * @note 支持RS485模式配置（如果启用）
  */
 void Uart2Init(const uint32_t bdt);
-#endif
+#endif /* uartUART2_ENABLED */
 
 #if uartUART3_ENABLED
 /**
@@ -72,7 +72,7 @@ extern UART_TYPE Uart3;
  * @note 使用固定时钟源6451200Hz计算波特率
  */
 void Uart3Init(const uint32_t bdt);
-#endif
+#endif /* uartUART3_ENABLED */
 
 #if uartUART4_ENABLED
 /**
@@ -90,7 +90,7 @@ extern UART_TYPE Uart4;
  * @note 具有独立的收发中断处理
  */
 void Uart4Init(const uint32_t bdt);
-#endif
+#endif /* uartUART4_ENABLED */
 
 #if uartUART5_ENABLED
 /**
@@ -108,7 +108,7 @@ extern UART_TYPE Uart5;
  * @note 具有独立的收发中断处理
  */
 void Uart5Init(const uint32_t bdt);
-#endif
+#endif  /* uartUART5_ENABLED */
 
 /**
  * @brief UART模块统一初始化函数

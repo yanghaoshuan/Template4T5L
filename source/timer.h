@@ -12,13 +12,34 @@
 #define __TIMER_H__
 #include "sys.h"
 
-/**
- * @brief 系统任务定时器节拍计数器
- * @details 由定时器0中断维护的系统时钟节拍计数，用于任务调度
- * @note 每次定时器0中断都会递增此计数器
- * @note 可用于实现软件定时器和任务调度
- */
-extern uint16_t SysTaskTimerTick;
+/* 定时器0TMOD控制寄存器配置 */
+#define timeT0_GATE_ENABLE                0x08
+#define timeT0_GATE_DISABLE               0x00
+#define timeT0_MODE_TIMER                 0x00
+#define timeT0_MODE_COUNTER               0x04
+#define timeT0_MODE_16BIT                 0x01
+#define timeT0_MODE_8BIT                  0x03
+#define timeT0_MODE_8BIT_AUTO_RELOAD      0x02
+#define timeT0_MODE_13BIT                 0x00
+
+/* 定时器1TMOD控制寄存器配置 */
+#define timeT1_GATE_ENABLE                0x80
+#define timeT1_GATE_DISABLE               0x00
+#define timeT1_MODE_TIMER                 0x00
+#define timeT1_MODE_COUNTER               0x40
+#define timeT1_MODE_16BIT                 0x10
+#define timeT1_MODE_8BIT                  0x30
+#define timeT1_MODE_8BIT_AUTO_RELOAD      0x20
+#define timeT1_MODE_13BIT                 0x00
+
+#define GetSysTick()                (SysCurrentTick) /**< 获取当前系统滴答计时器值 */
+
+extern uint16_t SysTaskTimerTick;    /**< 系统任务定时器节拍计数器 */
+
+extern uint32_t SysCurrentTick;     /**< 当前系统滴答计时器值 */
+
+extern uint16_t time1_i, time2_j;
+
 
 /**
  * @brief 定时器模块初始化函数
@@ -32,16 +53,5 @@ extern uint16_t SysTaskTimerTick;
  * @note 初始化完成后会自动启动定时器0
  */
 void TimerInit(void);
-
-#if timeTIMER1_ENABLED
-/**
- * @brief 定时器1初始化函数
- * @details 配置并启动定时器1，用于用户自定义的定时任务
- * @param 无
- * @return 无
- * @post 定时器1已启动并开始产生周期性中断
- */
-void Timer1Init(void);
-#endif
 
 #endif /* __TIMER_H__ */

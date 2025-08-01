@@ -12,6 +12,9 @@
 
 #include "T5LOSConfig.h"
 
+/* DGUS系统变量定义 */
+#define sysDGUS_PIC_NOW       0x0014   
+
 /**
  * @brief 系统任务定义结构体
  * @details 定义系统任务的基本属性，包括任务ID、执行间隔、计数器和函数指针
@@ -40,7 +43,7 @@ static uint8_t SysTaskCount = 0;
  * @brief 计数任务执行间隔定义
  * @details 定义计数任务的执行周期，单位为毫秒
  */
-#define COUNT_TASK_INTERVAL 1000
+#define COUNT_TASK_INTERVAL 100
 
 /**
  * @brief 计数任务函数
@@ -110,6 +113,28 @@ void read_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
  * @param[in] len 要写入的数据长度
  */
 void write_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
+
+
+/**
+ * @brief 读取当前页面ID
+ * @details 从DGUS显示屏读取当前显示的页面ID
+ * @return 当前页面ID
+ */
+uint16_t ReadPageId(void);
+
+
+/**
+ * @brief 切换到指定页面ID
+ * @details 向DGUS发送命令切换到指定的页面ID
+ * @param[in] page_id 要切换到的页面ID
+ * @return 无
+ */
+void SwitchPageById(uint16_t page_id);
+
+
+#if sysDGUS_AUTO_UPLOAD_ENABLED
+void DgusAutoUpload(void);
+#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
 /**
  * @brief T5L CPU初始化函数

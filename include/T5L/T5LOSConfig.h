@@ -4,7 +4,6 @@
  * @details 本文件包含T5L嵌入式操作系统的全局配置参数，包括数据类型定义、
  *          系统参数、定时器配置、UART配置和I2C配置等
  * @author  yangming
- * @date    2025-07-31
  * @version 1.0.0
  */
 
@@ -29,8 +28,14 @@ typedef unsigned   long uint32_t;
 #define NULL          ((void*)0)      /*标准C语言空指针定义*/
 #define TRUE          1
 #define FALSE         0           
+#define UINT8_PORT_MAX        0xFF
+#define UINT16_PORT_MAX       0xFFFF
+#define UINT32_PORT_MAX       0xFFFFFFFF
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
+#define SET_BIT(var, _bit) ((var) |= (1U << (_bit)))
+#define CLEAR_BIT(var, _bit) ((var) &= ~(1U << (_bit)))
+
 
 /**
  * @brief 正值递减宏定义
@@ -47,7 +52,7 @@ typedef unsigned   long uint32_t;
  * @param port 目标端口寄存器
  * @param bit 目标位号 (0-7)
  */
-#define GPIO_BIT_SET_OUT(port, bit)          (port |= (1 << bit))
+#define GPIO_BIT_SET_OUT(port, _bit)          (port |= (1 << _bit))
 
 /**
  * @brief GPIO位设置为输入模式
@@ -55,7 +60,7 @@ typedef unsigned   long uint32_t;
  * @param port 目标端口寄存器
  * @param bit 目标位号 (0-7)
  */
-#define GPIO_BIT_SET_IN(port, bit)           (port &= ~(1 << bit))
+#define GPIO_BIT_SET_IN(port, _bit)           (port &= ~(1 << _bit))
 
 /**
  * @brief GPIO字节设置为输出模式
@@ -74,11 +79,6 @@ typedef unsigned   long uint32_t;
 #define GPIO_BYTE_SET_IN(port, byte)         (port &= ~byte)
 
 /* 系统配置参数 */
-/**
- * @brief 多路复用选择器模式配置
- * @details 配置系统多路复用选择器的工作模式
- */
-#define sysMUXSEL_MODE               0x60
 
 /**
  * @brief 端口驱动模式配置
@@ -118,58 +118,58 @@ typedef unsigned   long uint32_t;
 
 #define sysFCLK                      sysFOSC
 
-/**
- * @brief 测试模式使能标志
- * @details 1: 启用测试模式, 0: 禁用测试模式
- */
-#define sysTEST_ENABLED             1
+#define sysTEST_ENABLED             1        /**< 测试模式使能标志 */
 
-/* 硬定时配置参数 */
-/**
- * @brief 微秒延时的硬定时配置参数
- */
-#define timeUS_DELAY_TICK                22
+#define sysDGUS_AUTO_UPLOAD_ENABLED  1      /**< 自动上传使能标志 */
 
-/**
- * @brief 定时器0分频模式选择
- * @details 1: 12分频模式, 2: 24分频模式
- */
-#define timeT0_FREQ_MODE                1
+#define sysDEFAULT_ZERO              (uint8_t )0
+
+#define gpioGPIO_ENABLE             1  /**< GPIO使能标志 */
+
+
+#define timeUS_DELAY_TICK                22         /* 微秒延时的定时器计数值，在level8的优化模式下 */
 
 /**
  * @brief 定时器0重装载值计算
  * @details 根据系统频率和定时模式计算的定时器0重装载值
  * @note 用于产生1ms的定时中断
  */
-#define timeT0_TICK                      (65536UL-1*sysFOSC/(timeT0_FREQ_MODE*12/1000))
+#define timeT0_TICK                      (65536UL-sysFOSC/12/1000)
+
 
 /**
  * @brief 定时器1使能标志
  * @details 1: 启用定时器1, 0: 禁用定时器1
  */
-#define timeTIMER1_ENABLED              1
+#define timeTIMER1_ENABLED              0
 
 #if timeTIMER1_ENABLED  
-/**
- * @brief 定时器1频率模式选择
- * @details 1: 12分频模式, 2: 24分频模式
- */
-#define timeT1_FREQ_MODE                 1
 
 /**
  * @brief 定时器1重装载值计算
  * @details 根据系统频率和分频模式计算的定时器1重装载值
  * @note 用于产生1ms的定时中断
  */
-#define timeT1_TICK                       (65536UL-1*sysFOSC/(timeT1_FREQ_MODE*12)/1000)
-#endif
+#define timeT1_TICK                       (65536UL-sysFOSC/12/1000)
+#endif /* timeTIMER1_ENABLED */
+
+#define timeTIMER2_ENABLED              0
+#if timeTIMER2_ENABLED
+/**
+ * @brief 定时器2频率模式选择
+ * @details 1: 12分频模式, 2: 24分频模式
+ */
+#define timeT2_FREQ_MODE                 2
+
+#define timeT2_TICK                     (65536UL-sysFOSC/timeT2_FREQ_MODE/12/1000)  /* 定时器2重装载值计算 */
+#endif /* timeTIMER2_ENABLED */
 
 /* UART通用配置参数 */
 /**
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE      100
+#define uartUART_COMMON_FRAME_SIZE      256
 
 /**
  * @brief Modbus协议支持使能标志
@@ -177,7 +177,7 @@ typedef unsigned   long uint32_t;
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
 
-#define uartUART_82CMD_RETURN                   /*UART2命令返回使能标志 0:禁用 1启用 */   
+#define uartUART_82CMD_RETURN            1       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
 /* UART2配置参数 */
 /**

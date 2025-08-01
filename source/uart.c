@@ -16,7 +16,7 @@
 
 #if uartMODBUS_PROTOCOL_ENABLED
 #include "modbus.h"
-#endif
+#endif /* uartMODBUS_PROTOCOL_ENABLED */
 
 
 #if uartUART2_ENABLED
@@ -79,7 +79,7 @@ void Uart2TxRxIsr()   interrupt 4
         Uart2.RxTimeout = uartUART2_TIMEOUTSET;
         #else
         Uart2.RxTimeout = 0;
-        #endif
+        #endif /* uartUART2_TIMEOUT_ENABLED */
         RI0 = 0; 
     } 
     if( TI0 == 1 )
@@ -96,11 +96,11 @@ void Uart2TxRxIsr()   interrupt 4
             {
                 TR4 = 0; 
             }
-            #endif
+            #endif /* uartUART2_485_ENABLED */
         } 
     }
 }
-#endif
+#endif  /* uartUART2_ENABLED */
 
 #if uartUART3_ENABLED
 UART_TYPE Uart3;
@@ -161,7 +161,7 @@ void Uart3TxRxIsr()   interrupt 16
         } 
     }
 }
-#endif
+#endif /* uartUART3_ENABLED */
 
 #if uartUART4_ENABLED
 UART_TYPE Uart4;
@@ -177,7 +177,7 @@ void Uart4Init(const uint32_t bdt)
     P0MDOUT |= 0x01;
     #if uartUART4_485_ENABLED
     TR4 = 0;
-    #endif
+    #endif /* uartUART4_485_ENABLED */
 
     SCON2T=0x80;
     SCON2R=0x80;
@@ -186,7 +186,7 @@ void Uart4Init(const uint32_t bdt)
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
-    #endif
+    #endif /* sys2K_RATIO */
     BODE2_DIV_H = (baud>>8) & 0xff;
     BODE2_DIV_L = baud & 0xff;
 
@@ -238,11 +238,11 @@ void Uart4TxIsr()   interrupt 10
             {
                 TR4 = 0; 
             }
-            #endif
+            #endif /* uartUART4_485_ENABLED */
         } 
     }
 }
-#endif
+#endif /* uartUART4_ENABLED */
 
 #if uartUART5_ENABLED
 UART_TYPE Uart5;
@@ -319,29 +319,29 @@ void Uart5TxIsr()   interrupt 12
             {
                 TR5 = 0; 
             }
-            #endif
+            #endif /* uartUART5_485_ENABLED */
         } 
     }
 }
-#endif
+#endif /* uartUART5_ENABLED */
 
 void UartInit(void)
 {
     #if uartUART2_ENABLED
     Uart2Init(uartUART2_BAUDRATE);
-    #endif
+    #endif /* uartUART2_ENABLED */
 
     #if uartUART3_ENABLED
     Uart3Init(uartUART3_BAUDRATE);
-    #endif
+    #endif /* uartUART3_ENABLED */
 
     #if uartUART4_ENABLED
     Uart4Init(uartUART4_BAUDRATE);
-    #endif
+    #endif /* uartUART4_ENABLED */
 
     #if uartUART5_ENABLED
     Uart5Init(uartUART5_BAUDRATE);
-    #endif
+    #endif /* uartUART5_ENABLED */
 }
 
 
@@ -520,7 +520,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
             frame[2] -= 2;
         }
         write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
-        #ifdef uartUART_82CMD_RETURN
+        #if uartUART_82CMD_RETURN
         i=0;
         frame[i++] = 0x5a;
         frame[i++] = 0xa5;
@@ -535,7 +535,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
             frame[i++] = CrcResult >> 8;
         }
         UartSendData(uart, frame, i);
-        #endif
+        #endif /* uartUART_82CMD_RETURN */
     }else if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x83)
     {
         if(prvDwin8283CrcCheck(frame,len,&CrcFlag) == 0)
