@@ -124,6 +124,9 @@ typedef unsigned   long uint32_t;
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 
+
+#define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
+
 #define gpioGPIO_ENABLE             1  /**< GPIO使能标志 */
 
 

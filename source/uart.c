@@ -470,7 +470,7 @@ static uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag
     {
         min_frame_len = 6;
     }
-    read_dgus_vp(0x0081,(uint8_t*)CrcFlag,1);
+    read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)CrcFlag,1);
     *CrcFlag = *CrcFlag & 0x0080;
     if(*CrcFlag != 0)
     {

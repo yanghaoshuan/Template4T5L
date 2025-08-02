@@ -13,7 +13,47 @@
 #include "T5LOSConfig.h"
 
 /* DGUS系统变量定义 */
-#define sysDGUS_PIC_NOW       0x0014   
+
+/* 当前显示页面ID */
+#define sysDGUS_PIC_NOW             0x0014 
+
+/**
+ * D3：0x5A 表示启动一次页面处理，CPU 处理完清零。 
+ * D2：处理模式:0x01=页面切换（把图片存储区指定的图片显示到当前背景页面）。 
+ * D1:D0：图片 ID。
+ */
+#define sysDGUS_PIC_SET             0x0084  
+
+/**
+ * D3：用户写入 0x5A 启动一次系统参数配置，CPU 处理完清零。 
+ * D2：触摸屏灵敏度配置值，只读。 
+ * D1：触摸屏模式配置值，只读。 
+ * D0：系统状态设置。 
+ * .7：串口 CRC 校验设置，1=开启，0=关闭，只读。
+ * .6：保留，写 0。
+ * .5：上电加载 22 文件初始化变量空间 1=加载 0=不加载，只读。
+ * .4：变量自动上传设置 1=开启，0=关闭，读写。
+ * .3：触摸屏伴音控制 1=开启 0=关闭，读写。
+ * .2：触摸屏背光待机控制 1=开启 0=关闭，读写。
+ * .1-.0：显示方向 00=0° 01=90° 10=180° 11=270°，读写。
+ */
+#define sysDGUS_SYSTEM_CONFIG       0x0080
+
+/**
+ * 
+ * D7:0x5A 表示触摸屏数据已经更新。 
+ * D6:触摸屏状态 0x00=松开 0x01=第一次按压 0x02=抬起 0x03=按压中 
+ * D5:D4=X 坐标 D3:D2=Y 坐标 D1:D0=0x0000。
+ */
+#define sysDGUS_TP_STATUS           0x0016
+
+/**
+ * D7：操作模式 0x5A=读 0xA5=写，CPU 操作完清零。 
+ * D6:4：片内 Nor Flash 数据库首地址，必须是偶数，0x000000-0x03:FFFE，256KWords。
+ * D3:2：数据变量空间首地址，必须是偶数。 
+ * D1:0：读写字长度，必须是偶数。
+ */
+#define sysDGUS_FLASH_RW_CMD        0x0008
 
 /**
  * @brief 系统任务定义结构体
@@ -33,11 +73,38 @@ typedef struct TaskDefine
  */
 static SysTask SysTasks[sysMAX_TASK_NUM];
 
+
+/**
+ * @brief 页面状态结构体
+ * @details 用于维护每个页面的独立状态信息
+ */
+typedef struct {
+    uint16_t last_exit_page_id;     /**< 最后离开的页面ID */
+    uint16_t last_target_page_id;   /**< 上次的目标页面ID */
+} PageState;
+
+#define dgusMAX_MONITORED_PAGES 2
+/* 将里面的数据全部初始化为UINT16_PORT_MAX */
+static PageState page_states[dgusMAX_MONITORED_PAGES] = UINT16_PORT_MAX;
+
+
 /**
  * @brief 当前已注册任务数量
  * @details 记录系统中当前活跃任务的总数
  */
 static uint8_t SysTaskCount = 0;
+
+#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号 */
+#if flashDUAL_BACKUP_ENABLED
+#define flashDGUS_COPY_VP_ADDRESS           0x1000                      /**< DGUS VP地址 */
+#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小 */
+#define FLASH_COPY_MAX_SIZE                 16                              /**< 最大复制次数 */
+#define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
+#define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
+#define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */
+#define flashBACKUP_DGUS_CACHE_ADDRESS      0xFF00                      /**< 双备份缓存地址 */
+#endif /* flashDUAL_BACKUP_ENABLED */
+
 
 /**
  * @brief 计数任务执行间隔定义
@@ -136,6 +203,86 @@ void SwitchPageById(uint16_t page_id);
 void DgusAutoUpload(void);
 #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
+
+/**
+ * @brief DGUS页面扫描任务
+ * @details 定期扫描DGUS显示屏的页面ID并进行处理
+ * @note 该任务会在系统任务调度中周期性执行，建议执行周期30ms
+ * @note 该任务会根据当前页面是否是目标页面ID执行不同的操作
+ * @warning 定义的页面切换数量不能超过dgusMAX_MONITORED_PAGES
+ */
+void DgusPageScanTask(void);
+
+
+/**
+ * @brief DGUS键值扫描任务
+ * @details 定期扫描DGUS显示屏的键值并进行处理
+ * @note 根据对应地址的对应键值进行操作
+ * @note 该任务会在系统任务调度中周期性执行，建议执行周期30ms
+ * 
+ */
+void DgusValueScanTask(void);
+
+
+/* flash相关操作 */
+/**
+ * @brief T5L NOR Flash读写操作宏定义
+ * @details dgusToFlash和FlashToDgus宏用于简化Flash与DGUS VP之间的数据传输操作
+ * @details dgustoflashwithdata和flashtodguswithdata宏用于带数据缓冲区的读写操作
+ */
+
+
+#define DgusToFlash(flash_block,flash_addr,dgus_vp_addr,len) \
+    T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, NULL, len)
+
+#if flashDUAL_BACKUP_ENABLED
+#define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
+    do{                                                                                     \
+        T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, NULL, len);              \
+        T5lNorFlashRW(0x5A, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, NULL, len);  \
+    }while(0);
+#else
+#define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
+    T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, NULL, len)
+#endif /* flashDUAL_BACKUP_ENABLED */
+
+#define FlashToDgusWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
+    T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
+
+#if flashDUAL_BACKUP_ENABLED
+#define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
+    do{                                                                                         \
+        T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, data_buf, len);              \
+        T5lNorFlashRW(0xA5, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, data_buf, len);  \
+    }while(0);
+#else
+#define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
+    T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
+#endif /* flashDUAL_BACKUP_ENABLED */
+
+/**
+ * @brief T5L NOR Flash读写操作
+ * @param[in] RWFlag 读写标志，0x5a表示读，0xa5表示写
+ * @param[in] flash_block Flash块号 (0-3)
+ * @param[in] flash_addr Flash地址 (0x0000-0xFFFF)
+ * @param[in] dgus_vp_addr DGUS VP地址 (0x0000-0xFFFF)
+ * @param[in,out] data_buf 数据缓冲区指针，用于读写数据暂存区
+ * @param[in] len 数据长度
+ * @warning flash_addr,dgus_vp_addr和len必须是偶数
+ * @warning data_buf缓冲区必须足够大以容纳len字节数据
+ */
+void T5lNorFlashRW(uint8_t RWFlag,
+                  uint8_t flash_block,
+                  uint16_t flash_addr,
+                  uint16_t dgus_vp_addr,
+                  uint8_t *data_buf,
+                  uint16_t len);
+
+
+#if sysDGUS_FLASH_RW_CMD
+
+void T5lNorFlashInit(void);
+#endif /* sysDGUS_FLASH_RW_CMD */
 /**
  * @brief T5L CPU初始化函数
  * @details 完成T5L芯片的基本初始化，包括内核、GPIO、UART、定时器等模块

@@ -10,6 +10,7 @@
 #include "uart.h"
 #include "gpio.h"
 #include "timer.h"
+#include <string.h>
 
 /**
  * @brief 系统任务定时器时钟节拍计数器
@@ -333,11 +334,11 @@ void SwitchPageById(uint16_t page_id)
     uint16_t write_param[2];
     write_param[0] = 0x5A01;
 	write_param[1] = page_id;
-	write_dgus_vp(0x0084,(uint8_t *)&write_param[0],2);
+	write_dgus_vp(sysDGUS_PIC_SET,(uint8_t *)&write_param[0],2);
 	while(write_param[0] & 0xFF00)
 	{
 		delay_us(100);
-		read_dgus_vp(0x0084,(uint8_t*)&write_param[0],1);
+		read_dgus_vp(sysDGUS_PIC_SET,(uint8_t*)&write_param[0],1);
 	}
 }
 
@@ -351,6 +352,224 @@ void DgusAutoUpload()
 #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
 
+static void first_enter_action(void)
+{
+    UartSendData(&Uart2, (uint8_t *)"First Enter Action Executed", sizeof("First Enter Action Executed") - 1);
+}
+
+
+static void repeated_enter_action(void)
+{
+    UartSendData(&Uart2, (uint8_t *)"Repeated Enter Action Executed", sizeof("Repeated Enter Action Executed") - 1);
+}
+
+
+static void exit_action(void)
+{
+    UartSendData(&Uart2, (uint8_t *)"Exit Action Executed", sizeof("Exit Action Executed") - 1);
+}
+
+
+/**
+ * @brief DGUS页面操作函数
+ * @details 根据当前页面执行不同的操作，使用独立的页面状态避免状态混乱
+ * @param[in] target_page_id 目标页面ID
+ * @param[in] state 页面状态指针
+ * @param[in] first_enter_action 第一次进入页面时执行的操作函数指针
+ * @param[in] repeated_enter_action 重复进入页面时执行的操作函数指针
+ * @param[in] exit_action 离开页面时执行的操作函数指针
+ * @note 该函数会根据当前页面是否是目标页面ID执行不同的操作
+ */
+static void DgusPageAction(uint16_t target_page_id,
+                            PageState *state,
+                            void (*first_enter_action)(void),
+                            void (*repeated_enter_action)(void),
+                            void (*exit_action)(void))
+{
+    uint16_t current_page_id;
+    current_page_id = ReadPageId();
+
+  if(current_page_id == target_page_id)
+  {
+    if(state->last_target_page_id != target_page_id)
+    {
+        state->last_target_page_id = target_page_id;
+        /* 执行第一次进入页面的操作 */
+        if(first_enter_action != NULL)
+        {
+            first_enter_action();
+        }
+        UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
+    }else
+    {
+        /* 停留在目标页面，执行页面内操作 */
+        if(repeated_enter_action != NULL)
+        {
+            repeated_enter_action();
+        }
+        UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
+    }
+  }else
+  {
+    if(state->last_exit_page_id == target_page_id)
+    {
+        /* 离开目标页面，执行离开页面的操作 */
+        if(exit_action != NULL)
+        {
+            exit_action();
+        }
+        UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
+    }
+    state->last_exit_page_id = current_page_id;
+  }
+}
+
+
+void DgusPageScanTask(void)
+{
+  /** 定义的页面切换数量不能超过dgusMAX_MONITORED_PAGES */
+  uint16_t page_state_location=0;
+  DgusPageAction(1,&page_states[++page_state_location],first_enter_action, repeated_enter_action, exit_action); 
+  DgusPageAction(0,&page_states[++page_state_location],first_enter_action, repeated_enter_action, exit_action); 
+}
+
+
+void DgusValueScanTask(void)
+{
+  #define UINT16_PORT_ZERO     (uint16_t)0
+  #define DGUS_SCAN_ADDRESS     (uint32_t)0x1000
+  const uint16_t uint16_port_zero = 0;
+  uint16_t dgus_value;
+  
+  #if sysDGUS_AUTO_UPLOAD_ENABLED
+  DgusAutoUpload();
+  #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
+
+  read_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&dgus_value, 1);
+  if(dgus_value == 0x0001)
+  {
+    SwitchPageById(1);
+    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
+  }else if(dgus_value == 0x0002)
+  {
+    SysTaskRemove(1);
+    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
+  }else if(dgus_value == 0x0003)
+  {
+    SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
+  }else if(dgus_value == 0x0004)
+  {
+    SwitchPageById(0);
+    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
+  }
+}
+
+
+void T5lNorFlashRW(uint8_t RWFlag,uint8_t flash_block,uint16_t flash_addr,
+                uint16_t dgus_vp_addr,uint8_t *data_buf,uint16_t len)
+{
+    uint8_t write_param[8];
+    write_param[0] = RWFlag;
+    write_param[1] = flash_block;
+    write_param[2] = (uint8_t)(flash_addr >> 8);
+    write_param[3] = (uint8_t)flash_addr;
+    write_param[4] = (uint8_t)(dgus_vp_addr >> 8);
+    write_param[5] = (uint8_t)dgus_vp_addr;
+    write_param[6] = (uint8_t)(len >> 8);
+    write_param[7] = (uint8_t)len;
+    if(RWFlag == 0xA5) // 写操作
+    {
+        if(data_buf != NULL)
+        {
+            write_dgus_vp(dgus_vp_addr, data_buf, len);
+        }
+    }
+    write_dgus_vp(sysDGUS_FLASH_RW_CMD, &write_param[2], 3);
+    __NOP();
+    write_dgus_vp(sysDGUS_FLASH_RW_CMD, write_param, 1);
+    while (write_param[0])
+    {
+        delay_ms(10);
+        read_dgus_vp(sysDGUS_FLASH_RW_CMD, write_param, 1);
+    }
+    if(RWFlag == 0x5A) // 读操作
+    {
+        if(data_buf == NULL)
+        {
+            read_dgus_vp(dgus_vp_addr, data_buf, len);
+        }
+        read_dgus_vp(dgus_vp_addr, data_buf, len);
+    }
+}
+
+
+#if sysDGUS_FLASH_RW_CMD
+
+
+static void T5lNorFlashBlockInitZero(uint8_t flash_block)
+{
+    uint8_t zero_buf[FLASH_COPY_ONCE_SIZE];
+    uint8_t i;
+    memset(zero_buf, 0, sizeof(zero_buf));
+    zero_buf[0] = flashBACKUP_FLAG_DEFAULT_VALUE >> 8;
+    zero_buf[1] = flashBACKUP_FLAG_DEFAULT_VALUE & 0xFF;
+    zero_buf[2] = flashBACKUP_FLAG_DEFAULT_VALUE >> 8;
+    zero_buf[3] = flashBACKUP_FLAG_DEFAULT_VALUE & 0xFF;
+    FlashToDgusWithData(flash_block, 0, flashDGUS_COPY_VP_ADDRESS, zero_buf, FLASH_COPY_ONCE_SIZE);
+    zero_buf[0] = 0x00;
+    zero_buf[1] = 0x00;
+    zero_buf[2] = 0x00;
+    zero_buf[3] = 0x00;
+    for (i = 1; i < FLASH_COPY_MAX_SIZE; i++) 
+    {
+        FlashToDgusWithData(flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, zero_buf, FLASH_COPY_ONCE_SIZE);
+    }
+}
+
+static void T5lNorFlashBlockCopy(uint8_t main_flash_block,uint8_t backup_flash_block)
+{
+    uint8_t buf[FLASH_COPY_ONCE_SIZE];
+    uint8_t i;
+    for (i = 0; i < FLASH_COPY_MAX_SIZE; i++) 
+    {
+        FlashToDgusWithData(main_flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
+        DgusToFlashWithData(backup_flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
+    }
+}
+
+
+void T5lNorFlashInit(void)
+{
+    uint16_t main_flag_param[2],backup_flag_param[2];
+    FlashToDgusWithData(flashMAIN_BLOCK_ORDER, 0, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&main_flag_param, 2);
+    if(main_flag_param[0] ==flashBACKUP_FLAG_DEFAULT_VALUE && main_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+    {
+        /* 双备份标志未被修改，将备份区改为主区的值 */
+        FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, 0, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&backup_flag_param, 2);
+        if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+        {
+            /* 双备份标志未被修改，不做任何操作 */
+            __NOP();
+        }else
+        {
+            T5lNorFlashBlockCopy(flashMAIN_BLOCK_ORDER,flashBACKUP_BLOCK_ORDER);
+        }
+    }else
+    {
+        /* 双备份标志已被修改，将主区改为备份区的值 */
+        FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, 0, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&backup_flag_param, 2);
+        if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+        {
+            T5lNorFlashBlockCopy(flashBACKUP_BLOCK_ORDER,flashMAIN_BLOCK_ORDER);
+        }else
+        {
+            T5lNorFlashBlockInitZero(flashMAIN_BLOCK_ORDER);
+            T5lNorFlashBlockInitZero(flashBACKUP_BLOCK_ORDER);
+        }
+    }
+}
+#endif /* sysDGUS_FLASH_RW_CMD */
 /**
  * @brief T5L CPU完整初始化函数
  * @details 按照预定顺序初始化CPU的各个功能模块
