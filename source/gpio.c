@@ -2,12 +2,7 @@
 #include "gpio.h"
 #include "timer.h"
 #include "uart.h"
-/**
- * @brief  获取GPIO端口的状态
- * @param  port: GPIO端口号
- * @param  pin: GPIO引脚号
- * @retval GPIO端口的状态
- */
+
 
 
 ButtonState GetGpioState(uint16_t gpio_state)

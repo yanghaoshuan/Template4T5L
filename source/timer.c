@@ -4,12 +4,15 @@
  * @details 本文件实现了系统定时器的完整功能，包括硬件配置、中断处理
  *          和系统时钟节拍维护
  * @author  yangming
- * @date    2025-07-31
  * @version 1.0.0
  */
 
 #include "timer.h"
 #include "uart.h"
+
+#if gpioGPIO_ENABLE
+#include "gpio.h"
+#endif /* gpioGPIO_ENABLE */
 
 /**
  * @brief 系统任务定时器节拍计数器定义
@@ -18,6 +21,10 @@ uint16_t SysTaskTimerTick = 0;
 
 uint32_t SysCurrentTick = 0;
 uint16_t time1_i = 0, time2_j = 0;
+
+#if gpioPWM_ENABLE && gpioGPIO_ENABLE
+uint16_t gpio_count_pwm = 0;  /**< PWM高电平计数 */
+#endif /* gpioPWM_ENABLE && gpioGPIO_ENABLE */
 
 /**
  * @brief 启动定时器0函数
@@ -142,6 +149,24 @@ void Timer2Isr() interrupt 5
 
     /* use timer2 */
     __NOP();
+    #if gpioPWM_ENABLE && gpioGPIO_ENABLE
+    {
+        if (gpio_count_pwm < GPIO_PWM_DUTY_CYCLE)
+        {
+            GPIO_PWM_PORT = 1;
+        }
+        else
+        {
+            GPIO_PWM_PORT = 0; 
+        }
+        gpio_count_pwm++;
+        if (gpio_count_pwm >= GPIO_PWM_MAX_DUTY)
+        {
+            gpio_count_pwm = 0; /* 重置计数器 */
+        }
+    }
+    #endif /* gpioPWM_ENABLE && gpioGPIO_ENABLE */
+    
     time2_j++;
 }
 #endif /* timeTIMER2_ENABLED */

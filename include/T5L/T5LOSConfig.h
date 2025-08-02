@@ -33,8 +33,10 @@ typedef unsigned   long uint32_t;
 #define UINT32_PORT_MAX       0xFFFFFFFF
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
-#define SET_BIT(var, _bit) ((var) |= (1U << (_bit)))
-#define CLEAR_BIT(var, _bit) ((var) &= ~(1U << (_bit)))
+
+#define SysEnterCritical()  EA = 0;  /* 进入临界区 */
+#define SysExitCritical()   EA = 1;  /* 退出临界区 */
+
 
 
 /**
@@ -77,6 +79,8 @@ typedef unsigned   long uint32_t;
  * @param byte 要清除的位掩码
  */
 #define GPIO_BYTE_SET_IN(port, byte)         (port &= ~byte)
+
+
 
 /* 系统配置参数 */
 
@@ -124,10 +128,14 @@ typedef unsigned   long uint32_t;
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 
+#define sysDGUS_CHART_ENABLED              1        /**< 图表功能使能标志 */
 
 #define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
 
+
+
 #define gpioGPIO_ENABLE             1  /**< GPIO使能标志 */
+#define gpioPWM_ENABLE              1  /**< PWM使能标志 */
 
 
 #define timeUS_DELAY_TICK                22         /* 微秒延时的定时器计数值，在level8的优化模式下 */
@@ -156,7 +164,7 @@ typedef unsigned   long uint32_t;
 #define timeT1_TICK                       (65536UL-sysFOSC/12/1000)
 #endif /* timeTIMER1_ENABLED */
 
-#define timeTIMER2_ENABLED              0
+#define timeTIMER2_ENABLED              1
 #if timeTIMER2_ENABLED
 /**
  * @brief 定时器2频率模式选择

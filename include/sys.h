@@ -54,6 +54,32 @@
  * D1:0：读写字长度，必须是偶数。
  */
 #define sysDGUS_FLASH_RW_CMD        0x0008
+#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号 */
+#if flashDUAL_BACKUP_ENABLED
+#define flashDGUS_COPY_VP_ADDRESS           0x1000                      /**< DGUS VP地址 */
+#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小 */
+#define FLASH_COPY_MAX_SIZE                 16                              /**< 最大复制次数 */
+#define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
+#define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
+#define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */
+#define flashBACKUP_DGUS_CACHE_ADDRESS      0xFF00                      /**< 双备份缓存地址 */
+#endif /* flashDUAL_BACKUP_ENABLED */
+
+
+/* ADC通道数据VP地址定义 */
+#define sysDGUS_ADC_CHANNEL0        0x0032  /**< ADC通道0数据 */
+#define sysDGUS_ADC_CHANNEL1        0x0033  /**< ADC通道1数据 */
+#define sysDGUS_ADC_CHANNEL2        0x0034  /**< ADC通道2数据 */
+#define sysDGUS_ADC_CHANNEL3        0x0035  /**< ADC通道3数据 */
+#define sysDGUS_ADC_CHANNEL4        0x0036  /**< ADC通道4数据 */
+#define sysDGUS_ADC_CHANNEL5        0x0037  /**< ADC通道5数据 */
+#define sysDGUS_ADC_CHANNEL6        0x0038  /**< ADC通道6数据 */
+#define sysDGUS_ADC_CHANNEL7        0x0039  /**< ADC通道7数据 */
+#define sysDGUS_ADC_CHANNEL_COUNT   (uint16_t )8       /**< ADC通道数量 */
+#define sysDGUS_ADC_INTERVAL        100     /**< ADC采样间隔，单位为毫秒 */
+#define sysDGUS_ADC_AVERAGE_COUNT   (uint16_t )20      /**< ADC采样平均次数 */
+
+
 
 /**
  * @brief 系统任务定义结构体
@@ -93,17 +119,6 @@ static PageState page_states[dgusMAX_MONITORED_PAGES] = UINT16_PORT_MAX;
  * @details 记录系统中当前活跃任务的总数
  */
 static uint8_t SysTaskCount = 0;
-
-#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号 */
-#if flashDUAL_BACKUP_ENABLED
-#define flashDGUS_COPY_VP_ADDRESS           0x1000                      /**< DGUS VP地址 */
-#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小 */
-#define FLASH_COPY_MAX_SIZE                 16                              /**< 最大复制次数 */
-#define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
-#define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
-#define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */
-#define flashBACKUP_DGUS_CACHE_ADDRESS      0xFF00                      /**< 双备份缓存地址 */
-#endif /* flashDUAL_BACKUP_ENABLED */
 
 
 /**
@@ -225,6 +240,9 @@ void DgusValueScanTask(void);
 
 
 /* flash相关操作 */
+
+#define flashWRITE_FLAG 0xA5 /**< Flash写操作标志 */
+#define flashREAD_FLAG  0x5A /**< Flash读操作标志 */
 /**
  * @brief T5L NOR Flash读写操作宏定义
  * @details dgusToFlash和FlashToDgus宏用于简化Flash与DGUS VP之间的数据传输操作
@@ -233,31 +251,31 @@ void DgusValueScanTask(void);
 
 
 #define DgusToFlash(flash_block,flash_addr,dgus_vp_addr,len) \
-    T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, NULL, len)
+    T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len)
 
 #if flashDUAL_BACKUP_ENABLED
 #define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
     do{                                                                                     \
-        T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, NULL, len);              \
-        T5lNorFlashRW(0x5A, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, NULL, len);  \
+        T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len);              \
+        T5lNorFlashRW(flashWRITE_FLAG, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, NULL, len);  \
     }while(0);
 #else
 #define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
-    T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, NULL, len)
+    T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len)
 #endif /* flashDUAL_BACKUP_ENABLED */
 
 #define FlashToDgusWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
-    T5lNorFlashRW(0x5A, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
+    T5lNorFlashRW(flashREAD_FLAG, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
 
 #if flashDUAL_BACKUP_ENABLED
 #define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
     do{                                                                                         \
-        T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, data_buf, len);              \
-        T5lNorFlashRW(0xA5, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, data_buf, len);  \
+        T5lNorFlashRW(flashREAD_FLAG, flash_block, flash_addr, dgus_vp_addr, data_buf, len);              \
+        T5lNorFlashRW(flashREAD_FLAG, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, data_buf, len);  \
     }while(0);
 #else
 #define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
-    T5lNorFlashRW(0xA5, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
+    T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, data_buf, len)
 #endif /* flashDUAL_BACKUP_ENABLED */
 
 /**
@@ -283,6 +301,28 @@ void T5lNorFlashRW(uint8_t RWFlag,
 
 void T5lNorFlashInit(void);
 #endif /* sysDGUS_FLASH_RW_CMD */
+
+
+/**
+ * @brief ADC任务
+ * @details 定期读取ADC通道的值并进行处理
+ */
+void AdcTask(void);
+
+
+#if sysDGUS_CHART_ENABLED
+/**
+ * @brief 写入单个图表数据点
+ * @details 将指定图表ID和数据点数写入DGUS显示屏
+ * @param[in] chart_id 图表ID
+ * @param[in] point_num 数据点数量
+ * @param[in] data_buf 数据缓冲区指针，包含要写入的数据点
+ * @note data_buf的长度必须为point_num * 2 + 1
+ */
+void SysWriteSingleChart(uint8_t chart_id, uint8_t point_num, uint8_t *data_buf);
+#endif /* sysDGUS_CHART_ENABLED */
+
+
 /**
  * @brief T5L CPU初始化函数
  * @details 完成T5L芯片的基本初始化，包括内核、GPIO、UART、定时器等模块

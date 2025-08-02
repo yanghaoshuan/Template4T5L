@@ -42,6 +42,8 @@ void main(void)
 
   SysTaskAdd(5, 30, DgusPageScanTask);
 
+  SysTaskAdd(6, sysDGUS_ADC_INTERVAL, AdcTask);
+
   while(1)
   {
 

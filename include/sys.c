@@ -12,6 +12,8 @@
 #include "timer.h"
 #include <string.h>
 
+
+
 /**
  * @brief 系统任务定时器时钟节拍计数器
  * @details 用于任务调度的时钟基准，由定时器中断递增
@@ -164,8 +166,6 @@ static void KernerlInit()
 /**
  * @brief GPIO初始化函数
  * @details 初始化所有GPIO端口和引脚模式，配置多路复用器和端口驱动模式
- * @param[in] MuxselMode 多路复用器选择模式
- * @param[in] PortdrvMode 端口驱动模式配置
  */
 static void GpioInit(void)
 {
@@ -506,7 +506,10 @@ void T5lNorFlashRW(uint8_t RWFlag,uint8_t flash_block,uint16_t flash_addr,
 
 #if sysDGUS_FLASH_RW_CMD
 
-
+/**
+ * @brief T5L NOR Flash初始化函数
+ * @details 初始化Flash块，设置双备份标志和数据缓冲区
+ */
 static void T5lNorFlashBlockInitZero(uint8_t flash_block)
 {
     uint8_t zero_buf[FLASH_COPY_ONCE_SIZE];
@@ -527,14 +530,21 @@ static void T5lNorFlashBlockInitZero(uint8_t flash_block)
     }
 }
 
-static void T5lNorFlashBlockCopy(uint8_t main_flash_block,uint8_t backup_flash_block)
+
+/**
+ * @brief T5L NOR Flash块复制函数
+ * @details 将主Flash块的数据复制到备份Flash块
+ * @param[in] flash_block_from 源Flash块号
+ * @param[in] flash_block_to 目标Flash块号
+ */
+static void T5lNorFlashBlockCopy(uint8_t flash_block_from,uint8_t flash_block_to)
 {
     uint8_t buf[FLASH_COPY_ONCE_SIZE];
     uint8_t i;
     for (i = 0; i < FLASH_COPY_MAX_SIZE; i++) 
     {
-        FlashToDgusWithData(main_flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
-        DgusToFlashWithData(backup_flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
+        FlashToDgusWithData(flash_block_from, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
+        DgusToFlashWithData(flash_block_to, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, buf, FLASH_COPY_ONCE_SIZE);
     }
 }
 
@@ -570,6 +580,85 @@ void T5lNorFlashInit(void)
     }
 }
 #endif /* sysDGUS_FLASH_RW_CMD */
+
+
+/**
+ * @brief 读取指定ADC通道的值
+ * @param[in] channel ADC通道编号，0-7
+ * @param[in] clear_flag 是否清除当前采样计数器 0：不清除，1：清除，从0开始计数
+ * @return 返回指定通道的ADC采样值
+ * @note 该函数会根据当前采样计数器计算平均值
+ */
+static uint16_t AdcReadChannel(uint8_t channel,uint8_t clear_flag)
+{
+    static uint16_t adc_now_count[sysDGUS_ADC_CHANNEL_COUNT];                           /**< ADC采样计数器 */
+    static uint16_t adc_values[sysDGUS_ADC_CHANNEL_COUNT][sysDGUS_ADC_AVERAGE_COUNT];  /** ADC采样值数组 */
+    uint16_t adc_value = 0,i;
+    if(clear_flag)
+    {
+        for (i = 0; i < sysDGUS_ADC_AVERAGE_COUNT; i++) {
+            adc_values[channel][i] = 0;
+        }
+        adc_now_count[channel] = 0;
+    }
+    if(channel < sysDGUS_ADC_CHANNEL_COUNT + sysDGUS_ADC_CHANNEL0)
+    {
+        read_dgus_vp(channel+sysDGUS_ADC_CHANNEL0, 
+            (uint8_t *)&adc_values[channel][adc_now_count[channel]%sysDGUS_ADC_AVERAGE_COUNT], 1);
+        adc_now_count[channel]++;
+        if(adc_now_count[channel]< sysDGUS_ADC_AVERAGE_COUNT)
+        {
+            /* 计算当前count数量的平均数*/
+            for(i = 0; i < adc_now_count[channel]; i++)
+            {
+                adc_value += adc_values[channel][i];
+            }
+            adc_value /= adc_now_count[channel];
+        }else{
+            /* 计算sysDGUS_ADC_AVERAGE_COUNT数量的平均数 */
+            for(i = 0; i < sysDGUS_ADC_AVERAGE_COUNT; i++)
+            {
+                adc_value += adc_values[channel][i];
+            }
+            adc_value /= sysDGUS_ADC_AVERAGE_COUNT;
+        }
+    }
+    return adc_value;
+}
+
+
+void AdcTask(void)
+{
+    uint16_t adc_value;
+    adc_value = AdcReadChannel(0,0);
+    /* 处理adc的数值 */
+}
+
+
+#if sysDGUS_CHART_ENABLED
+#define sysDGUS_CHART_VP_ADDRESS    0x310     /** 图表VP地址 */
+void SysWriteSingleChart(uint8_t chart_id,uint8_t point_num,uint8_t *data_buf)
+{
+    uint8_t write_param[6];
+    write_param[0] = 0x5a;
+    write_param[1] = 0xa5;
+    write_param[2] = 0x01;
+    write_param[3] = 0x00;
+    write_param[4] = chart_id;
+    write_param[5] = point_num; 
+
+    if(data_buf != NULL || point_num != 0)
+    {
+        write_param[6] = data_buf[0]; 
+        data_buf[1+point_num*2] = 0x00;
+        //写入data_buf长度的数据
+        write_dgus_vp(sysDGUS_CHART_VP_ADDRESS + 0x0003, &data_buf[1], point_num);
+        write_dgus_vp(sysDGUS_CHART_VP_ADDRESS, write_param, 3);
+    }
+}
+#endif /* sysDGUS_CHART_ENABLED */
+
+
 /**
  * @brief T5L CPU完整初始化函数
  * @details 按照预定顺序初始化CPU的各个功能模块
