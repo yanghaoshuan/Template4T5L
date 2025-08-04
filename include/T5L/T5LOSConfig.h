@@ -17,7 +17,7 @@
 ***************** 数据类型定义 *************
 ******************************************/
 typedef unsigned   char uint8_t;
-typedef unsigned   int  uint16_t;
+typedef unsigned   short  uint16_t;
 typedef unsigned   long uint32_t;
 
 
@@ -125,17 +125,21 @@ typedef unsigned   long uint32_t;
 #define sysTEST_ENABLED             1        /**< 测试模式使能标志 */
 
 #define sysDGUS_AUTO_UPLOAD_ENABLED  1      /**< 自动上传使能标志 */
+#if sysDGUS_AUTO_UPLOAD_ENABLED
+#define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
+#define sysDGUS_AUTO_UPLOAD_LEN                 40
+#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 
-#define sysDGUS_CHART_ENABLED              1        /**< 图表功能使能标志 */
+#define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
 #define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
 
 
 
-#define gpioGPIO_ENABLE             1  /**< GPIO使能标志 */
-#define gpioPWM_ENABLE              1  /**< PWM使能标志 */
+#define gpioGPIO_ENABLE             0  /**< GPIO使能标志 */
+#define gpioPWM_ENABLE              0  /**< PWM使能标志 */
 
 
 #define timeUS_DELAY_TICK                22         /* 微秒延时的定时器计数值，在level8的优化模式下 */
@@ -346,5 +350,51 @@ typedef unsigned   long uint32_t;
      */
     #define i2cSDA_LOW          i2cGPIO_SFR_PORTMDOUT &= ~(1 << i2cSDA_GPIO_PIN)
 #endif  /* i2cI2C_ENABLED */
-		
+
+/* SPI配置参数 */
+/**
+ * @brief SPI功能使能标志
+ * @details 1: 启用SPI功能, 0: 禁用SPI功能
+ */
+#define spiSPI_ENABLED                  1
+#if spiSPI_ENABLED
+/**
+ * @brief SPI GPIO端口定义
+ * @details 指定SPI通信使用的GPIO端口
+ */
+#define spiGPIO_PORT                    P1     
+
+/**
+ * @brief SPI GPIO端口模式寄存器定义
+ * @details 指定SPI GPIO端口的模式控制寄存器
+ */
+#define spiGPIO_SFR_PORTMDOUT         P1MDOUT
+
+/**
+ * @brief SPI时钟引脚号
+ * @details SCK(Serial Clock)时钟线使用的GPIO引脚号
+ */
+#define spiSCK_PIN                      0
+
+/**
+ * @brief SPI主机输出从机输入引脚号
+ * @details MOSI(Master Out Slave In)数据线使用的GPIO引脚号
+ */
+#define spiMOSI_PIN                     1
+
+/**
+ * @brief SPI主机输入从机输出引脚号
+ * @details MISO(Master In Slave Out)数据线使用的GPIO引脚号
+ */
+#define spiMISO_PIN                     2
+
+/**
+ * @brief SPI片选引脚号
+ * @details CS(Chip Select)片选信号使用的GPIO引脚号
+ */
+#define spiCS_PIN                       3
+#endif /* spiSPI_ENABLED */
+
+#define canCAN_ENABLED                  0
+
 #endif /* T5LOS_CONFIG_H */

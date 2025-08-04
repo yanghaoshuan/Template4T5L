@@ -3,8 +3,7 @@
  * @brief   UART通信接口驱动程序头文件
  * @details 本文件提供多路UART通信接口的管理和控制功能，支持UART2-UART5，
  *          包括数据收发、缓冲区管理和协议处理
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 

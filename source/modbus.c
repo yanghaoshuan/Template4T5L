@@ -3,8 +3,7 @@
  * @brief   Modbus RTU通信协议驱动程序实现文件
  * @details 本文件实现了完整的Modbus RTU协议栈，包括帧解析、CRC校验、
  *          命令处理和数据传输功能
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 
@@ -53,20 +52,16 @@ void UartStandardModbusRTUProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
             switch(frame[1])
             {
                 case modbusCMD_READ_COILS:
-                    write_dgus_vp(modbusCOILS_START, &frame[3], frame[2]>> 1);
-                    UartSendData(uart, frame, frame[2] + 3);
                     __NOP();
                     break;
                 case modbusCMD_READ_DISCRETE_INPUTS:
                     __NOP();
                     break;
                 case modbusCMD_READ_HOLDING_REGISTERS:
-                    write_dgus_vp(modbusHOLDING_REGISTERS_START, &frame[3], frame[2]>> 1);
-                    UartSendData(uart, frame, frame[2] + 3);
+                    __NOP();
                     break;
                 case modbusCMD_READ_INPUT_REGISTERS:
-                    write_dgus_vp(modbusINPUT_REGISTERS_START, &frame[3], frame[2]>> 1);
-                    UartSendData(uart, frame, frame[2] + 3);
+                    __NOP();
                     break;
                 case modbusCMD_WRITE_SINGLE_COIL:
                     __NOP();

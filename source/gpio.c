@@ -4,7 +4,7 @@
 #include "uart.h"
 
 
-
+#if gpioGPIO_ENABLE
 ButtonState GetGpioState(uint16_t gpio_state)
 {
     static ButtonState buttonState = BUTTON_IDLE;
@@ -81,3 +81,4 @@ void GpioTask(void)
         UartSendData(&Uart2, (uint8_t *)"Button Idle\r\n", sizeof("Button Idle\r\n") - 1);
     }
 }
+#endif /* gpioGPIO_ENABLE */

@@ -37,7 +37,7 @@
  * .2：触摸屏背光待机控制 1=开启 0=关闭，读写。
  * .1-.0：显示方向 00=0° 01=90° 10=180° 11=270°，读写。
  */
-#define sysDGUS_SYSTEM_CONFIG       0x0080
+#define sysDGUS_SYSTEM_CONFIG       0x0081
 
 /**
  * 
@@ -60,9 +60,9 @@
 #define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小 */
 #define FLASH_COPY_MAX_SIZE                 16                              /**< 最大复制次数 */
 #define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
-#define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
+#define flashBACKUP_FLAG_ADDRESS            0xF000                      /**< 双备份改动标志缓存地址 */
 #define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */
-#define flashBACKUP_DGUS_CACHE_ADDRESS      0xFF00                      /**< 双备份缓存地址 */
+#define flashBACKUP_DGUS_CACHE_ADDRESS      0xF000                      /**< 双备份缓存地址 */
 #endif /* flashDUAL_BACKUP_ENABLED */
 
 
@@ -160,14 +160,14 @@ void SysTaskRun(void);
  * @details 提供精确的微秒级别延时功能
  * @param[in] us 延时时间，单位为微秒
  */
-void delay_us(const uint16_t us);
+void delay_us(uint16_t us);
 
 /**
  * @brief 毫秒级延时函数
  * @details 提供毫秒级别延时功能
  * @param[in] ms 延时时间，单位为毫秒
  */
-void delay_ms(const uint16_t ms);
+void delay_ms(uint16_t ms);
 
 /**
  * @brief CRC-16校验计算函数
@@ -215,6 +215,9 @@ void SwitchPageById(uint16_t page_id);
 
 
 #if sysDGUS_AUTO_UPLOAD_ENABLED
+/**
+ * @brief DGUS自动上传功能
+ */
 void DgusAutoUpload(void);
 #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
@@ -243,6 +246,7 @@ void DgusValueScanTask(void);
 
 #define flashWRITE_FLAG 0xA5 /**< Flash写操作标志 */
 #define flashREAD_FLAG  0x5A /**< Flash读操作标志 */
+
 /**
  * @brief T5L NOR Flash读写操作宏定义
  * @details dgusToFlash和FlashToDgus宏用于简化Flash与DGUS VP之间的数据传输操作
@@ -270,8 +274,8 @@ void DgusValueScanTask(void);
 #if flashDUAL_BACKUP_ENABLED
 #define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
     do{                                                                                         \
-        T5lNorFlashRW(flashREAD_FLAG, flash_block, flash_addr, dgus_vp_addr, data_buf, len);              \
-        T5lNorFlashRW(flashREAD_FLAG, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, data_buf, len);  \
+        T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, data_buf, len);              \
+        T5lNorFlashRW(flashWRITE_FLAG, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, data_buf, len);  \
     }while(0);
 #else
 #define DgusToFlashWithData(flash_block,flash_addr,dgus_vp_addr,data_buf,len) \
@@ -297,15 +301,17 @@ void T5lNorFlashRW(uint8_t RWFlag,
                   uint16_t len);
 
 
-#if sysDGUS_FLASH_RW_CMD
+#if flashDUAL_BACKUP_ENABLED
 
+#define flash
 void T5lNorFlashInit(void);
-#endif /* sysDGUS_FLASH_RW_CMD */
+#endif /* flashDUAL_BACKUP_ENABLED */
 
 
 /**
  * @brief ADC任务
  * @details 定期读取ADC通道的值并进行处理
+ * @note 该任务会在系统任务调度中周期性执行，建议执行周期为sysDGUS_ADC_INTERVAL
  */
 void AdcTask(void);
 

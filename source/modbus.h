@@ -3,8 +3,7 @@
  * @brief   Modbus RTU通信协议驱动程序头文件
  * @details 本文件提供标准Modbus RTU协议的实现，包括主从机通信、
  *          寄存器读写操作和错误处理机制
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 

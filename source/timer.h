@@ -37,7 +37,6 @@ extern uint16_t SysTaskTimerTick;    /**< 系统任务定时器节拍计数器 *
 
 extern uint32_t SysCurrentTick;     /**< 当前系统滴答计时器值 */
 
-extern uint16_t time1_i, time2_j;
 
 
 /**

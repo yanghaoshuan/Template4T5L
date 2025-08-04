@@ -3,8 +3,7 @@
  * @brief   I2C通信接口驱动程序实现文件
  * @details 本文件实现了基于GPIO模拟的I2C总线通信协议，包括时序控制、
  *          数据传输和应答机制的完整实现
- * @author  [作者姓名]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0
  */
 

@@ -71,7 +71,7 @@ ButtonState GetGpioState(uint16_t gpio_state);
 
 #endif /* gpioGPIO_ENABLE && timeTIMER2_ENABLED */
 
-
+#if gpioGPIO_ENABLE
 /**
  * @brief GPIO任务函数
  * @details 该函数周期性检查GPIO端口状态，并根据按钮状态发送相应的UART消息
@@ -80,4 +80,5 @@ ButtonState GetGpioState(uint16_t gpio_state);
  * @note 在函数内定义测试GPIO端口为P15
  */
 void GpioTask(void);
+#endif /* gpioGPIO_ENABLE */
 #endif /* GPIO_H */

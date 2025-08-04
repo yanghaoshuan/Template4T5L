@@ -3,8 +3,7 @@
  * @brief   实时时钟(RTC)驱动程序头文件
  * @details 本文件提供RTC芯片的驱动接口，支持RX-8130和SD-2058两种RTC芯片，
  *          包括时间读写、初始化和周期性任务处理
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 

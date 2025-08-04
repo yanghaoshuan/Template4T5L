@@ -20,7 +20,6 @@
 uint16_t SysTaskTimerTick = 0;
 
 uint32_t SysCurrentTick = 0;
-uint16_t time1_i = 0, time2_j = 0;
 
 #if gpioPWM_ENABLE && gpioGPIO_ENABLE
 uint16_t gpio_count_pwm = 0;  /**< PWM高电平计数 */
@@ -130,7 +129,6 @@ void Timer1Isr() interrupt 3
 
     /* use timer1*/
     __NOP();
-    time1_i++;
     ET1 = 1;
 }
 #endif /* timeTIMER1_ENABLED */
@@ -167,6 +165,5 @@ void Timer2Isr() interrupt 5
     }
     #endif /* gpioPWM_ENABLE && gpioGPIO_ENABLE */
     
-    time2_j++;
 }
 #endif /* timeTIMER2_ENABLED */

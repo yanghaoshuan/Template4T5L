@@ -3,8 +3,7 @@
  * @brief   实时时钟(RTC)驱动程序实现文件
  * @details 本文件实现了RTC芯片的完整驱动功能，支持多种RTC芯片，
  *          包括时间格式转换、芯片通信和周期性维护任务
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 

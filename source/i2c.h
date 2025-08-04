@@ -2,8 +2,7 @@
  * @file    i2c.h
  * @brief   I2C通信接口驱动程序头文件
  * @details 本文件提供I2C总线通信的标准接口函数，包括单字节和多字节的读写操作
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 

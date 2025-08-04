@@ -4,8 +4,7 @@
  * @brief   UART通信接口驱动程序实现文件
  * @details 本文件实现了多路UART通信接口的完整功能，包括硬件初始化、
  *          中断处理、数据收发和多协议支持
- * @author  [yangming]
- * @date    2025-07-31
+ * @author  yangming
  * @version 1.0.0
  */
 
