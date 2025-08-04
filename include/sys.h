@@ -53,14 +53,14 @@
  * D3:2：数据变量空间首地址，必须是偶数。 
  * D1:0：读写字长度，必须是偶数。
  */
-#define sysDGUS_FLASH_RW_CMD        0x0008
-#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号 */
+#define sysDGUS_FLASH_RW_CMD                0x0008
+#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号，每一块有16个扇区 */
 #if flashDUAL_BACKUP_ENABLED
 #define flashDGUS_COPY_VP_ADDRESS           0x1000                      /**< DGUS VP地址 */
-#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小 */
-#define FLASH_COPY_MAX_SIZE                 16                              /**< 最大复制次数 */
+#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小，4k数据 */
+#define FLASH_COPY_MAX_SECTOR                 16                              /**< 最大复制扇区个数 */
 #define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
-#define flashBACKUP_FLAG_ADDRESS            0xF000                      /**< 双备份改动标志缓存地址 */
+#define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
 #define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */
 #define flashBACKUP_DGUS_CACHE_ADDRESS      0xF000                      /**< 双备份缓存地址 */
 #endif /* flashDUAL_BACKUP_ENABLED */
@@ -290,7 +290,8 @@ void DgusValueScanTask(void);
  * @param[in] dgus_vp_addr DGUS VP地址 (0x0000-0xFFFF)
  * @param[in,out] data_buf 数据缓冲区指针，用于读写数据暂存区
  * @param[in] len 数据长度
- * @warning flash_addr,dgus_vp_addr和len必须是偶数
+ * @warning flash_addr,以字节为单位，必须是偶数
+ * @warning dgus_vp_addr和len必须是偶数,以双字节为单位
  * @warning data_buf缓冲区必须足够大以容纳len字节数据
  */
 void T5lNorFlashRW(uint8_t RWFlag,
@@ -304,6 +305,12 @@ void T5lNorFlashRW(uint8_t RWFlag,
 #if flashDUAL_BACKUP_ENABLED
 
 #define flash
+/**
+ * @brief T5L NOR Flash初始化函数
+ * @details 初始化Flash块，设置双备份标志和数据缓冲区
+ * @warning 4k字节为写入的最小单位，在双备份开启时，使用每一个扇区的开始的0x0000和0x0001作为双备份标志位
+ * @note 初始化时间大约为5s
+ */
 void T5lNorFlashInit(void);
 #endif /* flashDUAL_BACKUP_ENABLED */
 

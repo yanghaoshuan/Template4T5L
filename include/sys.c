@@ -558,78 +558,72 @@ void T5lNorFlashRW(uint8_t RWFlag,uint8_t flash_block,uint16_t flash_addr,
 
 #if flashDUAL_BACKUP_ENABLED
 
+
 /**
- * @brief T5L NOR Flash初始化函数
- * @details 初始化Flash块，设置双备份标志和数据缓冲区
- * @warning 使用每个块的0xF000和0xF001作为双备份标志位
+ * @brief T5L NOR Flash扇区初始化函数
+ * @details 初始化Flash扇区，设置双备份标志和数据缓冲区
+ * @param[in] flash_sector 要初始化的Flash扇区号
  */
-static void T5lNorFlashBlockInitZero(uint8_t flash_block)
+static void T5lNorFlashSectorInitZero(uint8_t flash_sector)
 {
-    uint16_t zero_buf[2];
+    uint16_t init_buf[2];
     uint8_t i;
-    zero_buf[0] = 0x0000;
-    zero_buf[1] = 0x0000;
-    write_dgus_vp(flashDGUS_COPY_VP_ADDRESS, (uint8_t *)zero_buf, 2);
-    
-    for (i = 0; i < FLASH_COPY_MAX_SIZE-1; i++) 
-    {
-        T5lNorFlashRW(flashWRITE_FLAG, flash_block, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
-    }
-    zero_buf[0] = flashBACKUP_FLAG_DEFAULT_VALUE;
-    zero_buf[1] = flashBACKUP_FLAG_DEFAULT_VALUE;
+    init_buf[0] = flashBACKUP_FLAG_DEFAULT_VALUE;
+    init_buf[1] = flashBACKUP_FLAG_DEFAULT_VALUE;
 
-    write_dgus_vp(flashDGUS_COPY_VP_ADDRESS, (uint8_t *)zero_buf, 2);
+    write_dgus_vp(flashDGUS_COPY_VP_ADDRESS, (uint8_t *)init_buf, 2);
 
-    T5lNorFlashRW(flashWRITE_FLAG, flash_block, flashBACKUP_FLAG_ADDRESS, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
+    T5lNorFlashRW(flashWRITE_FLAG, flash_sector / FLASH_COPY_MAX_SECTOR, 
+                (flash_sector % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
 }
 
 
 /**
- * @brief T5L NOR Flash块复制函数
- * @details 将主Flash块的数据复制到备份Flash块
- * @param[in] flash_block_from 源Flash块号
- * @param[in] flash_block_to 目标Flash块号
+ * @brief T5L NOR Flash扇区复制函数
+ * @details 将主Flash扇区的数据复制到备份Flash扇区
+ * @param[in] flash_sector_from 源Flash扇区号
+ * @param[in] flash_sector_to 目标Flash扇区号
  */
-static void T5lNorFlashBlockCopy(uint8_t flash_block_from,uint8_t flash_block_to)
+static void T5lNorFlashSectorCopy(uint8_t flash_sector_from,uint8_t flash_sector_to)
 {
-    uint8_t i;
-    for (i = 0; i < FLASH_COPY_MAX_SIZE; i++) 
-    {
-        FlashToDgusWithData(flash_block_from, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
-        DgusToFlashWithData(flash_block_to, i * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
-    }
+    FlashToDgusWithData(flash_sector_from / FLASH_COPY_MAX_SECTOR, (flash_sector_from % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
+    DgusToFlashWithData(flash_sector_to / FLASH_COPY_MAX_SECTOR, (flash_sector_to % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
 }
 
  
 void T5lNorFlashInit(void)
 {
+    uint16_t i;
     uint16_t main_flag_param[2],backup_flag_param[2];
-    FlashToDgusWithData(flashMAIN_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)main_flag_param, 2);
-    write_dgus_vp(0x5005, (uint8_t *)main_flag_param, 2);
-    if(main_flag_param[0] ==flashBACKUP_FLAG_DEFAULT_VALUE && main_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+    for(i=0;i<FLASH_COPY_MAX_SECTOR;i++)
     {
-        /* 双备份标志未被修改，将备份区改为主区的值 */
-        FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&backup_flag_param, 2);
-        write_dgus_vp(0x5001, (uint8_t *)backup_flag_param, 2);
-        if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+        FlashToDgusWithData(flashMAIN_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)main_flag_param, 2);
+        write_dgus_vp(0x5005, (uint8_t *)main_flag_param, 2);
+        if(main_flag_param[0] ==flashBACKUP_FLAG_DEFAULT_VALUE && main_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
         {
-            /* 双备份标志未被修改，不做任何操作 */
-            __NOP();
+            /* 双备份标志未被修改，将备份区改为主区的值 */
+            FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&backup_flag_param, 2);
+            write_dgus_vp(0x5001, (uint8_t *)backup_flag_param, 2);
+            if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+            {
+                /* 双备份标志未被修改，不做任何操作 */
+                __NOP();
+            }else
+            {
+                T5lNorFlashSectorCopy(i,i+flashBACKUP_BLOCK_ORDER*FLASH_COPY_MAX_SECTOR);
+            }
         }else
         {
-            T5lNorFlashBlockCopy(flashMAIN_BLOCK_ORDER,flashBACKUP_BLOCK_ORDER);
-        }
-    }else
-    {
-        /* 双备份标志已被修改，将主区改为备份区的值 */
-        FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)backup_flag_param, 2);
-        if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
-        {
-            T5lNorFlashBlockCopy(flashBACKUP_BLOCK_ORDER,flashMAIN_BLOCK_ORDER);
-        }else
-        {
-            T5lNorFlashBlockInitZero(flashMAIN_BLOCK_ORDER);
-            T5lNorFlashBlockInitZero(flashBACKUP_BLOCK_ORDER);
+            /* 双备份标志已被修改，将主区改为备份区的值 */
+            FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)backup_flag_param, 2);
+            if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
+            {
+                T5lNorFlashSectorCopy(flashBACKUP_BLOCK_ORDER,flashMAIN_BLOCK_ORDER);
+            }else
+            {
+                T5lNorFlashSectorInitZero(i);
+                T5lNorFlashSectorInitZero(i+flashBACKUP_BLOCK_ORDER*FLASH_COPY_MAX_SECTOR);
+            }
         }
     }
 }
