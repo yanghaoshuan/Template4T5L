@@ -458,7 +458,7 @@ void DgusPageScanTask(void)
 {
     /** 定义的页面切换数量不能超过dgusMAX_MONITORED_PAGES */
     uint16_t page_state_location=0;
-    DgusPageAction(1,&page_states[++page_state_location],first_enter_action, NULL, exit_action); 
+    DgusPageAction(1,&page_states[++page_state_location],first_enter_action, repeated_enter_action, exit_action); 
     DgusPageAction(0,&page_states[++page_state_location],first_enter_action, NULL, exit_action); 
 }
 
@@ -567,7 +567,6 @@ void T5lNorFlashRW(uint8_t RWFlag,uint8_t flash_block,uint16_t flash_addr,
 static void T5lNorFlashSectorInitZero(uint8_t flash_sector)
 {
     uint16_t init_buf[2];
-    uint8_t i;
     init_buf[0] = flashBACKUP_FLAG_DEFAULT_VALUE;
     init_buf[1] = flashBACKUP_FLAG_DEFAULT_VALUE;
 

@@ -41,6 +41,7 @@ static uint8_t prvModbusCrcCheck(uint8_t *frame, uint16_t len)
 void UartStandardModbusRTUProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     ModbusErrorCode ErrnoFlag = modbusERR_NONE;
+
     if(prvModbusCrcCheck(frame, len))
     {
         if(frame[0] == modbusSLAVE_ADDRESS)
@@ -49,6 +50,8 @@ void UartStandardModbusRTUProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
             {
                 ErrnoFlag = (ModbusErrorCode)frame[2];
             }
+            /* test */
+            UartSendData(uart, frame, len);
             switch(frame[1])
             {
                 case modbusCMD_READ_COILS:
