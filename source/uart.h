@@ -11,6 +11,7 @@
 #define __UART_H__
 #include "T5LOSConfig.h"
 
+
 /**
  * @brief UART控制结构体定义
  * @details 定义了UART通信所需的所有控制参数和状态信息
@@ -36,6 +37,7 @@ typedef struct UartxDefine
  */
 #define  UART_NON_REC    0
 #define  UART_RECING     1
+
 
 /* UART接口声明 - 根据配置条件编译 */
 
@@ -108,6 +110,7 @@ extern UART_TYPE Uart5;
  */
 void Uart5Init(const uint32_t bdt);
 #endif  /* uartUART5_ENABLED */
+
 
 /**
  * @brief UART模块统一初始化函数

@@ -10,15 +10,6 @@
 #ifndef RTC_H
 #define RTC_H
 
-#include "i2c.h"
-#include "sys.h"
-
-/**
- * @brief RTC任务执行间隔时间
- * @details RTC周期性任务的执行间隔，单位为毫秒
- */
-#define RTC_INTERVAL    500
-
 /* RTC芯片型号选择 - 只能选择其中一种 */
 /**
  * @brief 启用RX-8130 RTC芯片支持和SD-2058 RTC芯片支持
@@ -27,6 +18,22 @@
  */
 #define rtcRX_8130
 //#define rtcSD_2058
+
+#include "sys.h"
+
+#if defined(rtcRX_8130) || defined(rtcSD_2058)
+#if !i2cI2C_ENABLED
+#error "I2C must be enabled to use RTC driver"
+#endif /* !i2cI2C_ENABLED */
+#include "i2c.h"
+#endif /* defined(rtcRX_8130) || defined(rtcSD_2058) */
+
+
+/**
+ * @brief RTC任务执行间隔时间
+ * @details RTC周期性任务的执行间隔，单位为毫秒
+ */
+#define RTC_INTERVAL    500
 
 /**
  * @brief RTC时间写入处理函数

@@ -196,7 +196,7 @@ void RtcReadTime(void)
 {
     __NOP();
 }
-#endif
+#endif  /* rtcRX_8130 || rtcSD_2058 */
 
 void RtcWriteTime(void)
 {

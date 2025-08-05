@@ -122,9 +122,9 @@ typedef unsigned   long uint32_t;
 
 #define sysFCLK                      sysFOSC
 
-#define sysTEST_ENABLED             1        /**< 测试模式使能标志 */
+#define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
-#define sysDGUS_AUTO_UPLOAD_ENABLED  1      /**< 自动上传使能标志 */
+#define sysDGUS_AUTO_UPLOAD_ENABLED     1      /**< 自动上传使能标志 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
@@ -156,7 +156,7 @@ typedef unsigned   long uint32_t;
  * @brief 定时器1使能标志
  * @details 1: 启用定时器1, 0: 禁用定时器1
  */
-#define timeTIMER1_ENABLED              0
+#define timeTIMER1_ENABLED              1
 
 #if timeTIMER1_ENABLED  
 
@@ -212,7 +212,7 @@ typedef unsigned   long uint32_t;
      * @brief UART2超时功能使能标志
      * @details 1: 启用接收超时检测, 0: 禁用接收超时检测
      */
-    #define uartUART2_TIMEOUT_ENABLED    1
+    #define uartUART2_TIMEOUT_ENABLED    uartUART2_ENABLED
     
     #if uartUART2_TIMEOUT_ENABLED
         /**
@@ -236,7 +236,7 @@ typedef unsigned   long uint32_t;
 #if uartUART3_ENABLED
     #define uartUART3_TXBUF_SIZE         256
     #define uartUART3_RXBUF_SIZE         256
-    #define uartUART3_TIMEOUT_ENABLED    1
+    #define uartUART3_TIMEOUT_ENABLED    uartUART3_ENABLED
     #if uartUART3_TIMEOUT_ENABLED
         #define uartUART3_TIMEOUTSET     5
     #endif /* uartUART3_TIMEOUT_ENABLED */  
@@ -249,7 +249,7 @@ typedef unsigned   long uint32_t;
 #if uartUART4_ENABLED
     #define uartUART4_TXBUF_SIZE         256
     #define uartUART4_RXBUF_SIZE         256
-    #define uartUART4_TIMEOUT_ENABLED    1
+    #define uartUART4_TIMEOUT_ENABLED    uartUART4_ENABLED
     
     #if uartUART4_TIMEOUT_ENABLED
         #define uartUART4_TIMEOUTSET     5
@@ -268,7 +268,7 @@ typedef unsigned   long uint32_t;
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
     #define uartUART5_RXBUF_SIZE         256
-    #define uartUART5_TIMEOUT_ENABLED    1
+    #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5

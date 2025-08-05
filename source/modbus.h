@@ -13,6 +13,7 @@
 #include "sys.h"
 #include "uart.h"
 
+
 /* Modbus从机地址定义 */
 /**
  * @brief 默认Modbus从机地址
@@ -178,22 +179,4 @@ void SendModbusGenericFrame(UART_TYPE *uart,
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#endif 
+#endif /* MODBUS_H */

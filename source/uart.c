@@ -602,6 +602,9 @@ void UartReadFrame(UART_TYPE *uart)
         }
         EA = 1;
         UartStandardDwin8283Protocal(uart,frame, i); 
+        #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);
+        #endif /* uartMODBUS_PROTOCOL_ENABLED */
     }
 }
+

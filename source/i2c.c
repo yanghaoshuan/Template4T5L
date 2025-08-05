@@ -10,6 +10,7 @@
 #include "i2c.h"
 #include "sys.h"
 
+#if i2cI2C_ENABLED
 /**
  * @brief I2C启动信号生成
  * @details 生成I2C总线启动条件：在SCL为高电平时，SDA从高电平变为低电平
@@ -267,3 +268,4 @@ void I2cReadMultipleBytes(uint8_t register_address, uint8_t *buffer, uint8_t len
     I2cStop();
 }
 
+#endif /* i2cI2C_ENABLED */

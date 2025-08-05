@@ -381,19 +381,25 @@ void DgusAutoUpload()
 
 static void first_enter_action(void)
 {
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"First Enter Action Executed", sizeof("First Enter Action Executed") - 1);
+    #endif /* uartUART2_ENABLED */
 }
 
 
 static void repeated_enter_action(void)
 {
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"Repeated Enter Action Executed", sizeof("Repeated Enter Action Executed") - 1);
+    #endif /* uartUART2_ENABLED */
 }
 
 
 static void exit_action(void)
 {
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"Exit Action Executed", sizeof("Exit Action Executed") - 1);
+    #endif /* uartUART2_ENABLED */
 }
 
 
@@ -426,7 +432,6 @@ static void DgusPageAction(uint16_t target_page_id,
         if(first_enter_action != NULL)
         {
             first_enter_action();
-            UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
         }
     }else
     {
@@ -434,7 +439,6 @@ static void DgusPageAction(uint16_t target_page_id,
         if(repeated_enter_action != NULL)
         {
             repeated_enter_action();
-            UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
         }
     }
   }else
@@ -446,7 +450,6 @@ static void DgusPageAction(uint16_t target_page_id,
         if(exit_action != NULL)
         {
             exit_action();
-            UartSendData(&Uart2,(uint8_t *)&target_page_id, sizeof(target_page_id));
         }
     }
     state->last_target_page_id = UINT16_PORT_MAX;   /* 重置目标页面ID */
@@ -468,7 +471,7 @@ void DgusValueScanTask(void)
   #define UINT16_PORT_ZERO     (uint16_t)0
   #define DGUS_SCAN_ADDRESS     (uint32_t)0x1000
   const uint16_t uint16_port_zero = 0;
-  uint16_t dgus_value,backup_flag_param[2];
+  uint16_t dgus_value;
   
   #if sysDGUS_AUTO_UPLOAD_ENABLED
   DgusAutoUpload();
@@ -491,27 +494,6 @@ void DgusValueScanTask(void)
   {
     SwitchPageById(0);
     write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if (dgus_value == 0x0005)
-  {
-    backup_flag_param[0] = 0;
-    backup_flag_param[1] = 0;
-    DgusToFlashWithData(flashMAIN_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)backup_flag_param, 2)
-    /* 执行其他操作 */
-    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if( dgus_value == 0x0006)
-  {
-    backup_flag_param[0] = 0;
-    backup_flag_param[1] = 0;
-    T5lNorFlashRW(flashWRITE_FLAG, flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS,(uint8_t *)backup_flag_param, 2);
-    /* 执行其他操作 */
-    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if(dgus_value == 0x0007)
-  {
-    /* 执行其他操作 */
-    backup_flag_param[0] = 0;
-    backup_flag_param[1] = 0;
-    T5lNorFlashRW(flashWRITE_FLAG, flashMAIN_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS, flashBACKUP_DGUS_CACHE_ADDRESS,(uint8_t *)backup_flag_param, 2);
-    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);  
   }
   
 }
@@ -557,8 +539,6 @@ void T5lNorFlashRW(uint8_t RWFlag,uint8_t flash_block,uint16_t flash_addr,
 
 
 #if flashDUAL_BACKUP_ENABLED
-
-
 /**
  * @brief T5L NOR Flash扇区初始化函数
  * @details 初始化Flash扇区，设置双备份标志和数据缓冲区
