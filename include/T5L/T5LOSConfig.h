@@ -222,7 +222,7 @@ typedef unsigned   long uint32_t;
         #define uartUART2_TIMEOUTSET     5
     #endif /* uartUART2_TIMEOUT_ENABLED */
     
-    #define uartUART2_BAUDRATE              115200     /* UART2波特率设置 9600-921600 */
+    #define uartUART2_BAUDRATE              115200     /* UART2波特率设置 9600-460800 */
     #define uartUART2_485_ENABLED            0         /* UART2 RS485模式使能标志 0:禁用 1启用 */
     
     #if uartUART2_485_ENABLED
@@ -254,7 +254,7 @@ typedef unsigned   long uint32_t;
     #if uartUART4_TIMEOUT_ENABLED
         #define uartUART4_TIMEOUTSET     5
     #endif  /* uartUART4_TIMEOUT_ENABLED */   
-    #define uartUART4_BAUDRATE           115200
+    #define uartUART4_BAUDRATE           921600
     #define uartUART4_485_ENABLED        0
     
     #if uartUART4_485_ENABLED

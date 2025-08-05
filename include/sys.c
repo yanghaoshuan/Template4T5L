@@ -597,7 +597,7 @@ void T5lNorFlashInit(void)
             FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)backup_flag_param, 2);
             if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
             {
-                T5lNorFlashSectorCopy(flashBACKUP_BLOCK_ORDER,flashMAIN_BLOCK_ORDER);
+                T5lNorFlashSectorCopy(i+flashBACKUP_BLOCK_ORDER*FLASH_COPY_MAX_SECTOR,i);
             }else
             {
                 T5lNorFlashSectorInitZero(i);

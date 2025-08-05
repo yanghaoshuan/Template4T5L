@@ -48,6 +48,8 @@ void main(void)
   {
 
     SysTaskRun();
+    UartReadFrame(&Uart2);
+    UartReadFrame(&Uart4);
 
   }
     

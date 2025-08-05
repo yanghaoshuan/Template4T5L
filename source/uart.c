@@ -40,7 +40,7 @@ void Uart2Init(const uint32_t bdt)
 
     #if sys2K_RATIO
     PCON &= ~0x80;
-    #endif
+    #endif /* sys2K_RATIO */
     
     if(PCON & 0x80)
     {
@@ -55,7 +55,7 @@ void Uart2Init(const uint32_t bdt)
     #if uartUART2_485_ENABLED
     P0MDOUT |= 0x01;
     TR4 = 0;
-    #endif
+    #endif  /* uartUART2_485_ENABLED */
 
     ES0 = 1;
     EA = 1;
@@ -348,7 +348,7 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 {
     uint16_t i;
 
-    EA = 0;
+//    EA = 0;
     for(i=0; i<len; i++)
     {
         #if uartUART2_ENABLED
@@ -440,7 +440,7 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
         #endif
 
     }
-    EA = 1;
+//    EA = 1;
 }
 
 
