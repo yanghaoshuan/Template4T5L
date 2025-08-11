@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "uart.h"
 #include "timer.h"
+#include "core_json.h"
 
 #if uartMODBUS_PROTOCOL_ENABLED
 #include "modbus.h" 
@@ -16,9 +17,15 @@
 #include "gpio.h"
 #endif /* gpioGPIO_ENABLE */
 
-
+char buffer[] = "{\"foo\":\"abc\",\"bar\":{\"foo\":\"xyz\"}}";
 void main(void)
 {
+  uint16_t bufferLength = sizeof( buffer ) - 1;
+  JSONStatus_t result;
+  char query[] = "bar.foo";
+  size_t queryLength = sizeof( query ) - 1;
+  char value[32];
+  size_t valueLength = sizeof(value) - 1;
   T5LCpuInit();
 
   #if flashDUAL_BACKUP_ENABLED
@@ -44,6 +51,11 @@ void main(void)
 
   SysTaskAdd(6, sysDGUS_ADC_INTERVAL, AdcTask);
 
+  result = JSON_Validate( buffer, bufferLength );
+  UartSendData(&Uart2, (uint8_t *)&result, sizeof(result));
+
+  result = JSON_Search( buffer, bufferLength, query, queryLength, &(&value[0]), &valueLength );
+  UartSendData(&Uart2, (uint8_t *)&result, sizeof(result));
   while(1)
   {
 

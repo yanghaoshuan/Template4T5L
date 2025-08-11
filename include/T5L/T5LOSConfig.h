@@ -16,9 +16,12 @@
 /****************************************
 ***************** 数据类型定义 *************
 ******************************************/
-typedef unsigned   char uint8_t;
-typedef unsigned   short  uint16_t;
-typedef unsigned   long uint32_t;
+typedef unsigned   char         uint8_t;
+typedef unsigned   short        uint16_t;
+typedef unsigned   long         uint32_t;
+typedef signed     char		    int8_t;
+typedef            short	    int16_t;
+typedef            long			int32_t;
 
 
 /****************************************
@@ -28,9 +31,9 @@ typedef unsigned   long uint32_t;
 #define NULL          ((void*)0)      /*标准C语言空指针定义*/
 #define TRUE          1
 #define FALSE         0           
-#define UINT8_PORT_MAX        0xFF
-#define UINT16_PORT_MAX       0xFFFF
-#define UINT32_PORT_MAX       0xFFFFFFFF
+#define UINT8_PORT_MAX        0xffU
+#define UINT16_PORT_MAX       0xffffU
+#define UINT32_PORT_MAX       0xfffffffUL
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
 

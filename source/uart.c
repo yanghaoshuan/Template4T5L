@@ -348,7 +348,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 {
     uint16_t i;
 
-//    EA = 0;
     for(i=0; i<len; i++)
     {
         #if uartUART2_ENABLED
@@ -440,7 +439,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
         #endif
 
     }
-//    EA = 1;
 }
 
 
@@ -572,7 +570,7 @@ void UartReadFrame(UART_TYPE *uart)
     {
 			
         uart->RxFlag = UART_NON_REC;
-        EA = 0;
+        SysEnterCritical();
         i=0;
         while(uart->RxHead != uart->RxTail)
         {
@@ -600,7 +598,7 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif
         }
-        EA = 1;
+        SysExitCritical();
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);
