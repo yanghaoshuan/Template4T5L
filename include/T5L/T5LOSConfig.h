@@ -103,6 +103,25 @@ typedef            long			int32_t;
  */
 #define sysMAX_TASK_NUM             10
 
+
+/**
+ * @brief 广告屏和美容屏功能使能标志
+ * @details 1: 启用广告屏和美容屏功能, 0: 禁用
+ * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
+ */
+#define sysBEAUTY_MODE_ENABLED         1       
+
+#if sysBEAUTY_MODE_ENABLED
+#define Uart_R11                     Uart5
+#endif /* sysBEAUTY_MODE_ENABLED */
+
+#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED
+
+#if sysSET_FROM_LIB
+extern uint16_t sys_2k_ratio;
+extern uint32_t sysFOSC;
+extern uint32_t sysFCLK;
+#else
 /**
  * @brief 2k分辨率模式
  * @details 1: 1920*1080分辨率屏幕, 0: 其他
@@ -124,6 +143,7 @@ typedef            long			int32_t;
 #endif /* sys2K_RATIO */
 
 #define sysFCLK                      sysFOSC
+#endif /* sysSET_FROM_LIB */
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
@@ -266,7 +286,7 @@ typedef            long			int32_t;
 #endif  /* uartUART4_ENABLED */
 
 /* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               0
+#define uartUART5_ENABLED               1
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256

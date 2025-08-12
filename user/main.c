@@ -23,9 +23,9 @@ void main(void)
   uint16_t bufferLength = sizeof( buffer ) - 1;
   JSONStatus_t result;
   char query[] = "bar.foo";
-  size_t queryLength = sizeof( query ) - 1;
+  json_size_t queryLength = sizeof( query ) - 1;
   char value[32];
-  size_t valueLength = sizeof(value) - 1;
+  json_size_t valueLength = sizeof(value) - 1;
   T5LCpuInit();
 
   #if flashDUAL_BACKUP_ENABLED

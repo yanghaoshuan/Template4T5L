@@ -17,6 +17,14 @@
 #include "modbus.h"
 #endif /* uartMODBUS_PROTOCOL_ENABLED */
 
+#if sysBEAUTY_MODE_ENABLED
+#include "r11_netskinAnalyze.h"
+#if sysSET_FROM_LIB
+uint16_t sys_2k_ratio;
+uint32_t sysFOSC;
+uint32_t sysFCLK;
+#endif
+#endif /* sysBEAUTY_MODE_ENABLED */
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
@@ -38,9 +46,16 @@ void Uart2Init(const uint32_t bdt)
     PCON &= 0x7F;
     PCON |= 0x80;
 
+    #if sysSET_FROM_LIB
+    if(sys_2k_ratio)
+    {
+        PCON |= 0x80;
+    }
+    #else
     #if sys2K_RATIO
     PCON &= ~0x80;
     #endif /* sys2K_RATIO */
+    #endif /* sysSET_FROM_LIB */
     
     if(PCON & 0x80)
     {
@@ -181,11 +196,21 @@ void Uart4Init(const uint32_t bdt)
     SCON2T=0x80;
     SCON2R=0x80;
     
+    #if sysSET_FROM_LIB
+    if(sys_2k_ratio)
+    {
+        baud = (uint16_t)(sysFCLK/16/bdt);
+    }else
+    {
+        baud = (uint16_t)(sysFCLK/8/bdt);
+    }
+    #else
     #if sys2K_RATIO
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
     #endif /* sys2K_RATIO */
+    #endif /* sysSET_FROM_LIB */
     BODE2_DIV_H = (baud>>8) & 0xff;
     BODE2_DIV_L = baud & 0xff;
 
@@ -262,11 +287,21 @@ void Uart5Init(const uint32_t bdt)
     SCON3T=0x80;
 	SCON3R=0x80;
     
+    #if sysSET_FROM_LIB
+    if(sys_2k_ratio)
+    {
+        baud = (uint16_t)(sysFCLK/16/bdt);
+    }else
+    {
+        baud = (uint16_t)(sysFCLK/8/bdt);
+    }
+    #else
     #if sys2K_RATIO
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
-    #endif
+    #endif /* sys2K_RATIO */
+    #endif /* sysSET_FROM_LIB */
     BODE3_DIV_H = (baud>>8) & 0xff;
     BODE3_DIV_L = baud & 0xff;
 
@@ -442,22 +477,8 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 }
 
 
-/**
- * @brief Dwin8283协议CRC校验函数
- * @details 对Dwin8283协议帧进行CRC校验，同时检查CRC使能状态
- * @param[in] frame 待校验的协议帧数据指针
- * @param[in] len 帧数据总长度
- * @param[out] CrcFlag CRC使能标志输出指针
- * @return CRC校验结果
- * @retval 1 校验通过或CRC未启用
- * @retval 0 校验失败或帧长度不足
- * @pre frame指针必须有效
- * @pre CrcFlag指针必须有效
- * @post CrcFlag将包含CRC使能状态
- * @note 函数会从DGUS地址0x0081读取CRC配置
- * @note 支持0x82和0x83两种命令的帧格式
- */
-static uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
+
+uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 {
     uint16_t crc16,min_frame_len;
     if(frame[2] == 0x83)
@@ -603,6 +624,9 @@ void UartReadFrame(UART_TYPE *uart)
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);
         #endif /* uartMODBUS_PROTOCOL_ENABLED */
+        #if sysBEAUTY_MODE_ENABLED
+        UartR11UserBeautyProtocol(uart, frame, i);
+        #endif /* sysBEAUTY_MODE_ENABLED */
     }
 }
 

@@ -137,6 +137,25 @@ void UartInit(void);
  */
 void UartSendData(UART_TYPE *uart, uint8_t *buf,uint16_t len);
 
+
+/**
+ * @brief Dwin8283协议CRC校验函数
+ * @details 对Dwin8283协议帧进行CRC校验，同时检查CRC使能状态
+ * @param[in] frame 待校验的协议帧数据指针
+ * @param[in] len 帧数据总长度
+ * @param[out] CrcFlag CRC使能标志输出指针
+ * @return CRC校验结果
+ * @retval 1 校验通过或CRC未启用
+ * @retval 0 校验失败或帧长度不足
+ * @pre frame指针必须有效
+ * @pre CrcFlag指针必须有效
+ * @post CrcFlag将包含CRC使能状态
+ * @note 函数会从DGUS地址0x0081读取CRC配置
+ * @note 支持0x82和0x83两种命令的帧格式
+ */
+uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
+
+
 /**
  * @brief UART数据帧读取函数
  * @details 从指定UART的接收缓冲区读取完整数据帧并进行协议解析

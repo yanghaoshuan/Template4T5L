@@ -35,7 +35,6 @@
 #include "sys.h"
 #include "core_json.h"
 
-
 #define false     ((uint8_t) 0)
 #define true      ((uint8_t) 1)
 #define UINT32_MAX UINT32_PORT_MAX
@@ -71,10 +70,10 @@ typedef union
  * @param[in] max  The size of the buffer.
  */
 static void skipSpace( const char * buf,
-                       size_t * start,
-                       size_t max )
+                       json_size_t * start,
+                       json_size_t max )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -100,10 +99,10 @@ static void skipSpace( const char * buf,
  *
  * @return the count
  */
-static size_t countHighBits( uint8_t c )
+static json_size_t countHighBits( uint8_t c )
 {
     uint8_t n = c;
-    size_t i = 0;
+    json_size_t i = 0;
 
     while( ( n & 0x80U ) != 0U )
     {
@@ -131,7 +130,7 @@ static size_t countHighBits( uint8_t c )
  *
  * @note Disallow ASCII, as this is called only for multibyte sequences.
  */
-static uint8_t shortestUTF8( size_t length,
+static uint8_t shortestUTF8( json_size_t length,
                           uint32_t value )
 {
     uint8_t ret = false;
@@ -193,11 +192,11 @@ static uint8_t shortestUTF8( size_t length,
  * introduce a value greater than the last code point, 0x10FFFF.
  */
 static uint8_t skipUTF8MultiByte( const char * buf,
-                               size_t * start,
-                               size_t max )
+                               json_size_t * start,
+                               json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0U, bitCount = 0U, j = 0U;
+    json_size_t i = 0U, bitCount = 0U, j = 0U;
     uint32_t value = 0U;
     char_ c;
 
@@ -262,8 +261,8 @@ static uint8_t skipUTF8MultiByte( const char * buf,
  * false otherwise.
  */
 static uint8_t skipUTF8( const char * buf,
-                      size_t * start,
-                      size_t max )
+                      json_size_t * start,
+                      json_size_t max )
 {
     uint8_t ret = false;
 
@@ -339,12 +338,12 @@ static uint8_t hexToInt( char c )
  * @note For the sake of security, \u0000 is disallowed.
  */
 static uint8_t skipOneHexEscape( const char * buf,
-                              size_t * start,
-                              size_t max,
+                              json_size_t * start,
+                              json_size_t max,
                               uint16_t * outValue )
 {
     uint8_t ret = false;
-    size_t i = 0U, end = 0U;
+    json_size_t i = 0U, end = 0U;
     uint16_t value = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) || ( outValue == NULL ) )
@@ -404,11 +403,11 @@ static uint8_t skipOneHexEscape( const char * buf,
 #define isLowSurrogate( x )     ( ( ( x ) >= 0xDC00U ) && ( ( x ) <= 0xDFFFU ) )
 
 static uint8_t skipHexEscape( const char * buf,
-                           size_t * start,
-                           size_t max )
+                           json_size_t * start,
+                           json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0U;
+    json_size_t i = 0U;
     uint16_t value = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
@@ -459,11 +458,11 @@ static uint8_t skipHexEscape( const char * buf,
  * @note For the sake of security, \NUL is disallowed.
  */
 static uint8_t skipEscape( const char * buf,
-                        size_t * start,
-                        size_t max )
+                        json_size_t * start,
+                        json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -529,11 +528,11 @@ static uint8_t skipEscape( const char * buf,
  * false otherwise.
  */
 static uint8_t skipString( const char * buf,
-                        size_t * start,
-                        size_t max )
+                        json_size_t * start,
+                        json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0;
+    json_size_t i = 0;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -594,9 +593,9 @@ static uint8_t skipString( const char * buf,
  */
 static uint8_t strnEq( const char * a,
                     const char * b,
-                    size_t n )
+                    json_size_t n )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( a == NULL ) || ( b == NULL ) || ( n == 0U ) )
     {
@@ -627,10 +626,10 @@ static uint8_t strnEq( const char * a,
  * false otherwise.
  */
 static uint8_t skipLiteral( const char * buf,
-                         size_t * start,
-                         size_t max,
+                         json_size_t * start,
+                         json_size_t max,
                          const char * literal,
-                         size_t length )
+                         json_size_t length )
 {
     uint8_t ret = false;
 
@@ -664,8 +663,8 @@ static uint8_t skipLiteral( const char * buf,
  * false otherwise.
  */
 static uint8_t skipAnyLiteral( const char * buf,
-                            size_t * start,
-                            size_t max )
+                            json_size_t * start,
+                            json_size_t max )
 {
     uint8_t ret = false;
 
@@ -709,12 +708,12 @@ static uint8_t skipAnyLiteral( const char * buf,
  */
 #define MAX_FACTOR    ( MAX_INDEX_VALUE / 10 )
 static uint8_t skipDigits( const char * buf,
-                        size_t * start,
-                        size_t max,
+                        json_size_t * start,
+                        json_size_t max,
                         int32_t * outValue )
 {
     uint8_t ret = false;
-    size_t i = 0U, saveStart = 0U;
+    json_size_t i = 0U, saveStart = 0U;
     int32_t value = 0;
 
     
@@ -769,10 +768,10 @@ static uint8_t skipDigits( const char * buf,
  * @param[in] max  The size of the buffer.
  */
 static void skipDecimals( const char * buf,
-                          size_t * start,
-                          size_t max )
+                          json_size_t * start,
+                          json_size_t max )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -800,10 +799,10 @@ static void skipDecimals( const char * buf,
  * @param[in] max  The size of the buffer.
  */
 static void skipExponent( const char * buf,
-                          size_t * start,
-                          size_t max )
+                          json_size_t * start,
+                          json_size_t max )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -839,11 +838,11 @@ static void skipExponent( const char * buf,
  * false otherwise.
  */
 static uint8_t skipNumber( const char * buf,
-                        size_t * start,
-                        size_t max )
+                        json_size_t * start,
+                        json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -898,8 +897,8 @@ static uint8_t skipNumber( const char * buf,
  * false otherwise.
  */
 static uint8_t skipAnyScalar( const char * buf,
-                           size_t * start,
-                           size_t max )
+                           json_size_t * start,
+                           json_size_t max )
 {
     uint8_t ret = false;
 
@@ -938,11 +937,11 @@ static uint8_t skipAnyScalar( const char * buf,
  * false otherwise.
  */
 static uint8_t skipSpaceAndComma( const char * buf,
-                               size_t * start,
-                               size_t max )
+                               json_size_t * start,
+                               json_size_t max )
 {
     uint8_t ret = false;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -977,10 +976,10 @@ static uint8_t skipSpaceAndComma( const char * buf,
  * @note Stops advance if a value is an object or array.
  */
 static void skipArrayScalars( const char * buf,
-                              size_t * start,
-                              size_t max )
+                              json_size_t * start,
+                              json_size_t max )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -1021,10 +1020,10 @@ static void skipArrayScalars( const char * buf,
  * @note Stops advance if a value is an object or array.
  */
 static void skipObjectScalars( const char * buf,
-                               size_t * start,
-                               size_t max )
+                               json_size_t * start,
+                               json_size_t max )
 {
-    size_t i = 0U;
+    json_size_t i = 0U;
     uint8_t comma = false;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
@@ -1081,8 +1080,8 @@ static void skipObjectScalars( const char * buf,
  * @param[in] mode  The first character of an array '[' or object '{'.
  */
 static void skipScalars( const char * buf,
-                         size_t * start,
-                         size_t max,
+                         json_size_t * start,
+                         json_size_t max,
                          char mode )
 {
     if(isOpenBracket_( mode ) == false )
@@ -1119,13 +1118,13 @@ static void skipScalars( const char * buf,
  */
 #define JSON_MAX_DEPTH    32
 static JSONStatus_t skipCollection( const char * buf,
-                                    size_t * start,
-                                    size_t max )
+                                    json_size_t * start,
+                                    json_size_t max )
 {
     JSONStatus_t ret = JSONPartial;
     char c, stack[ JSON_MAX_DEPTH ];
     int16_t depth = -1;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) )
     {
@@ -1204,10 +1203,10 @@ static JSONStatus_t skipCollection( const char * buf,
  * or collection within optional whitespace.
  */
 JSONStatus_t JSON_Validate( const char * buf,
-                            size_t max )
+                            json_size_t max )
 {
     JSONStatus_t ret;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( buf == NULL )
     {
@@ -1262,13 +1261,13 @@ JSONStatus_t JSON_Validate( const char * buf,
  * false otherwise.
  */
 static uint8_t nextValue( const char * buf,
-                       size_t * start,
-                       size_t max,
-                       size_t * value,
-                       size_t * valueLength )
+                       json_size_t * start,
+                       json_size_t max,
+                       json_size_t * value,
+                       json_size_t * valueLength )
 {
     uint8_t ret = true;
-    size_t i = 0U, valueStart = 0U;
+    json_size_t i = 0U, valueStart = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( max == 0U ) ||
          ( value == NULL ) || ( valueLength == NULL ) )
@@ -1320,15 +1319,15 @@ static uint8_t nextValue( const char * buf,
  * false otherwise.
  */
 static uint8_t nextKeyValuePair( const char * buf,
-                              size_t * start,
-                              size_t max,
-                              size_t * key,
-                              size_t * keyLength,
-                              size_t * value,
-                              size_t * valueLength )
+                              json_size_t * start,
+                              json_size_t max,
+                              json_size_t * key,
+                              json_size_t * keyLength,
+                              json_size_t * value,
+                              json_size_t * valueLength )
 {
     uint8_t ret = true;
-    size_t i = 0U, keyStart = 0U;
+    json_size_t i = 0U, keyStart = 0U;
 
     if( ( buf == NULL ) ||
         ( start == NULL ) || ( max == 0U ) ||
@@ -1397,15 +1396,15 @@ static uint8_t nextKeyValuePair( const char * buf,
  * @note Parsing stops upon finding a match.
  */
 static uint8_t objectSearch( const char * buf,
-                          size_t max,
+                          json_size_t max,
                           const char * query,
-                          size_t queryLength,
-                          size_t * outValue,
-                          size_t * outValueLength )
+                          json_size_t queryLength,
+                          json_size_t * outValue,
+                          json_size_t * outValueLength )
 {
     uint8_t ret = false;
 
-    size_t i = 0U, key = 0U, keyLength = 0U, value = 0U, valueLength = 0U;
+    json_size_t i = 0U, key = 0U, keyLength = 0U, value = 0U, valueLength = 0U;
 
     if( ( buf == NULL ) || ( outValue == NULL) ||
          ( query == NULL ) || ( outValueLength == NULL ) )
@@ -1468,13 +1467,13 @@ static uint8_t objectSearch( const char * buf,
  * @note Parsing stops upon finding a match.
  */
 static uint8_t arraySearch( const char * buf,
-                         size_t max,
+                         json_size_t max,
                          uint32_t queryIndex,
-                         size_t * outValue,
-                         size_t * outValueLength )
+                         json_size_t * outValue,
+                         json_size_t * outValueLength )
 {
     uint8_t ret = false;
-    size_t i = 0U, value = 0U, valueLength = 0U;
+    json_size_t i = 0U, value = 0U, valueLength = 0U;
     uint32_t currentIndex = 0U;
 
     if( ( buf == NULL ) ||
@@ -1541,12 +1540,12 @@ static uint8_t arraySearch( const char * buf,
 #endif
 #define isSeparator_( x )    ( ( x ) == JSON_QUERY_KEY_SEPARATOR )
 static uint8_t skipQueryPart( const char * buf,
-                           size_t * start,
-                           size_t max,
-                           size_t * outLength )
+                           json_size_t * start,
+                           json_size_t max,
+                           json_size_t * outLength )
 {
     uint8_t ret = false;
-    size_t i = 0U;
+    json_size_t i = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) ||
          ( outLength == NULL ) || ( max == 0U ) )
@@ -1591,14 +1590,14 @@ static uint8_t skipQueryPart( const char * buf,
  * @note Parsing stops upon finding a match.
  */
 static JSONStatus_t multiSearch( const char * buf,
-                                 size_t max,
+                                 json_size_t max,
                                  const char * query,
-                                 size_t queryLength,
-                                 size_t * outValue,
-                                 size_t * outValueLength )
+                                 json_size_t queryLength,
+                                 json_size_t * outValue,
+                                 json_size_t * outValueLength )
 {
     JSONStatus_t ret = JSONSuccess;
-    size_t i = 0U, start = 0U, queryStart = 0U, value = 0U, length = max;
+    json_size_t i = 0U, start = 0U, queryStart = 0U, value = 0U, length = max;
 
     if( ( buf == NULL ) || ( query == NULL ) ||
          ( outValue == NULL ) || ( outValueLength == NULL ) ||
@@ -1631,7 +1630,7 @@ static JSONStatus_t multiSearch( const char * buf,
         }
         else
         {
-            size_t keyLength = 0;
+            json_size_t keyLength = 0;
 
             queryStart = i;
 
@@ -1721,15 +1720,15 @@ static JSONTypes_t getType( char c )
  * See core_json.h for docs.
  */
 JSONStatus_t JSON_SearchConst( const char * buf,
-                               size_t max,
+                               json_size_t max,
                                const char * query,
-                               size_t queryLength,
+                               json_size_t queryLength,
                                const char ** outValue,
-                               size_t * outValueLength,
+                               json_size_t * outValueLength,
                                JSONTypes_t * outType )
 {
     JSONStatus_t ret;
-    size_t value = 0U;
+    json_size_t value = 0U;
 
     if( ( buf == NULL ) || ( query == NULL ) ||
         ( outValue == NULL ) || ( outValueLength == NULL ) )
@@ -1771,11 +1770,11 @@ JSONStatus_t JSON_SearchConst( const char * buf,
  * See core_json.h for docs.
  */
 JSONStatus_t JSON_SearchT( char * buf,
-                           size_t max,
+                           json_size_t max,
                            const char * query,
-                           size_t queryLength,
+                           json_size_t queryLength,
                            char ** outValue,
-                           size_t * outValueLength,
+                           json_size_t * outValueLength,
                            JSONTypes_t * outType )
 {
     /* MISRA Ref 11.3.1 [Pointer conversion] */
@@ -1803,13 +1802,13 @@ JSONStatus_t JSON_SearchT( char * buf,
  * #JSONNotFound if there are no further values in the collection.
  */
 static JSONStatus_t iterate( const char * buf,
-                             size_t max,
-                             size_t * start,
-                             size_t * next,
-                             size_t * outKey,
-                             size_t * outKeyLength,
-                             size_t * outValue,
-                             size_t * outValueLength )
+                             json_size_t max,
+                             json_size_t * start,
+                             json_size_t * next,
+                             json_size_t * outKey,
+                             json_size_t * outKeyLength,
+                             json_size_t * outValue,
+                             json_size_t * outValueLength )
 {
     JSONStatus_t ret = JSONNotFound;
     uint8_t found = false;
@@ -1863,13 +1862,13 @@ static JSONStatus_t iterate( const char * buf,
  * See core_json.h for docs.
  */
 JSONStatus_t JSON_Iterate( const char * buf,
-                           size_t max,
-                           size_t * start,
-                           size_t * next,
+                           json_size_t max,
+                           json_size_t * start,
+                           json_size_t * next,
                            JSONPair_t * outPair )
 {
     JSONStatus_t ret;
-    size_t key = 0U, keyLength = 0U, value = 0U, valueLength = 0U;
+    json_size_t key = 0U, keyLength = 0U, value = 0U, valueLength = 0U;
 
     if( ( buf == NULL ) || ( start == NULL ) || ( next == NULL ) ||
         ( outPair == NULL ) )

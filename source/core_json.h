@@ -38,10 +38,9 @@
 #ifndef CORE_JSON_H_
 #define CORE_JSON_H_
 
+#include "T5losConfig.h"
 
-
-
-typedef unsigned short size_t; /**< @brief Size type for memory operations. */
+typedef unsigned   short       json_size_t; /**< @brief Size type for memory operations. */
 
 
 /**
@@ -82,7 +81,7 @@ typedef enum
  *     // 本示例中使用的变量。
  *     JSONStatus_t result;
  *     char buffer[] = "{\"foo\":\"abc\",\"bar\":{\"foo\":\"xyz\"}}";
- *     size_t bufferLength = sizeof( buffer ) - 1;
+ *     json_size_t bufferLength = sizeof( buffer ) - 1;
  *
  *     result = JSON_Validate( buffer, bufferLength );
  *
@@ -92,7 +91,7 @@ typedef enum
  */
 /* @[declare_json_validate] */
 JSONStatus_t JSON_Validate( const char * buf,
-                            size_t max );
+                            json_size_t max );
 /* @[declare_json_validate] */
 
 /**
@@ -134,11 +133,11 @@ JSONStatus_t JSON_Validate( const char * buf,
  *     // 本示例中使用的变量。
  *     JSONStatus_t result;
  *     char buffer[] = "{\"foo\":\"abc\",\"bar\":{\"foo\":\"xyz\"}}";
- *     size_t bufferLength = sizeof( buffer ) - 1;
+ *     json_size_t bufferLength = sizeof( buffer ) - 1;
  *     char query[] = "bar.foo";
- *     size_t queryLength = sizeof( query ) - 1;
+ *     json_size_t queryLength = sizeof( query ) - 1;
  *     char * value;
- *     size_t valueLength;
+ *     json_size_t valueLength;
  *
  *     // 如果文档保证有效，则无需调用 JSON_Validate()。
  *     result = JSON_Validate( buffer, bufferLength );
@@ -206,11 +205,11 @@ typedef enum
  */
 /* @[declare_json_searcht] */
 JSONStatus_t JSON_SearchT( char * buf,
-                           size_t max,
+                           json_size_t max,
                            const char * query,
-                           size_t queryLength,
+                           json_size_t queryLength,
                            char ** outValue,
-                           size_t * outValueLength,
+                           json_size_t * outValueLength,
                            JSONTypes_t * outType );
 /* @[declare_json_searcht] */
 
@@ -229,11 +228,11 @@ JSONStatus_t JSON_SearchT( char * buf,
  */
 /* @[declare_json_searchconst] */
 JSONStatus_t JSON_SearchConst( const char * buf,
-                               size_t max,
+                               json_size_t max,
                                const char * query,
-                               size_t queryLength,
+                               json_size_t queryLength,
                                const char ** outValue,
-                               size_t * outValueLength,
+                               json_size_t * outValueLength,
                                JSONTypes_t * outType );
 /* @[declare_json_searchconst] */
 
@@ -244,9 +243,9 @@ JSONStatus_t JSON_SearchConst( const char * buf,
 typedef struct
 {
     const char * key;     /**< @brief Pointer to the code point sequence for key. */
-    size_t keyLength;     /**< @brief Length of the code point sequence for key. */
+    json_size_t keyLength;     /**< @brief Length of the code point sequence for key. */
     const char * value;   /**< @brief Pointer to the code point sequence for value. */
-    size_t valueLength;   /**< @brief Length of the code point sequence for value. */
+    json_size_t valueLength;   /**< @brief Length of the code point sequence for value. */
     JSONTypes_t jsonType; /**< @brief JSON-specific type of the value. */
 } JSONPair_t;
 
@@ -289,9 +288,9 @@ typedef struct
  *     };
  *
  *     void show( const char * json,
- *                size_t length )
+ *                json_size_t length )
  *     {
- *         size_t start = 0, next = 0;
+ *         json_size_t start = 0, next = 0;
  *         JSONPair_t pair = { 0 };
  *         JSONStatus_t result;
  *
@@ -318,9 +317,9 @@ typedef struct
  */
 /* @[declare_json_iterate] */
 JSONStatus_t JSON_Iterate( const char * buf,
-                           size_t max,
-                           size_t * start,
-                           size_t * next,
+                           json_size_t max,
+                           json_size_t * start,
+                           json_size_t * next,
                            JSONPair_t * outPair );
 /* @[declare_json_iterate] */
 
