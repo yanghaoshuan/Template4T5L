@@ -17,52 +17,56 @@
 #include "gpio.h"
 #endif /* gpioGPIO_ENABLE */
 
-char buffer[] = "{\"foo\":\"abc\",\"bar\":{\"foo\":\"xyz\"}}";
+#if sysBEAUTY_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_netskinAnalyze.h"
+#endif /* sysBEAUTY_MODE_ENABLED */
+
+// char buffer[] = "{\"foo\":\"abc\",\"bar\":{\"foo\":\"xyz\"}}";
 void main(void)
 {
-  uint16_t bufferLength = sizeof( buffer ) - 1;
-  JSONStatus_t result;
-  char query[] = "bar.foo";
-  json_size_t queryLength = sizeof( query ) - 1;
-  char value[32];
-  json_size_t valueLength = sizeof(value) - 1;
-  T5LCpuInit();
+//  uint16_t bufferLength = sizeof( buffer ) - 1;
+//  JSONStatus_t result;
+//  char query[] = "bar.foo";
+//  json_size_t queryLength = sizeof( query ) - 1;
+//  char value[32];
+//  json_size_t valueLength = sizeof(value) - 1;
 
   #if flashDUAL_BACKUP_ENABLED
   T5lNorFlashInit();
   #endif /* flashDUAL_BACKUP_ENABLED */
-  
+
+  T5LCpuInit();
+
+
   RtcInit();
   SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
   SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
   #if sysTEST_ENABLED
-  SysTaskAdd(2,1000,UartTest);
+  SysTaskAdd(2,2,UartTest);
   #endif /* sysTEST_ENABLED */
 
-  #if gpioGPIO_ENABLE
-  SysTaskAdd(3, GPIO_DEBOUNCE_TIME, GpioTask);
-  #endif /* gpioGPIO_ENABLE */
 
-  SysTaskAdd(4, 30, DgusValueScanTask);
-
-  SysTaskAdd(5, 30, DgusPageScanTask);
-
-  SysTaskAdd(6, sysDGUS_ADC_INTERVAL, AdcTask);
-
-  result = JSON_Validate( buffer, bufferLength );
-  UartSendData(&Uart2, (uint8_t *)&result, sizeof(result));
-
-  result = JSON_Search( buffer, bufferLength, query, queryLength, &(&value[0]), &valueLength );
-  UartSendData(&Uart2, (uint8_t *)&result, sizeof(result));
+  #if sysBEAUTY_MODE_ENABLED
+  SysTaskAdd(3, 300, R11NetskinAnalyzeTask);
+  #endif /* sysBEAUTY_MODE_ENABLED */
+  
   while(1)
   {
-
+	/** 这个任务需要在主循环中运行，用来进行数据出错后的处理 */
+	#if sysBEAUTY_MODE_ENABLED
+	if(data_write_f > 2)
+	{
+	    EX0 = 0;
+	    EX1 = 0;
+		data_write_f = 0;
+	    EX1_Start();
+	}
+	#endif /* sysBEAUTY_MODE_ENABLED */
     SysTaskRun();
-    UartReadFrame(&Uart2);
-    UartReadFrame(&Uart4);
-
+	Display_Debug_Message();
   }
     
 }

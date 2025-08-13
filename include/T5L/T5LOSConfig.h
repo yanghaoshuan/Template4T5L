@@ -17,10 +17,10 @@
 ***************** 数据类型定义 *************
 ******************************************/
 typedef unsigned   char         uint8_t;
-typedef unsigned   short        uint16_t;
+typedef unsigned   int        uint16_t;
 typedef unsigned   long         uint32_t;
 typedef signed     char		    int8_t;
-typedef            short	    int16_t;
+typedef            int	    int16_t;
 typedef            long			int32_t;
 
 
@@ -91,7 +91,7 @@ typedef            long			int32_t;
  * @brief 端口驱动模式配置
  * @details 配置GPIO端口的驱动能力模式 00:4mA,01:8mA(推荐),10:16mA，11:32mA
  */
-#define sysPORTDRV_MODE              0x01            
+#define sysPORTDRV_MODE              0x03            
 
 /* 看门狗 */
 #define sysWDT_ON                    MUX_SEL |= 0x02
@@ -157,7 +157,7 @@ extern uint32_t sysFCLK;
 
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
-#define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
+#define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
 
 
 
@@ -179,7 +179,7 @@ extern uint32_t sysFCLK;
  * @brief 定时器1使能标志
  * @details 1: 启用定时器1, 0: 禁用定时器1
  */
-#define timeTIMER1_ENABLED              1
+#define timeTIMER1_ENABLED              0
 
 #if timeTIMER1_ENABLED  
 
@@ -191,7 +191,7 @@ extern uint32_t sysFCLK;
 #define timeT1_TICK                       (65536UL-sysFOSC/12/1000)
 #endif /* timeTIMER1_ENABLED */
 
-#define timeTIMER2_ENABLED              1
+#define timeTIMER2_ENABLED              0
 #if timeTIMER2_ENABLED
 /**
  * @brief 定时器2频率模式选择
@@ -207,7 +207,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE      256
+#define uartUART_COMMON_FRAME_SIZE      3000
 
 /**
  * @brief Modbus协议支持使能标志
@@ -290,13 +290,13 @@ extern uint32_t sysFCLK;
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         256
+    #define uartUART5_RXBUF_SIZE         3000
     #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #define uartUART5_BAUDRATE           115200
+    #define uartUART5_BAUDRATE           921600
     #define uartUART5_485_ENABLED        0
     
     #if uartUART5_485_ENABLED

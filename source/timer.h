@@ -51,5 +51,4 @@ extern uint32_t SysCurrentTick;     /**< 当前系统滴答计时器值 */
  * @note 初始化完成后会自动启动定时器0
  */
 void TimerInit(void);
-
 #endif /* __TIMER_H__ */

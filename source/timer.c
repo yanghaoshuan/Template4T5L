@@ -25,6 +25,7 @@ uint32_t SysCurrentTick = 0;
 uint16_t gpio_count_pwm = 0;  /**< PWM高电平计数 */
 #endif /* gpioPWM_ENABLE && gpioGPIO_ENABLE */
 
+
 /**
  * @brief 启动定时器0函数
  * @details 配置并启动定时器0，用于产生系统时钟节拍，根据使能情况启动对应定时器
@@ -79,6 +80,8 @@ void TimerInit(void)
     #endif /* timeTIMER2_ENABLED */
 }
 
+
+
 /**
  * @brief 定时器0中断服务程序
  * @details 处理定时器0中断，维护系统时钟节拍和UART超时计数
@@ -93,19 +96,23 @@ void Timer0Isr() interrupt 1
     TL0 = timeT0_TICK;
 
 	#if uartUART2_ENABLED
-    DECREASE_IF_POSITIVE(Uart2.RxTimeout);
+		if(Uart2.RxTimeout)
+			Uart2.RxTimeout--;
     #endif /* uartUART2_ENABLED */
 
     #if uartUART3_ENABLED
-    DECREASE_IF_POSITIVE(Uart3.RxTimeout);
+		if(Uart3.RxTimeout)
+			Uart3.RxTimeout--;
     #endif /* uartUART3_ENABLED */
 
     #if uartUART4_ENABLED
-    DECREASE_IF_POSITIVE(Uart4.RxTimeout);
+		if(Uart4.RxTimeout)
+			Uart4.RxTimeout--;
     #endif /* uartUART4_ENABLED */
 
     #if uartUART5_ENABLED
-    DECREASE_IF_POSITIVE(Uart5.RxTimeout);
+		if(Uart5.RxTimeout)
+			Uart5.RxTimeout--;
     #endif /* uartUART5_ENABLED */
 
     SysTaskTimerTick++;
@@ -113,6 +120,7 @@ void Timer0Isr() interrupt 1
     SysCurrentTick++;
     ET0 = 1;
 }
+
 
 /* 定时器1支持 - 条件编译 */
 #if timeTIMER1_ENABLED
@@ -128,7 +136,23 @@ void Timer1Isr() interrupt 3
     TL1 = timeT1_TICK;
 
     /* use timer1*/
-    __NOP();
+    #if uartUART2_ENABLED
+    DECREASE_IF_POSITIVE(Uart2.RxTimeout);
+    #endif /* uartUART2_ENABLED */
+
+    #if uartUART3_ENABLED
+    DECREASE_IF_POSITIVE(Uart3.RxTimeout);
+    #endif /* uartUART3_ENABLED */
+
+    #if uartUART4_ENABLED
+    DECREASE_IF_POSITIVE(Uart4.RxTimeout);
+    #endif /* uartUART4_ENABLED */
+
+    #if uartUART5_ENABLED
+		if(Uart5.RxTimeout)
+			Uart5.RxTimeout--;
+    DECREASE_IF_POSITIVE(Uart5.RxTimeout);
+    #endif /* uartUART5_ENABLED */
     ET1 = 1;
 }
 #endif /* timeTIMER1_ENABLED */

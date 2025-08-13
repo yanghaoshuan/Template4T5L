@@ -214,33 +214,6 @@ typedef struct
 
 typedef struct 
 {
-	uint8_t menu_flag;           /* 菜单页面标志 */
-	uint8_t menu_page;           /* 菜单页面编号 */
-	
-	uint8_t main_flag;           /* 主页面标志 */
-	uint8_t main_page;           /* 主页面编号 */
-	
-	uint8_t detail_flag;         /* 详细页面标志 */
-	uint8_t detail_page;         /* 详细页面编号 */
-	
-	uint8_t hotplug_flag;        /* 热插拔页面标志 */
-	uint8_t hotplug_page;        /* 热插拔页面编号 */
-	
-	uint8_t crop_flag;           /* 裁剪页面标志 */
-	uint8_t crop_page;           /* 裁剪页面编号 */
-	
-	uint8_t video_flag;          /* 视频页面标志 */
-	uint8_t video_page;          /* 视频页面编号 */
-	
-	uint8_t upload_flag;         /* 上传页面标志 */
-	uint8_t upload_page;         /* 上传页面编号 */
-	
-	uint8_t fullvideo_flag;      /* 全屏视频页面标志 */
-	uint8_t fullvideo_page;      /* 全屏视频页面编号 */
-} PAGE_S;
-
-typedef struct 
-{
 	uint8_t scan_flag;           /* WiFi扫描页面标志 */
 	uint8_t scan_page;           /* WiFi扫描页面编号 */
 	
@@ -280,6 +253,15 @@ typedef struct
 	uint16_t camera_open_sta;        /* 摄像头默认打开关闭 */
 }SCREEN_S;
 
+typedef struct 
+{
+	uint16_t restart_flag;		  /* 重启标志，0为未重启，1为重启 */
+	uint16_t pic_capture_flag; /* 摄像头拍照标志，0为未拍照，1为拍照成功 */
+	uint8_t now_choose_pic;    /* 当前选择的图片编号，0-5 */
+	
+}R11_STATE;
+
+
 typedef enum
 {
     CAMERA_INSERT_DETECT = 0,      /* 摄像头插入检测，0xb8指令 */
@@ -299,19 +281,16 @@ typedef enum
 }NET_CONNECTED_STATE;
 
 extern CAMERA_MA camera_magnifier;
-extern ENLARGE_P enlarge_mode,net_enlarge_mode,enl_enlarge_mode;
+extern ENLARGE_P enl_enlarge_mode;
 extern ADDR_S addr_st;
 extern THUMBNAIL_S thumbnail;
 extern MAINVIEW_S mainview;
-extern PAGE_S page_st;
 extern WECHAT_JSON Json_Wechat;
 extern SCREEN_S screen_opt;
 extern WIFI_PAGE_S wifi_page;
 extern CAMERA_PROCESS_STATE camera_process_state;
 extern NET_CONNECTED_STATE net_connected_state;
-extern uint16_t r11_restart_flag;
-extern uint16_t r11_pic_capture_flag; /* 摄像头拍照标志，0为未拍照，1为拍照成功 */
-extern uint8_t r11_now_choose_pic;
+extern R11_STATE r11_state;
 
 void R11ConfigInitFormLib(void);
 

@@ -9,9 +9,7 @@
 #define TESTUART Uart2
 void UartTest(void)
 {
-    UartReadFrame(&TESTUART);
-    SendModbusReadHoldingRegistersFrame(&TESTUART, modbusSLAVE_ADDRESS, 0x0000, 10);
-    UartReadFrame(&Uart4);
-    SendModbusReadHoldingRegistersFrame(&Uart4, modbusSLAVE_ADDRESS, 0x0000, 10);
+    UartReadFrame(&Uart2);
+    UartReadFrame(&Uart_R11);
 }
 #endif /* sysTEST_ENABLED */

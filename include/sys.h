@@ -47,6 +47,8 @@
  */
 #define sysDGUS_TP_STATUS           0x0016
 
+#define sysWAE_PLAY_ADDR            0x00A0
+
 /**
  * D7：操作模式 0x5A=读 0xA5=写，CPU 操作完清零。 
  * D6:4：片内 Nor Flash 数据库首地址，必须是偶数，0x000000-0x03:FFFE，256KWords。
@@ -125,7 +127,7 @@ static uint8_t SysTaskCount = 0;
  * @brief 计数任务执行间隔定义
  * @details 定义计数任务的执行周期，单位为毫秒
  */
-#define COUNT_TASK_INTERVAL 100
+#define COUNT_TASK_INTERVAL 1000
 
 /**
  * @brief 计数任务函数
@@ -254,17 +256,17 @@ void DgusValueScanTask(void);
  */
 
 
-#define DgusToFlash(flash_block,flash_addr,dgus_vp_addr,len) \
-    T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len)
+#define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
+    T5lNorFlashRW(flashREAD_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len)
 
 #if flashDUAL_BACKUP_ENABLED
-#define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
+#define DgusToFlash(flash_block,flash_addr,dgus_vp_addr,len) \
     do{                                                                                     \
         T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len);              \
         T5lNorFlashRW(flashWRITE_FLAG, flashBACKUP_BLOCK_ORDER, flash_addr, dgus_vp_addr, NULL, len);  \
     }while(0);
 #else
-#define FlashToDgus(flash_block,flash_addr,dgus_vp_addr,len) \
+#define DgusToFlash(flash_block,flash_addr,dgus_vp_addr,len) \
     T5lNorFlashRW(flashWRITE_FLAG, flash_block, flash_addr, dgus_vp_addr, NULL, len)
 #endif /* flashDUAL_BACKUP_ENABLED */
 
@@ -304,7 +306,6 @@ void T5lNorFlashRW(uint8_t RWFlag,
 
 #if flashDUAL_BACKUP_ENABLED
 
-#define flash
 /**
  * @brief T5L NOR Flash初始化函数
  * @details 初始化Flash块，设置双备份标志和数据缓冲区

@@ -12,6 +12,10 @@
 #include "timer.h"
 #include <string.h>
 
+#if sysBEAUTY_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_netskinAnalyze.h"
+#endif /* sysBEAUTY_MODE_ENABLED */
 
 
 /**
@@ -149,7 +153,7 @@ uint16_t crc_16 (uint8_t *pBuf, uint16_t buf_len )
  * @brief 内核初始化函数
  * @details 基于迪文 T5L ASIC 应用开发指南进行配置
  */
-static void KernerlInit()
+static void KernelInit()
 {
     CKCON 	    = sysDEFAULT_ZERO;
     DPC 	    = sysDEFAULT_ZERO;
@@ -172,15 +176,13 @@ static void GpioInit(void)
      *   0x01: 推挽输出模式
      */
     P0      = sysDEFAULT_ZERO; 
-	P1      = sysDEFAULT_ZERO;
-    GPIO_BIT_SET_OUT(P1MDOUT, 5);    /* TEST_GPIO*/
-    P15 = 1; /* 设置P1.5为高电平，测试GPIO */
-	P2      = sysDEFAULT_ZERO;
-	P3      = sysDEFAULT_ZERO;
+	P1      = 0x00;
+	P2      = 0x00;
+	P3      = 0x00;
 	P0MDOUT = sysDEFAULT_ZERO; 
-	P1MDOUT = sysDEFAULT_ZERO; 
-	P2MDOUT = sysDEFAULT_ZERO; 
-	P3MDOUT = sysDEFAULT_ZERO; 
+	P1MDOUT = 0x00; 
+	P2MDOUT = 0x00; 
+	P3MDOUT = 0x00; 
     /* 多路复用器选择模式,有对应的初始化函数进行配置*/
     /*************************
      *   .7 1=CAN 接口引出到 P0.2、P0.3， 0=CAN 接口不引出，为 IO 口。 
@@ -220,8 +222,13 @@ static void InterruptInit(void)
      *   G4  .4      .4          UART2 中断      UART5 发送中断 
      *   G5  .5      .5          T2 定时器中断   UART5 接收中断
      ********************************************************/
+    /*********** 
     IP0     = sysDEFAULT_ZERO; 
 	IP1     = sysDEFAULT_ZERO;
+    ******************/
+    IP1 = 0x21;//0b0010 0001		
+	IP0 = 0x05;//0b0000 0101
+
 }
 
 
@@ -693,11 +700,15 @@ void SysWriteSingleChart(uint8_t chart_id,uint8_t point_num,uint8_t *data_buf)
  */
 void T5LCpuInit(void)
 {
-    KernerlInit();
+    KernelInit();
+    #if sysBEAUTY_MODE_ENABLED
+    R11ConfigInitFormLib();
+    #endif /* sysBEAUTY_MODE_ENABLED */
     GpioInit();
     InterruptInit();
     UartInit();
 	TimerInit();
+    T5lJpegInit();
 }
 
 

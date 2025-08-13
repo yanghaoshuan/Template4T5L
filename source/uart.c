@@ -19,6 +19,7 @@
 
 #if sysBEAUTY_MODE_ENABLED
 #include "r11_netskinAnalyze.h"
+#include "r11_common.h"
 #if sysSET_FROM_LIB
 uint16_t sys_2k_ratio;
 uint32_t sysFOSC;
@@ -523,6 +524,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     uint16_t i=0,CrcFlag = 0,CrcResult = 0;
+    uint8_t send_return_frame[256];
     if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x82)
     {
         if(prvDwin8283CrcCheck(frame,len,&CrcFlag) == 0)
@@ -540,19 +542,19 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
         #if uartUART_82CMD_RETURN
         i=0;
-        frame[i++] = 0x5a;
-        frame[i++] = 0xa5;
-        frame[i++] = 0x03;
-        frame[i++] = 0x82;  
-        frame[i++] = 0x4f;
-        frame[i++] = 0x4b;
+        send_return_frame[i++] = 0x5a;
+        send_return_frame[i++] = 0xa5;
+        send_return_frame[i++] = 0x03;
+        send_return_frame[i++] = 0x82;  
+        send_return_frame[i++] = 0x4f;
+        send_return_frame[i++] = 0x4b;
         if(CrcFlag != 0)
         {
             CrcResult = crc_16(&frame[3], frame[2] - 2);
-            frame[i++] = (uint8_t)CrcResult;
-            frame[i++] = CrcResult >> 8;
+            send_return_frame[i++] = (uint8_t)CrcResult;
+            send_return_frame[i++] = CrcResult >> 8;
         }
-        UartSendData(uart, frame, i);
+        UartSendData(uart, send_return_frame, i);
         #endif /* uartUART_82CMD_RETURN */
     }else if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x83)
     {
@@ -564,19 +566,20 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         {
             return; 
         }
-        read_dgus_vp((frame[4] << 8) | frame[5], &frame[7], frame[6] >> 0);
-        frame[i++] = 0x5a;  
-        frame[i++] = 0xa5;
-        frame[i++] = (frame[6] << 1) + 4;
-        frame[i++] = 0x83;
+        read_dgus_vp((frame[4] << 8) | frame[5], &send_return_frame[7], frame[6] >> 0);
+        i=0;
+        send_return_frame[i++] = 0x5a;  
+        send_return_frame[i++] = 0xa5;
+        send_return_frame[i++] = (frame[6] << 1) + 4;
+        send_return_frame[i++] = 0x83;
         if(CrcFlag != 0)
         {
-            frame[2] += 2;
-            CrcResult = crc_16(&frame[3], frame[2] - 2);
-            frame[frame[2]+1] = (uint8_t)CrcResult;
-            frame[frame[2]+2] = CrcResult >> 8;
+            send_return_frame[2] += 2;
+            CrcResult = crc_16(&send_return_frame[3], send_return_frame[2] - 2);
+            send_return_frame[frame[2]+1] = (uint8_t)CrcResult;
+            send_return_frame[frame[2]+2] = CrcResult >> 8;
         }
-        UartSendData(uart, frame, (frame[2]+3));
+        UartSendData(uart, send_return_frame, (send_return_frame[2]+3));
     }
 }
 
@@ -601,7 +604,7 @@ void UartReadFrame(UART_TYPE *uart)
                 frame[i++] = Uart2RxBuffer[uart->RxTail++];
                 uart->RxTail %= uartUART2_RXBUF_SIZE;
             }
-            #endif
+            #endif /* uartUART2_ENABLED */
 
             #if uartUART3_ENABLED
             if(uart == &Uart3)
@@ -609,7 +612,7 @@ void UartReadFrame(UART_TYPE *uart)
                 frame[i++] = Uart3RxBuffer[uart->RxTail++];
                 uart->RxTail %= uartUART3_RXBUF_SIZE;
             }
-            #endif
+            #endif /* uartUART3_ENABLED */
 
             #if uartUART4_ENABLED
             if(uart == &Uart4)
@@ -617,7 +620,14 @@ void UartReadFrame(UART_TYPE *uart)
                 frame[i++] = Uart4RxBuffer[uart->RxTail++];
                 uart->RxTail %= uartUART4_RXBUF_SIZE;
             }
-            #endif
+            #endif /* uartUART4_ENABLED */
+            #if uartUART5_ENABLED
+            if(uart == &Uart5)
+            {
+                frame[i++] = Uart5RxBuffer[uart->RxTail++];
+                uart->RxTail %= uartUART5_RXBUF_SIZE;
+            }
+            #endif /* uartUART5_ENABLED */
         }
         SysExitCritical();
         UartStandardDwin8283Protocal(uart,frame, i); 
@@ -625,6 +635,7 @@ void UartReadFrame(UART_TYPE *uart)
         UartStandardModbusRTUProtocal(uart, frame, i);
         #endif /* uartMODBUS_PROTOCOL_ENABLED */
         #if sysBEAUTY_MODE_ENABLED
+        UartR11UserVideoProtocal(uart, frame, i);
         UartR11UserBeautyProtocol(uart, frame, i);
         #endif /* sysBEAUTY_MODE_ENABLED */
     }
