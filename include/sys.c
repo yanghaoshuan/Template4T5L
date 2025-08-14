@@ -327,6 +327,40 @@ void write_dgus_vp(uint32_t addr,uint8_t *buf,uint8_t len)
 }
 
 
+uint16_t CopyAsciiValue(uint8_t *arr,uint16_t value,uint16_t start) 
+{
+	uint8_t i;
+	uint8_t copyBuff[5];
+	for (i = 0; i < 5;)
+	{
+		copyBuff[i] = value % 10 + 0x30; 
+		value /= 10;
+		i++;
+		if (value == 0)
+			break;
+	}
+	for (; i > 0; i--)
+	{
+		arr[start++] = copyBuff[i - 1]; 
+	}
+	return start;
+}
+
+
+uint16_t CopyAsciiString(uint8_t *arr,uint8_t *ascii,uint16_t start) 
+{
+	if (ascii == NULL)
+		return start;
+	while (1)
+	{
+		if ((*ascii != '\0') && (*ascii != 0xff)&& (*ascii != 0x00))
+			arr[start++] = *ascii++;
+		else
+			break;
+	}
+	return start;
+}
+
 
 uint16_t ReadPageId(void)
 {

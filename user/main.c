@@ -50,7 +50,7 @@ void main(void)
 
 
   #if sysBEAUTY_MODE_ENABLED
-  SysTaskAdd(3, 300, R11NetskinAnalyzeTask);
+  SysTaskAdd(3, R11_TASK_INTERVAL, R11NetskinAnalyzeTask);
   #endif /* sysBEAUTY_MODE_ENABLED */
   
   while(1)

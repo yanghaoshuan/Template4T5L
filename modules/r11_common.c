@@ -86,47 +86,66 @@ void T5lJpegInit(void)
 }
 
 
-void change_pic_locate(uint16_t x_point,uint16_t y_point,uint16_t high,uint16_t weight,uint8_t big_small_flag)
+void R11ChangePictureLocate(uint16_t x_point,uint16_t y_point,uint16_t high,uint16_t weight,uint8_t big_small_flag)
 {
     uint8_t write_param[4];
     Icon_Overlay_SP_X[0] = Icon_Overlay_SP_X[1] = x_point;
     Icon_Overlay_SP_Y[0] = Icon_Overlay_SP_Y[1] = y_point;
     Icon_Overlay_SP_L[0] = Icon_Overlay_SP_L[1] = high;
     Icon_Overlay_SP_H[0] = Icon_Overlay_SP_H[1] = weight;
-    write_param[0] = Icon_Overlay_SP_L[0] >> 8;
-    write_param[1] = Icon_Overlay_SP_L[0];
-    write_param[2] = Icon_Overlay_SP_H[0] >> 8;
-    write_param[3] = Icon_Overlay_SP_H[0];
-    T5lSendUartDataToR11(cmdMP4_IMG_SET+big_small_flag, write_param);
+    if(big_small_flag == 0x00 || big_small_flag == 0x01)
+    {
+        write_param[0] = Icon_Overlay_SP_L[0] >> 8;
+        write_param[1] = Icon_Overlay_SP_L[0];
+        write_param[2] = Icon_Overlay_SP_H[0] >> 8;
+        write_param[3] = Icon_Overlay_SP_H[0];
+        T5lSendUartDataToR11(cmdMP4_IMG_SET+big_small_flag, write_param);
+    }else
+    {
+        __NOP();
+    }
 }
 
 
 void R11VideoPlayerProcess(void)
 {
-    static uint16_t search_retry_count = 3;
-    uint16_t read_param[6],rotate_angle;
-    uint8_t send_r11_buf[6];
+    static uint16_t search_retry_count = 10;
+    static uint16_t read_param[6] = 0;     /**@note 需要改为静态变量，因为会多次进入此函数 */
+    uint16_t rotate_angle;
+    uint8_t r11_send_buf[6];
     if(video_init_process == VIDEO_PROCESS_UNINIT)
     {
         T5lJpegInit();
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = 20;
-        write_dgus_vp(sysWAE_PLAY_ADDR, send_r11_buf, 1);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = 20;
+        write_dgus_vp(sysWAE_PLAY_ADDR, r11_send_buf, 1);
         /** 0.读取音量和循环信息 */
-        FlashToDgusWithData(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, (uint8_t *)read_param, 0x06);
+        FlashToDgus(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR,0x06);
+        read_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&read_param[0], 6);
         video_init_process = VIDEO_PROCESS_VOLUME;
     }else if(video_init_process == VIDEO_PROCESS_VOLUME)
     {
         if(read_param[0] > 100)
         {
             read_param[0] = 100;
+            write_dgus_vp(VOLUME_SET_ADDR,(uint8_t*)&read_param[0],1);
         }
         r11_player.r11_volunme = (uint8_t)read_param[0];
         T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
-        video_init_process = VIDEO_PROCESS_SIZE;
+        video_init_process = VIDEO_PROCESS_SEARCH_LOOP;
+    }else if(video_init_process == VIDEO_PROCESS_SEARCH_LOOP)
+    {
+        /** 2.检查循环播放设置,如果开启循环，则认为已经开始自动播放，0x00xx为不循环，0x0101循环当前，0x0102循环所有 */
+        if((read_param[2]&0xFF00) == 0x0100)
+        {
+            video_init_process = VIDEO_PROCESS_SIZE;
+        }else
+        {
+            video_init_process = VIDEO_PROCESS_COMPLETE;
+        }
     }else if(video_init_process == VIDEO_PROCESS_SIZE)
     {
-        /** 2.设置视频显示初始大小 */
+        /** 3.设置视频显示初始大小 */
         if(read_param[5] == 0x0001)
         {
             Big_Small_Flag = 0x01;
@@ -137,13 +156,13 @@ void R11VideoPlayerProcess(void)
             read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&rotate_angle, 1);
             if((rotate_angle & 0x0003) == 0x00 || (rotate_angle & 0x0003) == 0x02)
             {
-                change_pic_locate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
+                R11ChangePictureLocate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
                 (pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
                 pixels_arr_h[screen_opt.screen_ratio],
                 pixels_arr_l[screen_opt.screen_ratio],0x01);
             }else if((rotate_angle & 0x0003) == 0x01 || (rotate_angle & 0x0003) == 0x03)
             {
-                change_pic_locate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
+                R11ChangePictureLocate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
                 (pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
                 pixels_arr_l[screen_opt.screen_ratio],
                 pixels_arr_h[screen_opt.screen_ratio],0x01);
@@ -155,31 +174,20 @@ void R11VideoPlayerProcess(void)
             {
                 SwitchPageById((uint16_t)page_st.video_page); 
             }
-            change_pic_locate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+            R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
         }
-        video_init_process = VIDEO_PROCESS_SEARCH_LOOP;
-    }else if(video_init_process == VIDEO_PROCESS_SEARCH_LOOP)
-    {
-        /** 3.检查循环播放设置,如果开启循环，则认为已经开始自动播放，0x00xx为不循环，0x0101循环当前，0x0102循环所有 */
-        if((read_param[2]&0xFF00) == 0x0100)
-        {
-            video_init_process = VIDEO_PROCESS_QUERY;
-        }else
-        {
-            video_init_process = VIDEO_PROCESS_COMPLETE;
-        }
+        video_init_process = VIDEO_PROCESS_QUERY;
     }else if(video_init_process == VIDEO_PROCESS_QUERY)
     {
-        r11_player.store_type = 2;
-        send_r11_buf[0] = r11_player.store_type;
-        send_r11_buf[1] = MP4;
-        T5lSendUartDataToR11(cmdMP4_UPDATEFILE, send_r11_buf);
+        r11_send_buf[0] = r11_player.store_type = SDCARD;
+        r11_send_buf[1] = MP4;
+        T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
         video_init_process = VIDEO_PROCESS_PLAY;
     }else if(video_init_process == VIDEO_PROCESS_PLAY)
     {
-        send_r11_buf[0] = 0;
-        if (send_r11_buf[0] < r11_player.page_mp4_nums) {
-            r11_player.serial = send_r11_buf[0];
+        r11_send_buf[0] = 0;
+        if (r11_send_buf[0] < r11_player.page_mp4_nums) {
+            r11_player.serial = r11_send_buf[0];
             write_dgus_vp(MP4_NOW_PLAY_NAME_ADDR,(uint8_t*)&mp4_name[r11_player.serial][0], MAX_MP3_NAME_LEN>>1);
             T5lSendUartDataToR11(cmdMP4_PLAY, mp4_name[r11_player.serial]);
             video_init_process = VIDEO_PROCESS_SET_LOOP;
@@ -189,7 +197,7 @@ void R11VideoPlayerProcess(void)
             {
                 video_init_process = VIDEO_PROCESS_SET_LOOP; /* 设置为查询视频状态 */
             }else{
-                video_init_process = VIDEO_PROCESS_COMPLETE;
+                video_init_process = VIDEO_PROCESS_PLAY;
             }
         }
     }else if(video_init_process == VIDEO_PROCESS_SET_LOOP)
@@ -212,36 +220,29 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
     r11_buf[4] = cmd;
     switch (cmd)
     {
-        case 0x60: 
-        case 0x61: 
-        case 0x6E: 
-        case 0x6F: 
-        case 0x78: 
-        case 0x79: 
-        case 0x90:
+        case cmdMP4_UPDATEFILE: 
+        case cmdMP4_ROTATE_ANGLE: 
+        case cmdMP4_LOOP_MODE_SET:
             r11_buf[2] = 0x00;
             r11_buf[3] = 0x03;
             r11_buf[5] = buf[0];
             r11_buf[6] = buf[1];
             break;
-        case 0x6B:
+        case cmdMP4_AUX_SET:
             r11_buf[2] = 0x00;
             r11_buf[3] = 0x02;
             r11_buf[5] = buf[0];
             break;
-        case 0x62:
-        case 0x63: 
-        case 0x65: 
-        case 0x66: 
-        case 0x67: 
-        case 0x68: 
-        case 0x69: 
-        case 0x6C: 
+        case cmdMP4_PREVFILE:
+        case cmdMP4_NEXTFILE: 
+        case cmdMP4_PAUSE: 
+        case cmdMP4_REPLAY: 
+        case cmdMP4_STOP: 
             r11_buf[2] = 0x00;
             r11_buf[3] = 0x02;
             r11_buf[5] = 0x00;
             break;
-        case 0x64: 
+        case cmdMP4_PLAY: 
             len = mp4_name_len[r11_player.serial];
             r11_buf[2] = 0x00;
             r11_buf[3] = 0x01;
@@ -272,13 +273,8 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
             r11_buf[len++] = 0x00;
             r11_buf[3] += len - 5;
             break;
-        case 0x6A: 
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x05;
-            memcpy ( &r11_buf[5], buf, 4 );
-            break;
-        case 0x76: 
-        case 0x77: 
+        case cmdMP4_IMG_SET: 
+        case (cmdMP4_IMG_SET+1): 
             r11_buf[2] = 0x00;
             r11_buf[3] = 0x05;
             r11_buf[5] = buf[0];
@@ -286,29 +282,21 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
             r11_buf[7] = buf[2];
             r11_buf[8] = buf[3];
             break;
-        case 0x6D: 
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x02;
-            r11_buf[5] = 0x01;
-            break;
-        case 0x75: 
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x01;
-            break;
-        case 0xF0:
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 12;
-            read_dgus_vp(0x411, ( uint8_t * ) &r11_buf[5],5 );
-            r11_buf[15] = '\0';
-            break;
-        case 0x85:
-        case 0x88: 
+        case cmdCHECK_STATUS_NET:
+        case cmdCHECK_STATUS_DEVICE: 
             r11_buf[2] = buf[2];
             r11_buf[3] = buf[3];
             r11_buf[4] = buf[4];
             r11_buf[5] = buf[5];
             break;
-        case 0xF1:
+        /** 适用于广告屏，用来进行三元码的注册和websocket连接设置 */
+        case cmdSET_TERNARY_CODE:
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 12;
+            read_dgus_vp(0x411, ( uint8_t * ) &r11_buf[5],5 );
+            r11_buf[15] = '\0';
+            break;
+        case cmdSET_WEBSOCKET:
             read_dgus_vp(0x680, ( uint8_t * ) &r11_buf[5],32 );
             for ( i=0; i<64; i++ )
             {
@@ -322,8 +310,6 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
             r11_buf[2] = 0x00;
             r11_buf[3] = i+1;
             break;
-        case 0xF2:
-            break;
         default:
             return;
             break;
@@ -336,30 +322,32 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
     return;
 }
 
-void R11VideoValueScanTask(uint16_t dgus_value)
+
+void R11VideoValueHandle(uint16_t dgus_value)
 {
-    uint8_t send_r11_buf[6];
+    uint8_t r11_send_buf[6];
     if(dgus_value == keyMP4_REPLAY)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_REPLAY, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_REPLAY, r11_send_buf);
     }else if(dgus_value == keyMP4_STOP)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_STOP, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_STOP, r11_send_buf);
     }else if(dgus_value == keyMP4_EXIT)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_STOP, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_STOP, r11_send_buf);
         /** 退出循环播放模式 */
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, send_r11_buf);
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, (uint8_t *)&send_r11_buf[1], 0x02);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, r11_send_buf);
+        write_dgus_vp(LOOP_MODE_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, 0x02);
     }else if(dgus_value == keyMP4_PAUSE)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_PAUSE, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_PAUSE, r11_send_buf);
     }else if(dgus_value == keyMP4_AUX_CLOSE)
     {
         if(r11_player.r11_volunme > 0)
@@ -371,18 +359,20 @@ void R11VideoValueScanTask(uint16_t dgus_value)
             r11_player.r11_volunme = r11_player.r11_volunme_Bak;
             T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
         }
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = r11_player.r11_volunme;
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, (uint8_t *)&send_r11_buf[0], 0x02);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = r11_player.r11_volunme;
+        write_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, 0x02);
     }else if(dgus_value == keyMP4_AUX_ADD)
     {
         if(r11_player.r11_volunme < 100)
         {
             r11_player.r11_volunme++;
             T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
-            send_r11_buf[0] = 0x00;
-            send_r11_buf[1] = r11_player.r11_volunme;
-            DgusToFlashWithData(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, (uint8_t *)&send_r11_buf[0], 0x02);
+            r11_send_buf[0] = 0x00;
+            r11_send_buf[1] = r11_player.r11_volunme;
+            write_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+            DgusToFlash(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, 0x02);
         }
     }else if(dgus_value == keyMP4_AUX_SUB)
     {
@@ -390,25 +380,27 @@ void R11VideoValueScanTask(uint16_t dgus_value)
         {
             r11_player.r11_volunme--;
             T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
-            send_r11_buf[0] = 0x00;
-            send_r11_buf[1] = r11_player.r11_volunme;
-            DgusToFlashWithData(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, (uint8_t *)&send_r11_buf[0], 0x02);
+            r11_send_buf[0] = 0x00;
+            r11_send_buf[1] = r11_player.r11_volunme;
+            write_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+            DgusToFlash(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, 0x02);
         }
     }else if(dgus_value == keyMP4_AUX_SET)
     {
-        read_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&send_r11_buf[0], 1);
-        if(send_r11_buf[1] > 100)
+        read_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 1);
+        if(r11_send_buf[1] > 100)
         {
-            send_r11_buf[1] = 100;
+            r11_send_buf[1] = 100;
         }
-        r11_player.r11_volunme = send_r11_buf[1];
+        r11_player.r11_volunme = r11_send_buf[1];
         T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, (uint8_t *)&send_r11_buf[0], 0x02);
+        write_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, 0x02);
     }else if(dgus_value == keyMP4_1FILE || dgus_value == keyMP4_2FILE || dgus_value == keyMP4_3FILE || dgus_value == keyMP4_4FILE || dgus_value == keyMP4_5FILE)
     {
-        send_r11_buf[0] = (uint8_t)(dgus_value - keyMP4_1FILE);
-        if (send_r11_buf[0] < r11_player.page_mp4_nums) {
-            r11_player.serial = send_r11_buf[0];
+        r11_send_buf[0] = (uint8_t)(dgus_value - keyMP4_1FILE);
+        if (r11_send_buf[0] < r11_player.page_mp4_nums) {
+            r11_player.serial = r11_send_buf[0];
             write_dgus_vp(MP4_NOW_PLAY_NAME_ADDR,(uint8_t*)&mp4_name[r11_player.serial][0], MAX_MP3_NAME_LEN>>1);
             T5lSendUartDataToR11(cmdMP4_PLAY, mp4_name[r11_player.serial]);
         }
@@ -426,87 +418,259 @@ void R11VideoValueScanTask(uint16_t dgus_value)
         }else{
             r11_player.store_type = SDCARD;
         }
-        send_r11_buf[0] = r11_player.store_type;
-        send_r11_buf[1] = r11_player.Document_type = MP4;
-        T5lSendUartDataToR11(cmdMP4_UPDATEFILE, send_r11_buf);
+        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+        r11_send_buf[0] = r11_player.store_type;
+        r11_send_buf[1] = r11_player.Document_type = MP4;
+        T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
     }else if(dgus_value == keyMP4_NEXTFILE)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_NEXTFILE, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_NEXTFILE, r11_send_buf);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
     }else if(dgus_value == keyMP4_PREVFILE)
     {
-        send_r11_buf[0] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_PREVFILE, send_r11_buf);
+        r11_send_buf[0] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_PREVFILE, r11_send_buf);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
     }else if(dgus_value == keyMP4_IMG_SET_BIG)
     {
-        read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&send_r11_buf[0], 1);
-        if((send_r11_buf[1] & 0x03) == 0x00 || (send_r11_buf[1] & 0x03) == 0x02)
+        read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&r11_send_buf[0], 1);
+        if((r11_send_buf[1] & 0x03) == 0x00 || (r11_send_buf[1] & 0x03) == 0x02)
         {
-            change_pic_locate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
+            R11ChangePictureLocate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
             (pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
             pixels_arr_h[screen_opt.screen_ratio],
             pixels_arr_l[screen_opt.screen_ratio],0x01);
-        }else if((send_r11_buf[1] & 0x03) == 0x01 || (send_r11_buf[1] & 0x03) == 0x03)
+        }else if((r11_send_buf[1] & 0x03) == 0x01 || (r11_send_buf[1] & 0x03) == 0x03)
         {
-            change_pic_locate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
+            R11ChangePictureLocate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
             (pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
             pixels_arr_l[screen_opt.screen_ratio],
             pixels_arr_h[screen_opt.screen_ratio],0x01);
         }
         Big_Small_Flag = 0x01;
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = 0x01;
-        write_dgus_vp(BIG_SMALL_FLAG_ADDR,(uint8_t*)&send_r11_buf[0], 1);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = 0x01;
+        write_dgus_vp(BIG_SMALL_FLAG_ADDR,(uint8_t*)&r11_send_buf[0], 1);
         DgusToFlash(flashMAIN_BLOCK_ORDER, BIG_SMALL_FLAG_ADDR-1, BIG_SMALL_FLAG_ADDR-1, 0x02);
     }else if(dgus_value == keyMP4_IMG_SET_SMALL)
     {
-        change_pic_locate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
         Big_Small_Flag = 0x00;
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = 0x00;
-        write_dgus_vp(BIG_SMALL_FLAG_ADDR,(uint8_t*)&send_r11_buf[0], 1);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = 0x00;
+        write_dgus_vp(BIG_SMALL_FLAG_ADDR,(uint8_t*)&r11_send_buf[0], 1);
         DgusToFlash(flashMAIN_BLOCK_ORDER, BIG_SMALL_FLAG_ADDR-1, BIG_SMALL_FLAG_ADDR-1, 0x02);
     }else if(dgus_value == keyMP4_ROTATE_ANGLE)
     {
         if(r11_player.rotate == 0)
         {
-            send_r11_buf[0] = 0x00;
-            send_r11_buf[1] = 90;
+            r11_send_buf[0] = 0x00;
+            r11_send_buf[1] = 90;
         }else if(r11_player.rotate == 1)
         {
-            send_r11_buf[0] = 0x00;
-            send_r11_buf[1] = 180;
+            r11_send_buf[0] = 0x00;
+            r11_send_buf[1] = 180;
         }else if(r11_player.rotate == 2)
         {
-            send_r11_buf[0] = 0x01;
-            send_r11_buf[1] = 0x0e;
+            r11_send_buf[0] = 0x01;
+            r11_send_buf[1] = 0x0e;
         }else if(r11_player.rotate == 3)
         {
-            send_r11_buf[0] = 0;
-            send_r11_buf[1] = 0;
+            r11_send_buf[0] = 0;
+            r11_send_buf[1] = 0;
         }
-        T5lSendUartDataToR11(cmdMP4_ROTATE_ANGLE, send_r11_buf);
+        T5lSendUartDataToR11(cmdMP4_ROTATE_ANGLE, r11_send_buf);
     }else if(dgus_value == keyMP4_NONE_LOOP_MODE)
     {
-        send_r11_buf[0] = 0x00;
-        send_r11_buf[1] = 0x00;
-        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, send_r11_buf);
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, (uint8_t *)&send_r11_buf[1], 0x02);
+        r11_send_buf[0] = 0x00;
+        r11_send_buf[1] = 0x00;
+        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, r11_send_buf);
+        write_dgus_vp(LOOP_MODE_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, 0x02);
     }else if(dgus_value == keyMP4_SINGLE_LOOP_MODE)
     {
-        send_r11_buf[0] = 0x01;
-        send_r11_buf[1] = 0x01;
-        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, send_r11_buf);
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, (uint8_t *)&send_r11_buf[1], 0x02);
+        r11_send_buf[0] = 0x01;
+        r11_send_buf[1] = 0x01;
+        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, r11_send_buf);
+        write_dgus_vp(LOOP_MODE_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, 0x02);
     }else if(dgus_value == keyMP4_ALL_LOOP_MODE)
     {
-        send_r11_buf[0] = 0x01;
-        send_r11_buf[1] = 0x02;
-        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, send_r11_buf);
-        DgusToFlashWithData(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, (uint8_t *)&send_r11_buf[1], 0x02);
+        r11_send_buf[0] = 0x01;
+        r11_send_buf[1] = 0x02;
+        T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, r11_send_buf);
+        write_dgus_vp(LOOP_MODE_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
+        DgusToFlash(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, 0x02);
+    }
+}
+
+
+void R11DebugValueHandle(uint16_t dgus_value)
+{
+    #define DEBUG_UART_ORDER         Uart2
+    uint32_t i;
+    uint8_t r11_send_buf[6];
+    if(dgus_value == 0x111)
+    {
+        for ( i=0; i<16384*3; i++ )
+        {
+            read_dgus_vp ( Icon_Overlay_SP_VP[0]+2*i, ( uint8_t * ) &r11_send_buf[0],2 );
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[3], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[2], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[1], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[0], 1);
+            delay_ms ( 1 );
+        }
+    }else if(dgus_value == 0x11a)
+    {
+        DgusToFlash(flashMAIN_BLOCK_ORDER, PIXELS_SET_ADDR, PIXELS_SET_ADDR, 0x48);
+        R11ConfigInitFormLib();
+    }
+    else if(dgus_value == 0x11c)
+    {
+        UartSendData ( &Uart_R11,"\xAA\x55\x00\x02\xB4\x01", 6);
+    }
+}
+
+
+static void R11ConnectWifi(void)
+{
+    uint8_t now_len = 0,now_len2;
+	uint8_t r11_send_buf[80],read_param[32];
+
+    r11_send_buf[0] = 0xaa;
+    r11_send_buf[1] = 0x55;
+    r11_send_buf[2] = 0x00;
+    r11_send_buf[3] = 0x02;
+    r11_send_buf[4] = cmdWIFI_CONNECT;
+    r11_send_buf[5] = 0x01;
+
+    now_len = 8;
+    read_dgus_vp(WIFI_SSID_ADDR, read_param, 16);
+    now_len = CopyAsciiString(r11_send_buf + 8, read_param, now_len);
+    r11_send_buf[6] = 0x00;
+    r11_send_buf[7] = now_len - 8;
+
+    read_dgus_vp(WIFI_PASSWD_ADDR, read_param, 16);
+    now_len2 = CopyAsciiString(r11_send_buf + 8, read_param, now_len+2);
+    r11_send_buf[now_len] = 0x00;
+    r11_send_buf[now_len+1] = now_len2 - now_len;
+
+    r11_send_buf[3] = now_len2;
+    UartSendData(&Uart_R11,r11_send_buf,now_len2+4);
+}
+
+
+static void R11ScanWifi(uint8_t scan_offset)
+{
+    uint8_t r11_send_buf[7]={0xaa,0x55,0x00,0x03,0xc0,0x00,0x05};
+    r11_send_buf[0]= 0xaa;
+    r11_send_buf[1]= 0x55;
+    r11_send_buf[2]= 0x00;
+    r11_send_buf[3]= 0x03;
+    r11_send_buf[4]= cmdWIFI_SCAN;
+    r11_send_buf[5]= 0x00;
+    r11_send_buf[6]= scan_offset*5;
+    UartSendData(&Uart_R11,r11_send_buf,7);
+}
+
+
+void R11WifiValueHandle(uint16_t dgus_value)
+{
+    static uint8_t wifi_now_offset = 0;
+    uint8_t r11_send_buf[10];
+    uint16_t read_param[20];
+    uint16_t write_zero_param[80]=0;
+    const uint16_t uint16_port_zero = 0;
+    if(dgus_value == keyWIFI_LIST1 || dgus_value == keyWIFI_LIST2 || dgus_value == keyWIFI_LIST3 
+        || dgus_value == keyWIFI_LIST4 || dgus_value == keyWIFI_LIST5)
+    {
+        read_dgus_vp ( wifi_page.wifi_start_addr+ ( dgus_value-keyWIFI_LIST1 ) *0x10, ( uint8_t * ) read_param,MAX_WIFI_NAME_LEN/2 );
+        if ( read_param[0] !=0x0000 && read_param[0] !=0xffff )
+        {
+            write_dgus_vp ( 0x4b0, ( uint8_t * ) read_param,MAX_WIFI_NAME_LEN/2 );
+        }
+        write_dgus_vp ( wifi_page.wifi_start_addr, ( uint8_t * ) write_zero_param,(MAX_WIFI_NAME_LEN/2)*5 ); 
+        if(wifi_page.detail_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)wifi_page.detail_page); 
+        }
+    }else if(dgus_value == keyWIFI_CONNECT)
+    {
+        R11ConnectWifi();
+        if(wifi_page.tr_detail_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)wifi_page.tr_detail_page); 
+        }
+    }
+    else if(dgus_value == keyWIFI_DISCONNECT)
+    {
+        __NOP();
+    }else if(dgus_value == keyWIFI_SCAN)
+    {
+        if(wifi_page.tr_detail_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)wifi_page.tr_detail_page); 
+        }
+        wifi_now_offset = 0;
+        R11ScanWifi(wifi_now_offset);
+    }else if(dgus_value == keyWIFI_NEXT_LIST)
+    {
+        if(wifi_page.tr_scan_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)wifi_page.tr_scan_page); 
+        }
+        wifi_now_offset++;
+        R11ScanWifi(wifi_now_offset);
+    }else if(dgus_value == keyWIFI_PREV_LIST)
+    {
+        if(wifi_page.tr_scan_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)wifi_page.tr_scan_page); 
+        }
+        if(wifi_now_offset > 0)
+        {
+            wifi_now_offset--;
+        }
+        R11ScanWifi(wifi_now_offset);
+    }else if(dgus_value == keyCHECK_STATUS_WIFI || dgus_value == keyCHECK_STATUS_ETH0 || dgus_value == keyCHECK_STATUS_4G)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = cmdCHECK_STATUS_NET;
+        r11_send_buf[4] = 0x01;
+        r11_send_buf[5] = (uint8_t)(dgus_value - keyCHECK_STATUS_WIFI + 1);
+        T5lSendUartDataToR11(cmdCHECK_STATUS_NET, r11_send_buf);
+    }else if(dgus_value == keyCHECK_STATUS_exUDISK || dgus_value == keyCHECK_STATUS_SDCARD)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = cmdCHECK_STATUS_DEVICE;
+        r11_send_buf[4] = 0x01;
+        r11_send_buf[5] = (uint8_t)(dgus_value - keyCHECK_STATUS_exUDISK + 1);
+        T5lSendUartDataToR11(cmdCHECK_STATUS_DEVICE, r11_send_buf);
+    }
+}
+
+
+void R11ClearPicture(uint8_t clear_type)
+{
+    uint16_t write_param[2] = {0x5b5b,0x5b5b},i;
+
+    write_dgus_vp(Icon_Overlay_SP_VP[0],(uint8_t*)write_param,2);
+    write_dgus_vp(Icon_Overlay_SP_VP[1],(uint8_t*)write_param,2);
+    if(clear_type)
+    {
+        for(i=0;i<screen_opt.thumbnail_num;i++)
+        {
+            write_dgus_vp(Icon_Overlay_SP_VP[4+i],(uint8_t*)write_param,2);
+            camera_magnifier.camera_num[i] = 0;
+        }
+        r11_state.now_choose_pic = 0;
     }
 }
 
@@ -582,12 +746,13 @@ static void ExtractFilenamesFromProtocol(uint8_t *frame, uint16_t len)
     }
 }
 
+
 void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     uint16_t write_param[10];
     if(frame[0] == 0xAA && frame[1] == 0x55)
     {
-        if(len < 6 || len < (frame[2]+frame[3]+4))
+        if(len < 6 || len < ((frame[2]<<8|frame[3])+4))
         {
             return;
         }
@@ -596,7 +761,6 @@ void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         case cmdMP4_UPDATEFILE:
         case cmdMP4_PREVFILE:
         case cmdMP4_NEXTFILE:
-            UartSendData(&Uart2, frame, len);
             /* 提取以0x23 0x23(##)为分隔符的文件名 */
             ExtractFilenamesFromProtocol(frame, len);
             break;
@@ -618,10 +782,10 @@ void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
     }
 }
 
+
 void inter_extern1_1_fun_C ( void ) interrupt 2
 {
     uint8_t data Temp,Index, ADR_H_Bak,ADR_M_Bak,ADR_L_Bak,ADR_INC_Bak,DATA3_Bak,DATA2_Bak,DATA1_Bak,DATA0_Bak,RAMMODE_Bak;
-	// uint16_t zero_value = 0;
     state = P1;
     if ( RAMMODE )
     {
@@ -639,7 +803,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
     RAMMODE = 0x00;
     EX1_Len++;
     Temp = state & 0xE0;
-    //Display_Debug_Message();
     switch ( Temp )
     {
         case 0x80:
@@ -651,9 +814,9 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                 {
                     case 0:
                     case 1:
-                        //case 3:
-                        //case 4:
-                        //case 10:
+                    case 3:
+                    case 4:
+                    case 10:
                     {
                         Max_16KB_Count = ( Icon_Overlay_SP_VP[1] - Icon_Overlay_SP_VP[0] ) >>13;
                         Icon_Num = ( Pic_Count[0]%2 ) + 1;

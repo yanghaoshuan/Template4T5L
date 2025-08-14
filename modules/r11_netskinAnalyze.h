@@ -87,6 +87,30 @@
 #define CAMERA_OPEN_ADDR        0x05bf
 #define VIDEO_FULL_ADDR         0x05c0
 
+#define R11_TASK_INTERVAL       100
+#define R11_SCAN_ADDRESS     	(uint32_t)0x0600
+#define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期，50对应5s */
+#define cameraNOW_NUM_ADDR      0x18b7
+
+#define MIN_HIGH  		160
+#define MIN_WIDTH  		120
+#define ACC_X			16
+#define ACC_Y			12
+
+#define cameraMAGNIFIER_MODE    1
+#define cameraCLOSE_STATUS      0
+#define cameraOPEN_STATUS       1
+
+
+/** 摄像头命令宏定义区域 */
+#define cameraSUPPORT_FORMAT    0xb4
+#define cameraINSERT_CHECK      0xb8
+#define cameraOPEN_THREAD       0xb5
+#define cameraSEND_T5L          0xa0
+#define cameraDEL_PICTURE       0xa6
+#define cameraENL_PICTURE       0xa7
+#define cameraCAP_PICTURE       0xae
+#define cameraCAP_BY_BUTTON     0xaf
 
 
 /** 美容屏相关结构体定义区域 */
@@ -257,16 +281,16 @@ typedef struct
 {
 	uint16_t restart_flag;		  /* 重启标志，0为未重启，1为重启 */
 	uint16_t pic_capture_flag; /* 摄像头拍照标志，0为未拍照，1为拍照成功 */
-	uint8_t now_choose_pic;    /* 当前选择的图片编号，0-5 */
-	
+	uint16_t now_choose_pic;    /* 当前选择的图片编号，0-5 */
+	uint8_t delay_count;     /** 超时检测计数，如果等待超过一定时间则重置 */
 }R11_STATE;
 
 
 typedef enum
 {
-    CAMERA_INSERT_DETECT = 0,      /* 摄像头插入检测，0xb8指令 */
+    CAMERA_INSERT_CHECK = 0,      /* 摄像头插入检测，0xb8指令 */
     CAMERA_INSERT_WAITING,         /* 摄像头已经发送0xb8指令，等待回复 */
-    CAMERA_OPEN_PROCESS,           /* 摄像头打开进程，0xb5指令 */
+    CAMERA_OPEN_THREAD,           /* 摄像头打开进程，0xb5指令 */
     CAMERA_OPEN_WAITING,          /* 摄像头打开进程等待回复 */
     CAMERA_SEND_T5L,            /* 摄像头发送给t5l的指令，0xa0指令 */
     CAMERA_SEND_T5L_WAITING,    /* 摄像头发送给t5l的指令等待回复 */

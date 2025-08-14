@@ -200,6 +200,26 @@ void write_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
 
 
 /**
+ * @brief 将数值转换为ASCII字符并复制到指定数组
+ * @param[in] arr 目标数组
+ * @param[in] value 要转换的数值
+ * @param[in] start 复制起始位置
+ * @return 复制结束位置
+ */
+uint16_t CopyAsciiValue(uint8_t *arr,uint16_t value,uint16_t start); 
+
+
+/**
+ * @brief 将ASCII字符串复制到指定数组
+ * @param[in] arr 目标数组
+ * @param[in] ascii 源ASCII字符串
+ * @param[in] start 复制起始位置
+ * @return 复制结束位置
+ */
+uint16_t CopyAsciiString(uint8_t *arr,uint8_t *ascii,uint16_t start); 
+
+
+/**
  * @brief 读取当前页面ID
  * @details 从DGUS显示屏读取当前显示的页面ID
  * @return 当前页面ID
@@ -292,7 +312,7 @@ void DgusValueScanTask(void);
  * @param[in] dgus_vp_addr DGUS VP地址 (0x0000-0xFFFF)
  * @param[in,out] data_buf 数据缓冲区指针，用于读写数据暂存区
  * @param[in] len 数据长度
- * @warning flash_addr,以字节为单位，必须是偶数
+ * @warning flash_addr,以双字节为单位，必须是偶数
  * @warning dgus_vp_addr和len必须是偶数,以双字节为单位
  * @warning data_buf缓冲区必须足够大以容纳len字节数据
  */

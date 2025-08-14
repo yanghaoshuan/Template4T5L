@@ -37,11 +37,11 @@ extern PAGE_S page_st;
 
 typedef enum
 {
-	/* 视频初始化进程，0为未初始化，1为调整音量，2为设置大小，3为查询循环模式，4为查询视频，5为播放视频，6为设置循环，7为初始化完成 */
+	/* 视频初始化进程，0为未初始化，1为调整音量，2为查询循环模式，3为设置大小，4为查询视频，5为播放视频，6为设置循环，7为初始化完成 */
 	VIDEO_PROCESS_UNINIT = 0,
 	VIDEO_PROCESS_VOLUME,
-	VIDEO_PROCESS_SIZE,
 	VIDEO_PROCESS_SEARCH_LOOP,
+	VIDEO_PROCESS_SIZE,
 	VIDEO_PROCESS_QUERY,
 	VIDEO_PROCESS_PLAY,
 	VIDEO_PROCESS_SET_LOOP,
@@ -85,17 +85,23 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define MP4_NOW_PLAY_NAME_ADDR	  	0x3400
 
 /** 视频播放指令定义区域 */
-#define cmdMP4_UPDATEFILE         	0x0061
-#define cmdMP4_PREVFILE           	0x0062
-#define cmdMP4_NEXTFILE           	0x0063
-#define cmdMP4_PLAY                	0x0064
-#define cmdMP4_PAUSE               	0x0065
-#define cmdMP4_REPLAY              	0x0066
-#define cmdMP4_STOP					0x0067
-#define cmdMP4_AUX_SET              0x006b
-#define cmdMP4_IMG_SET              0x0076    /* 0x76为小图播放，0x77为大图播放*/
-#define cmdMP4_ROTATE_ANGLE         0x0079
-#define cmdMP4_LOOP_MODE_SET	   	0x0090
+#define cmdMP4_UPDATEFILE         	0x61
+#define cmdMP4_PREVFILE           	0x62
+#define cmdMP4_NEXTFILE           	0x63
+#define cmdMP4_PLAY                	0x64
+#define cmdMP4_PAUSE               	0x65
+#define cmdMP4_REPLAY              	0x66
+#define cmdMP4_STOP					0x67
+#define cmdMP4_AUX_SET              0x6b
+#define cmdMP4_IMG_SET              0x76    /* 0x76为小图播放，0x77为大图播放*/
+#define cmdMP4_ROTATE_ANGLE         0x79
+#define cmdCHECK_STATUS_NET         0x85
+#define cmdCHECK_STATUS_DEVICE      0x88
+#define cmdMP4_LOOP_MODE_SET	   	0x90
+#define cmdWIFI_SCAN                0xc0
+#define cmdWIFI_CONNECT             0xc1
+#define cmdSET_TERNARY_CODE         0xf0
+#define cmdSET_WEBSOCKET            0xf1
 
 /** 视频播放按键定义区域 */
 #define keyMP4_PAUSE				0x0004
@@ -123,6 +129,30 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define keyMP4_NEXTFILE            	0x0002
 #define keyMP4_PREVFILE            	0x0001
 
+/** wifi连接键值定义区域 */
+#define keyWIFI_LIST1              	0xaf01
+#define keyWIFI_LIST2              	0xaf02
+#define keyWIFI_LIST3              	0xaf03
+#define keyWIFI_LIST4              	0xaf04
+#define keyWIFI_LIST5              	0xaf05
+#define keyWIFI_CONNECT             0xaa07
+#define keyWIFI_DISCONNECT          0xaa08
+#define keyWIFI_SCAN                0xaa09
+#define keyWIFI_PREV_LIST           0xaa12
+#define keyWIFI_NEXT_LIST           0xaa13
+
+#define keyCHECK_STATUS_WIFI        0xac01
+#define keyCHECK_STATUS_ETH0        0xac03
+#define keyCHECK_STATUS_4G        	0xac02
+
+#define keyCHECK_STATUS_exUDISK     0xac05
+#define keyCHECK_STATUS_SDCARD      0xac06
+
+/** 通用地址宏定义区域 */
+#define WIFI_SSID_ADDR             0x04b0
+#define WIFI_PASSWD_ADDR           0x04c0
+#define R11_RECV_OK                0x01
+#define R11_RECV_FAIL              0x00
 
 #define DirPath(Index) ((Index==1)?("url:/mnt/SDCARD/VIDEO/"):\
 					   ((Index==2)?("url:/mnt/exUDISK/VIDEO/"):\
@@ -148,6 +178,8 @@ typedef struct play_state
 extern uint16_t mp4_name_len[5];
 extern uint8_t mp4_name[5][MAX_MP3_NAME_LEN];
 extern PLAYER_T r11_player;
+extern uint16_t pixels_arr_h2[5];
+extern uint16_t pixels_arr_l2[5];
 
 extern volatile uint8_t data data_write_f;
 extern volatile uint8_t data Bit8_16_Flag;
@@ -178,16 +210,23 @@ extern volatile uint8_t data Bit8_16_Flag;
 
 void T5lJpegInit(void);
 
-void change_pic_locate(uint16_t x_point,uint16_t y_point,uint16_t high,uint16_t weight,uint8_t big_small_flag);
+void R11ChangePictureLocate(uint16_t x_point,uint16_t y_point,uint16_t high,uint16_t weight,uint8_t big_small_flag);
 
 void R11VideoPlayerProcess(void);
 
 void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len);
 
-void R11VideoValueScanTask(uint16_t dgus_value);
+void R11VideoValueHandle(uint16_t dgus_value);
+
+void R11DebugValueHandle(uint16_t dgus_value);
+
+void R11WifiValueHandle(uint16_t dgus_value);
 
 void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf);
 
+void R11ClearPicture(uint8_t clear_type);
+
+/** 如下两个函数实现在startup_m51.A51文件 */
 void Judge_Packet_Count(void);
 
 void Display_Debug_Message(void);
