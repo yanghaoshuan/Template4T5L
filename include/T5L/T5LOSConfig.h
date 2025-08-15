@@ -113,6 +113,7 @@ typedef            long			int32_t;
 
 #if sysBEAUTY_MODE_ENABLED
 #define Uart_R11                     Uart5
+#define R11_WIFI_ENABLED              1
 #endif /* sysBEAUTY_MODE_ENABLED */
 
 #define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED
@@ -207,7 +208,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE      3000
+#define uartUART_COMMON_FRAME_SIZE     4500
 
 /**
  * @brief Modbus协议支持使能标志
@@ -290,7 +291,7 @@ extern uint32_t sysFCLK;
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         3000
+    #define uartUART5_RXBUF_SIZE         4500
     #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED

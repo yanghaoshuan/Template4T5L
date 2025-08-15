@@ -90,6 +90,7 @@
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
 #define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期，50对应5s */
+#define netWIFI_STATUS_ADDR     0x18b4
 #define cameraNOW_NUM_ADDR      0x18b7
 
 #define MIN_HIGH  		160
@@ -111,6 +112,11 @@
 #define cameraENL_PICTURE       0xa7
 #define cameraCAP_PICTURE       0xae
 #define cameraCAP_BY_BUTTON     0xaf
+
+#define netIPINFO_QUERY         0xc2
+#define netCONNECT_STATUS       0xc5
+#define netCPUINFO_QUERY        0xc6
+#define netWEBSOCKET_SEND       0xa9
 
 
 /** 美容屏相关结构体定义区域 */
@@ -283,6 +289,7 @@ typedef struct
 	uint16_t pic_capture_flag; /* 摄像头拍照标志，0为未拍照，1为拍照成功 */
 	uint16_t now_choose_pic;    /* 当前选择的图片编号，0-5 */
 	uint8_t delay_count;     /** 超时检测计数，如果等待超过一定时间则重置 */
+	uint8_t wifi_delay_count; /** WiFi超时检测计数，如果等待超过一定时间则重置 */
 }R11_STATE;
 
 
@@ -299,9 +306,16 @@ typedef enum
 
 typedef enum
 {
-    NET_NOT_CONNECTED = 0,    /* 没有连上互联网 */
-    NET_CONNECTED_IP,        /* 获取到ip */
-    NET_CONNECTED_CLOUD,      /* 连上云端 */
+	NET_CPUINFO_QUERY = 0,    /* 获取CPU信息 */
+	NET_WEBSOCKET_SEND,    /* 发送WebSocket信息 */
+	NET_WEBSOCKET_WAITING, /* 等待WebSocket信息 */
+	NET_DISCONNECTED,
+	NET_CONNECTED,
+	NET_REMOVEUSER_SEND,
+	NET_REMOVEUSER_WAITING,
+	NET_GETSKINAPI_SEND,
+	NET_GETSKINAPI_WAITING,
+	NET_PROCESS_END
 }NET_CONNECTED_STATE;
 
 extern CAMERA_MA camera_magnifier;
@@ -323,6 +337,8 @@ void R11ValueScanTask(void);
 void R11FlagBitInit(void);
 
 void R11RestartInit(void);
+
+void R11NetConnectProcess(void);
 
 void R11NetskinAnalyzeTask(void);
 

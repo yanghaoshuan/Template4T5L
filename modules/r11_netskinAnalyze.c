@@ -12,7 +12,7 @@ MAINVIEW_S mainview;
 SCREEN_S screen_opt;
 WIFI_PAGE_S wifi_page;
 CAMERA_PROCESS_STATE camera_process_state = CAMERA_INSERT_CHECK;
-NET_CONNECTED_STATE net_connected_state = NET_NOT_CONNECTED;
+NET_CONNECTED_STATE net_connected_state = NET_WEBSOCKET_SEND;
 R11_STATE r11_state = {UINT16_PORT_MAX,0,0,0}; // 初始化R11状态
 
 
@@ -726,6 +726,152 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 }
 
 
+void R11NetConnectProcess(void)
+{
+	uint8_t r11_send_buf[100];
+	uint16_t curr_data_len,curr_len;
+	static uint16_t write_temp =0;
+	uint16_t temp_val =0xff;
+	write_temp++;
+	write_dgus_vp(0x5000,(uint8_t*)&write_temp,1);
+	/** 
+	 * 1.发送0xc6指令获取cpuinfo信息
+	 * 2.发送0xa9指令建立websocket连接
+	 * 3.在联网的情况下
+	 * a)和云端透传：cmd = removeUser
+	 * b)和云端透传：cmd = getskinapi
+	 * c)发送0xaa指令建立美容屏连接
+	 * 
+	 */
+	if(net_connected_state == NET_CPUINFO_QUERY)
+	{
+		temp_val = 1;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_send_buf[0] = 0xaa;
+		r11_send_buf[1] = 0x55;
+		r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = netCPUINFO_QUERY;
+        r11_send_buf[5] = 0x01;
+		UartSendData(&Uart_R11,r11_send_buf,6);
+		net_connected_state = NET_WEBSOCKET_SEND;
+	}else if(net_connected_state == NET_WEBSOCKET_SEND)
+	{
+		temp_val = 2;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_send_buf[0] = 0xaa;
+		r11_send_buf[1] = 0x55;
+		r11_send_buf[2] = 0x00;
+		r11_send_buf[3] = 0x07;
+		r11_send_buf[4] = netWEBSOCKET_SEND;
+		r11_send_buf[5] = 0x01;
+		/** websocket链接 */
+		curr_data_len = CopyAsciiString(r11_send_buf,"ws://47.96.239.113:3008/device",8);
+		curr_len = strlen("ws://47.96.239.113:3008/device");
+		r11_send_buf[6] = curr_len>>8;
+		r11_send_buf[7] = (uint8_t)curr_len;
+		/** devicenum链接 */
+		curr_len = curr_data_len;
+		curr_data_len = CopyAsciiString(r11_send_buf,"100032_1_0_",curr_data_len+2);
+		curr_data_len = CopyAsciiString(r11_send_buf,Json_Wechat.cpuinfo,curr_data_len);
+		r11_send_buf[curr_len] = 0x00;
+		r11_send_buf[curr_len+1] = curr_data_len - curr_len;
+		/** t5lver链接 */
+		curr_len = curr_data_len;
+		curr_data_len = CopyAsciiString(r11_send_buf,"MEIRONG_1",curr_data_len+2);
+		r11_send_buf[curr_len] = 0x00;
+		r11_send_buf[curr_len+1] = curr_data_len - curr_len;
+		curr_data_len = curr_data_len - 4;
+		r11_send_buf[2] = (uint8_t)(curr_data_len>>8);
+		r11_send_buf[3] = (uint8_t)curr_data_len;
+		UartSendData(&Uart_R11,r11_send_buf,curr_data_len+4);
+		net_connected_state = NET_WEBSOCKET_WAITING;
+	}
+	else if(net_connected_state == NET_WEBSOCKET_WAITING)
+	{
+		temp_val = 3;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_state.wifi_delay_count++;
+		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
+		{
+			r11_state.wifi_delay_count = 0;
+			net_connected_state = NET_WEBSOCKET_SEND;
+		}
+	}else if(net_connected_state == NET_DISCONNECTED)
+	{
+		temp_val = 4;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		__NOP();
+	}else if(net_connected_state == NET_CONNECTED)
+	{
+		temp_val = 5;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		net_connected_state = NET_REMOVEUSER_SEND;
+	}else if(net_connected_state == NET_REMOVEUSER_SEND)
+	{
+		temp_val = 6;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_send_buf[0] = 0xaa;
+		r11_send_buf[1] = 0xcc;
+		r11_send_buf[2] = 0x00;
+		r11_send_buf[3] = 0x04;
+		r11_send_buf[4] = 0x01;
+		curr_data_len = 5;
+		curr_data_len = CopyAsciiString(r11_send_buf,"{\"cmd\":\"getskinapi\",\"mac\":\"100032_1_0_",curr_data_len);
+		curr_data_len = CopyAsciiString(r11_send_buf,Json_Wechat.cpuinfo,curr_data_len);
+		curr_data_len = CopyAsciiString(r11_send_buf,"\"}",curr_data_len);
+		curr_data_len = curr_data_len - 4;
+		r11_send_buf[2] = (uint8_t)(curr_data_len>>8);
+		r11_send_buf[3] = (uint8_t)curr_data_len;
+		UartSendData(&Uart_R11,r11_send_buf,curr_data_len+4);
+		net_connected_state = NET_REMOVEUSER_WAITING;
+	}else if(net_connected_state == NET_REMOVEUSER_WAITING)
+	{
+		temp_val = 7;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_state.wifi_delay_count++;
+		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
+		{
+			r11_state.wifi_delay_count = 0;
+			net_connected_state = NET_REMOVEUSER_SEND;
+		}
+	}else if(net_connected_state == NET_GETSKINAPI_SEND)
+	{
+		temp_val = 8;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_send_buf[0] = 0xaa;
+		r11_send_buf[1] = 0xcc;
+		r11_send_buf[2] = 0x00;
+		r11_send_buf[3] = 0x04;
+		r11_send_buf[4] = 0x01;
+		curr_data_len = 5;
+		curr_data_len = CopyAsciiString(r11_send_buf,"{\"cmd\":\"getskinapi\",\"mac\":\"100032_1_0_",curr_data_len);
+		curr_data_len = CopyAsciiString(r11_send_buf,Json_Wechat.cpuinfo,curr_data_len);
+		curr_data_len = CopyAsciiString(r11_send_buf,"\"}",curr_data_len);
+		curr_data_len = curr_data_len - 4;
+		r11_send_buf[2] = (uint8_t)(curr_data_len>>8);
+		r11_send_buf[3] = (uint8_t)curr_data_len;
+		UartSendData(&Uart_R11,r11_send_buf,curr_data_len+4);
+		net_connected_state = NET_GETSKINAPI_WAITING;
+	}else if(net_connected_state == NET_GETSKINAPI_WAITING)
+	{
+		temp_val = 9;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		r11_state.wifi_delay_count++;
+		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
+		{
+			r11_state.wifi_delay_count = 0;
+			net_connected_state = NET_GETSKINAPI_SEND;
+		}
+	}else if(net_connected_state == NET_PROCESS_END)
+	{
+		temp_val = 10;
+		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
+		__NOP();
+	}
+}
+
+
 static void R11ValueScanTask(void)
 {
     const uint16_t uint16_port_zero = 0;
@@ -790,6 +936,178 @@ static void R11FlagBitInit(void)
     enl_enlarge_mode.enlarge_cap_width_last = 480;
     enl_enlarge_mode.enlarge_show_high = mainview.main_high;
     enl_enlarge_mode.enlarge_show_width = mainview.main_weight;
+}
+
+
+static void R11WifiScanResultHandle(uint8_t *frame)
+{
+	uint16_t write_param[4],i,j,zero_arr[32] = 0;
+	if(frame[6] == 0x0a)
+	{
+		if(wifi_now_offset > 0)
+		{
+			wifi_now_offset--;
+		}
+		if(wifi_page.scan_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)wifi_page.scan_page); 
+		}
+	}else
+	{
+		write_param[0] = (frame[2]<<8|frame[3]) + 4;
+		write_param[2] = 0;
+		for ( i=6,j=6; i<write_param[0]; i++ )
+		{
+			//每次间隔两个0x0a
+			if ( frame[i] == '\n' )
+			{
+				write_param[1] = i-j;
+				if ( write_param[1]>32 )
+				{
+					write_param[1] = 32;
+					write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
+				}
+				else
+				{
+					if ( write_param[1] %2 !=0 )
+					{
+						frame[i] = 0x00;
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j], ( write_param[1]+1 ) /2 );
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+ ( write_param[1]+1 ) /2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1]-1 ) /2 );
+					}
+					else
+					{
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+write_param[1]/2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1] ) /2 );
+					}
+				}
+				write_param[2]++;
+
+				i=i+2;
+				j=i;
+			}
+			if ( write_param[2]>=5 )
+			{
+				break;
+			}
+		}
+		if ( write_param[2]<5 )
+		{
+			for(i=write_param[2];i<5;i++)
+			{
+				write_dgus_vp ( wifi_page.wifi_start_addr+i*0x10, ( uint8_t * ) zero_arr, MAX_WIFI_NAME_LEN/2 );
+			}
+		}
+		if(wifi_page.scan_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)wifi_page.scan_page); 
+		}
+	}
+}
+
+
+static void R11IPResultHandle(uint8_t *frame,uint16_t len)
+{
+	uint16_t i,curr_data_len,curr_data_len_bak;
+	uint8_t write_param[40];
+	for ( i=5; i<len; i++ )
+	{
+		if ( frame[i] == '-' )
+		{
+			/**前面的是ip，后面的是mac地址,用-分隔*/
+			memcpy ( Json_Wechat.send_ip,&frame[6],i-6 );
+			Json_Wechat.send_ip[i-6]=0x00;
+			Json_Wechat.send_ip[i-5]=0x00;
+			write_dgus_vp ( addr_st.ip_addr,Json_Wechat.send_ip,16 );
+			memcpy ( Json_Wechat.send_mac,&frame[i+1],12 );
+
+			curr_data_len = CopyAsciiString(write_param,"http://",0);
+			curr_data_len = CopyAsciiString(write_param,Json_Wechat.send_ip,curr_data_len);
+			curr_data_len_bak = curr_data_len;
+			curr_data_len = CopyAsciiString(write_param,"\/#\/realTime2",curr_data_len);
+			write_dgus_vp ( addr_st.broadcast_qr_addr,write_param,(curr_data_len+1)/2 );
+
+			curr_data_len = CopyAsciiString(write_param,"\/#\/customer2",curr_data_len_bak);
+			write_dgus_vp ( addr_st.offline_qr_addr,write_param,(curr_data_len+1)/2 );
+			break;
+		}
+	}
+}
+
+
+static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
+{
+	uint16_t temp_val =1;
+	write_dgus_vp(0x5004,(uint8_t*)&temp_val,1);
+	if(JSON_Search(frame,(json_size_t)len,"cmd",(json_size_t)(sizeof("cmd") - 1),Json_Wechat.send_cmd,(json_size_t)(sizeof(Json_Wechat.send_cmd) - 1)) == JSONSuccess)
+	{
+		uint16_t temp_val =2;
+		write_dgus_vp(0x5004,(uint8_t*)&temp_val,1);
+		write_dgus_vp(0x5005,Json_Wechat.send_cmd,10);
+		if(strcmp((char *)Json_Wechat.send_cmd,"getskinapi") == 0)
+		{
+			/** 处理getskinapi的逻辑 */
+			if(JSON_Search(frame,len,"weixinurl",sizeof("weixinurl") - 1,Json_Wechat.weixin_url,sizeof(Json_Wechat.weixin_url) - 1) == JSONSuccess)
+			{
+				write_dgus_vp(addr_st.app_qr_addr,Json_Wechat.weixin_url,64);
+			}
+			if(JSON_Search(frame,len,"storeurl",sizeof("storeurl") - 1,Json_Wechat.store_url,sizeof(Json_Wechat.store_url) - 1) == JSONSuccess)
+			{
+				write_dgus_vp(addr_st.clerk_qr_addr,Json_Wechat.store_url,64);
+			}
+			if(net_connected_state == NET_GETSKINAPI_WAITING)
+			{
+				net_connected_state = NET_PROCESS_END;
+			}
+		}else if(strcmp((char *)Json_Wechat.send_cmd,"removeUser") == 0)
+		{
+			/** 处理removeUser的逻辑 */
+			if(JSON_Search(frame,len,"code",sizeof("code") - 1,(char *)&Json_Wechat.remove_flag,2) == JSONSuccess)
+			{
+				if(Json_Wechat.remove_flag == 0 && net_connected_state == NET_REMOVEUSER_WAITING)
+				{
+					net_connected_state = NET_GETSKINAPI_SEND;
+				}
+			}
+		}else if(strcmp((char *)Json_Wechat.send_cmd,"weixin") == 0)
+		{
+			/** 处理weixin的逻辑 */
+			if(JSON_Search(frame,len,"tel",sizeof("tel") - 1,Json_Wechat.weixin_tel,sizeof(Json_Wechat.weixin_tel) - 1) == JSONSuccess)
+			{
+				write_dgus_vp(addr_st.user_tel_addr,Json_Wechat.weixin_tel,16);
+			}
+			if(JSON_Search(frame,len,"name",sizeof("name") - 1,Json_Wechat.weixin_name,sizeof(Json_Wechat.weixin_name) - 1) == JSONSuccess)
+			{
+				write_dgus_vp(addr_st.user_name_addr,Json_Wechat.weixin_name,16);
+			}
+		}
+	}
+}
+
+
+static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
+{
+	uint16_t CRC16,write_param[20],i,Temp8;
+	CRC16 = crc_16 ( &frame[7], len-9 );
+	if ( ( frame[len-2]<<8 | frame[len-1] ) != CRC16 )
+	{
+		return;
+	}
+	/** 云平台更新后，此处第一个包和第二个包间隔了1s */
+	write_param[0] = 0x0000;
+	write_param[1] = 0xFFFE;
+	write_dgus_vp(Icon_Overlay_SP_VP[10], ( uint8_t * ) &write_param[0],2);
+	for ( i=0; i<1024; i++ )
+	{
+		Temp8 = frame[7+4*i];
+		frame[7+4*i] = frame[10+4*i];
+		frame[10+4*i] = Temp8;
+		Temp8 = frame[8+4*i];
+		frame[8+4*i] = frame[9+4*i];
+		frame[9+4*i] = Temp8;
+	}
+	write_dgus_vp(Icon_Overlay_SP_VP[10] + 2, ( uint8_t * ) &frame[7],2048 );
+	write_dgus_vp(Icon_Overlay_SP_VP[10], ( uint8_t * ) &write_param[0],2 );
 }
 
 
@@ -918,11 +1236,112 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 					write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&write_param[0],1);
 				}
 				break;
+			#if R11_WIFI_ENABLED
+			case netWEBSOCKET_SEND:
+				__NOP();
+				net_connected_state = NET_DISCONNECTED; 
+				break;
+			case cmdWIFI_SCAN:
+				if(frame[5] != R11_RECV_OK)
+				{
+					if(wifi_page.scan_flag == 0x5a)
+					{
+						SwitchPageById((uint16_t)wifi_page.scan_page); 
+					}
+					return;
+				}else
+				{
+					R11WifiScanResultHandle(frame);
+				}
+				break;
+			case cmdWIFI_CONNECT:
+				if(frame[5] == R11_RECV_OK)
+				{
+					net_connected_state = NET_CPUINFO_QUERY;
+				}
+				break;
+			case netIPINFO_QUERY:
+				if(frame[5] == R11_RECV_OK)
+				{
+					R11IPResultHandle(frame, len);
+				}
+				break;
+			case netCONNECT_STATUS:
+				UartSendData(&Uart2,&frame[4],1);
+				read_dgus_vp(sysDGUS_PIC_NOW,(uint8_t*)&now_pic,1);
+				if ( frame[8] == 2||frame[8] == 3||frame[8] == 1 )
+				{
+					if(wifi_page.tr_detail_flag == 0x5a && now_pic == wifi_page.tr_detail_page)
+					{
+						
+						if(page_st.menu_flag == 0x5a)
+						{
+							SwitchPageById((uint16_t)page_st.menu_page); 
+						}
+					}
+				}
+				if(frame[8] != 2)
+				{
+					/** 没连上网络 */
+					if(net_connected_state != NET_CONNECTED)
+					{
+						write_param[0] = 0x0001;
+						write_dgus_vp(netWIFI_STATUS_ADDR,(uint8_t*)&write_param[0],1);
+						net_connected_state = NET_DISCONNECTED;
+					}
+				}else if(frame[8] == 2)
+				{
+					/** 已经连接上网络 */
+					if(net_connected_state < NET_CONNECTED)
+					{
+						write_param[0] = 0x0002;
+						write_dgus_vp(netWIFI_STATUS_ADDR,(uint8_t*)&write_param[0],1);
+						net_connected_state = NET_CONNECTED;
+					}
+				}
+				break;
+			case netCPUINFO_QUERY:
+				if(frame[5] == R11_RECV_OK)
+				{
+					memcpy ( Json_Wechat.cpuinfo,&frame[6],16 );
+					Json_Wechat.cpuinfo[16]= 0x00;
+					Json_Wechat.cpuinfo[17]= 0x00;
+					write_dgus_vp ( addr_st.mac_addr,Json_Wechat.cpuinfo,16 );
+				}
+				break;
+			#endif /* R11_WIFI_ENABLED */
+			default:
+				break;
+		}
+	}else if(frame[0] == 0xAA && frame[1] == 0xCC)
+	{
+		/** 处理AA CC帧，云端透传相关内容*/
+		if(len < 6 || len < ((frame[2]<<8|frame[3])+4))
+        {
+            return;
+        }
+        switch (frame[4])
+        {
+			case 0x02:
+				/** 处理json数据格式 */
+				R11JsonToWeChatString(frame,len);
+				break;
+			case 0x01:
+				/** 处理图片数据格式 */
+				if(frame[5] == 0x7b)
+				{
+					R11JsonToWeChatString(frame,len);
+				}else
+				{
+					R11CloudDataToJpeg(frame,len);
+				}
+				break;
 			default:
 				break;
 		}
 	}
 }
+
 
 void R11NetskinAnalyzeTask(void)
 {
@@ -936,6 +1355,9 @@ void R11NetskinAnalyzeTask(void)
 	{
 		R11VideoPlayerProcess();
 		R11ValueScanTask();
+		#if R11_WIFI_ENABLED
+		R11NetConnectProcess();
+		#endif /* R11_WIFI_ENABLED */
 	}
 }
 

@@ -60,6 +60,7 @@ uint16_t mp4_name_len[5];
 PLAYER_T r11_player;
 PAGE_S page_st;
 VIDEO_INIT_PROCESS video_init_process = VIDEO_PROCESS_UNINIT;
+uint8_t wifi_now_offset = 0;
 
 /** @note 适用于全屏播放的分辨率参数，由于最高只能显示1280*720，所以在1920*1080的分辨率上面进行特殊处理 */
 uint16_t pixels_arr_h[5]={1280,1024,800,800,1024};
@@ -549,38 +550,37 @@ static void R11ConnectWifi(void)
 
     now_len = 8;
     read_dgus_vp(WIFI_SSID_ADDR, read_param, 16);
-    now_len = CopyAsciiString(r11_send_buf + 8, read_param, now_len);
+    now_len = CopyAsciiString(r11_send_buf, read_param, now_len);
     r11_send_buf[6] = 0x00;
     r11_send_buf[7] = now_len - 8;
 
     read_dgus_vp(WIFI_PASSWD_ADDR, read_param, 16);
-    now_len2 = CopyAsciiString(r11_send_buf + 8, read_param, now_len+2);
+    now_len2 = CopyAsciiString(r11_send_buf, read_param, now_len+2);
     r11_send_buf[now_len] = 0x00;
-    r11_send_buf[now_len+1] = now_len2 - now_len;
+    r11_send_buf[now_len+1] = now_len2 - now_len - 2;
 
-    r11_send_buf[3] = now_len2;
-    UartSendData(&Uart_R11,r11_send_buf,now_len2+4);
+    r11_send_buf[3] = now_len2 - 4;
+    UartSendData(&Uart_R11,r11_send_buf,now_len2 + 4);
 }
 
 
 static void R11ScanWifi(uint8_t scan_offset)
 {
-    uint8_t r11_send_buf[7]={0xaa,0x55,0x00,0x03,0xc0,0x00,0x05};
+    uint8_t r11_send_buf[7];
     r11_send_buf[0]= 0xaa;
     r11_send_buf[1]= 0x55;
     r11_send_buf[2]= 0x00;
     r11_send_buf[3]= 0x03;
     r11_send_buf[4]= cmdWIFI_SCAN;
-    r11_send_buf[5]= 0x00;
-    r11_send_buf[6]= scan_offset*5;
+    r11_send_buf[5]= scan_offset*5;
+    r11_send_buf[6]= 0x05;
     UartSendData(&Uart_R11,r11_send_buf,7);
 }
 
 
 void R11WifiValueHandle(uint16_t dgus_value)
 {
-    static uint8_t wifi_now_offset = 0;
-    uint8_t r11_send_buf[10];
+    uint8_t r11_send_buf[15];
     uint16_t read_param[20];
     uint16_t write_zero_param[80]=0;
     const uint16_t uint16_port_zero = 0;
@@ -616,6 +616,23 @@ void R11WifiValueHandle(uint16_t dgus_value)
         }
         wifi_now_offset = 0;
         R11ScanWifi(wifi_now_offset);
+    }else if(dgus_value == keyWIFI_IP_QUERY)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x08;
+        r11_send_buf[4] = 0xc2;
+        r11_send_buf[5] = 0x00;
+        r11_send_buf[6] = 0x05;
+        memcpy(&r11_send_buf[7], "wlan0", 6); 
+        UartSendData(&Uart_R11, r11_send_buf, 13);
+    }else if(dgus_value == keyWIFI_IP_RETURN)
+    {
+        if(page_st.menu_flag == 0x5a)
+        {
+            SwitchPageById((uint16_t)page_st.menu_page); 
+        }
     }else if(dgus_value == keyWIFI_NEXT_LIST)
     {
         if(wifi_page.tr_scan_flag == 0x5a)

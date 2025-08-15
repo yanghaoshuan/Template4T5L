@@ -138,6 +138,8 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define keyWIFI_CONNECT             0xaa07
 #define keyWIFI_DISCONNECT          0xaa08
 #define keyWIFI_SCAN                0xaa09
+#define keyWIFI_IP_QUERY            0xaa0a
+#define keyWIFI_IP_RETURN           0xaa0f
 #define keyWIFI_PREV_LIST           0xaa12
 #define keyWIFI_NEXT_LIST           0xaa13
 
@@ -180,7 +182,7 @@ extern uint8_t mp4_name[5][MAX_MP3_NAME_LEN];
 extern PLAYER_T r11_player;
 extern uint16_t pixels_arr_h2[5];
 extern uint16_t pixels_arr_l2[5];
-
+extern uint8_t wifi_now_offset;
 extern volatile uint8_t data data_write_f;
 extern volatile uint8_t data Bit8_16_Flag;
 
