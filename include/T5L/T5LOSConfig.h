@@ -158,7 +158,7 @@ extern uint32_t sysFCLK;
 
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
-#define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
+#define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
 
 
 

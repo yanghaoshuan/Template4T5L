@@ -594,7 +594,7 @@ static void T5lNorFlashSectorInitZero(uint8_t flash_sector)
     write_dgus_vp(flashDGUS_COPY_VP_ADDRESS, (uint8_t *)init_buf, 2);
 
     T5lNorFlashRW(flashWRITE_FLAG, flash_sector / FLASH_COPY_MAX_SECTOR, 
-                (flash_sector % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
+                (flash_sector % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
 }
 
 
@@ -606,8 +606,8 @@ static void T5lNorFlashSectorInitZero(uint8_t flash_sector)
  */
 static void T5lNorFlashSectorCopy(uint8_t flash_sector_from,uint8_t flash_sector_to)
 {
-    FlashToDgusWithData(flash_sector_from / FLASH_COPY_MAX_SECTOR, (flash_sector_from % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
-    DgusToFlashWithData(flash_sector_to / FLASH_COPY_MAX_SECTOR, (flash_sector_to % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE/2);
+    FlashToDgusWithData(flash_sector_from / FLASH_COPY_MAX_SECTOR, (flash_sector_from % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
+    DgusToFlashWithData(flash_sector_to / FLASH_COPY_MAX_SECTOR, (flash_sector_to % FLASH_COPY_MAX_SECTOR) * FLASH_COPY_ONCE_SIZE, flashDGUS_COPY_VP_ADDRESS, NULL, FLASH_COPY_ONCE_SIZE);
 }
 
  
@@ -735,9 +735,6 @@ void SysWriteSingleChart(uint8_t chart_id,uint8_t point_num,uint8_t *data_buf)
 void T5LCpuInit(void)
 {
     KernelInit();
-    #if sysBEAUTY_MODE_ENABLED
-    R11ConfigInitFormLib();
-    #endif /* sysBEAUTY_MODE_ENABLED */
     GpioInit();
     InterruptInit();
     UartInit();

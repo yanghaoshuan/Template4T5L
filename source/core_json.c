@@ -1913,3 +1913,55 @@ JSONStatus_t JSON_Iterate( const char * buf,
 
     return ret;
 }
+
+
+
+JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint8_t *outArray)
+{
+	JSONStatus_t result;
+    char * value,save;
+    json_size_t valueLength;
+
+    result = JSON_Search( frame, len, query, queryLength,
+                                &value, &valueLength );
+
+    write_dgus_vp(0x5004,(uint8_t*)&valueLength,1);
+    if( result == JSONSuccess )
+    {
+        save = value[valueLength];
+        value[valueLength] = 0x00;
+        CopyAsciiString(outArray,value,0);
+        write_dgus_vp(0x5020,outArray,(valueLength+1)/2);
+        value[valueLength] = save;
+        return JSONSuccess;
+    }
+    return JSONNotFound;
+}
+
+
+JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint16_t *number)
+{
+	JSONStatus_t result;
+    char * value,save;
+    json_size_t valueLength;
+    uint16_t i,temp;
+    result = JSON_Search( frame, len, query, queryLength,
+                                &value, &valueLength );
+
+    write_dgus_vp(0x5004,(uint8_t*)&valueLength,1);
+    if( result == JSONSuccess )
+    {
+        save = value[valueLength];
+        value[valueLength] = 0x00;
+        /** 将查询到的flag的ascii码转成hex数据，输出到flag */
+        for(i=0;i<valueLength;i++)
+        {
+            temp = temp*10 + (value[i] - '0');
+        }
+        *number = temp;
+        write_dgus_vp(0x5006,(uint8_t*)&temp,1);
+        value[valueLength] = save;
+        return JSONSuccess;
+    }
+    return JSONNotFound;
+}

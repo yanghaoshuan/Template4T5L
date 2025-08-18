@@ -730,10 +730,7 @@ void R11NetConnectProcess(void)
 {
 	uint8_t r11_send_buf[100];
 	uint16_t curr_data_len,curr_len;
-	static uint16_t write_temp =0;
 	uint16_t temp_val =0xff;
-	write_temp++;
-	write_dgus_vp(0x5000,(uint8_t*)&write_temp,1);
 	/** 
 	 * 1.发送0xc6指令获取cpuinfo信息
 	 * 2.发送0xa9指令建立websocket连接
@@ -817,7 +814,7 @@ void R11NetConnectProcess(void)
 		r11_send_buf[3] = 0x04;
 		r11_send_buf[4] = 0x01;
 		curr_data_len = 5;
-		curr_data_len = CopyAsciiString(r11_send_buf,"{\"cmd\":\"getskinapi\",\"mac\":\"100032_1_0_",curr_data_len);
+		curr_data_len = CopyAsciiString(r11_send_buf,"{\"cmd\":\"removeUser\",\"mac\":\"100032_1_0_",curr_data_len);
 		curr_data_len = CopyAsciiString(r11_send_buf,Json_Wechat.cpuinfo,curr_data_len);
 		curr_data_len = CopyAsciiString(r11_send_buf,"\"}",curr_data_len);
 		curr_data_len = curr_data_len - 4;
@@ -1035,23 +1032,21 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 }
 
 
+
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
-	uint16_t temp_val =1;
-	write_dgus_vp(0x5004,(uint8_t*)&temp_val,1);
-	if(JSON_Search(frame,(json_size_t)len,"cmd",(json_size_t)(sizeof("cmd") - 1),Json_Wechat.send_cmd,(json_size_t)(sizeof(Json_Wechat.send_cmd) - 1)) == JSONSuccess)
+	/** 此处需要去掉帧头 */
+	if(JSONSearchToArray(&frame[5],len-5,"cmd",sizeof("cmd") - 1,Json_Wechat.send_cmd) == JSONSuccess)
 	{
-		uint16_t temp_val =2;
-		write_dgus_vp(0x5004,(uint8_t*)&temp_val,1);
-		write_dgus_vp(0x5005,Json_Wechat.send_cmd,10);
+		write_dgus_vp(0x5020,Json_Wechat.send_cmd,10);
 		if(strcmp((char *)Json_Wechat.send_cmd,"getskinapi") == 0)
 		{
 			/** 处理getskinapi的逻辑 */
-			if(JSON_Search(frame,len,"weixinurl",sizeof("weixinurl") - 1,Json_Wechat.weixin_url,sizeof(Json_Wechat.weixin_url) - 1) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5],len-5,"weixinurl",sizeof("weixinurl") - 1,Json_Wechat.weixin_url) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.app_qr_addr,Json_Wechat.weixin_url,64);
 			}
-			if(JSON_Search(frame,len,"storeurl",sizeof("storeurl") - 1,Json_Wechat.store_url,sizeof(Json_Wechat.store_url) - 1) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5],len-5,"storeurl",sizeof("storeurl") - 1,Json_Wechat.store_url) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.clerk_qr_addr,Json_Wechat.store_url,64);
 			}
@@ -1062,21 +1057,23 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"removeUser") == 0)
 		{
 			/** 处理removeUser的逻辑 */
-			if(JSON_Search(frame,len,"code",sizeof("code") - 1,(char *)&Json_Wechat.remove_flag,2) == JSONSuccess)
+			if(JSONSearchToNumber(&frame[5],len-5,"code",sizeof("code") - 1,(uint16_t *)&Json_Wechat.remove_flag) == JSONSuccess)
 			{
+				write_dgus_vp(0x5003,(uint8_t*)&Json_Wechat.remove_flag,1);
 				if(Json_Wechat.remove_flag == 0 && net_connected_state == NET_REMOVEUSER_WAITING)
 				{
 					net_connected_state = NET_GETSKINAPI_SEND;
+
 				}
 			}
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"weixin") == 0)
 		{
 			/** 处理weixin的逻辑 */
-			if(JSON_Search(frame,len,"tel",sizeof("tel") - 1,Json_Wechat.weixin_tel,sizeof(Json_Wechat.weixin_tel) - 1) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5],len-5,"tel",sizeof("tel") - 1,Json_Wechat.weixin_tel) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.user_tel_addr,Json_Wechat.weixin_tel,16);
 			}
-			if(JSON_Search(frame,len,"name",sizeof("name") - 1,Json_Wechat.weixin_name,sizeof(Json_Wechat.weixin_name) - 1) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5],len-5,"name",sizeof("name") - 1,Json_Wechat.weixin_name) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.user_name_addr,Json_Wechat.weixin_name,16);
 			}
@@ -1111,11 +1108,6 @@ static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 }
 
 
-static void R11CameraInit(void)
-{
-
-}
-
 static void R11StartPowerInit(void)
 {
 	uint8_t r11_send_buf[10];
@@ -1136,13 +1128,13 @@ static void R11StartPowerInit(void)
 static void R11RestartInit(void)
 {
     R11FlagBitInit();
-    R11CameraInit();
 	R11StartPowerInit();
 }
 
 
 void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
+	static uint16_t prev_pic = 0;
 	uint16_t write_param[10],now_pic;
     if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x82)
     {
@@ -1169,15 +1161,46 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				if(frame[5] == R11_RECV_OK&&frame[6] == camera_magnifier.camera_type&&frame[7] == cameraCLOSE_STATUS)
 				{
 					camera_process_state = CAMERA_INSERT_CHECK;
-					if(page_st.hotplug_flag == 0x5a)
-					{
-						SwitchPageById((uint16_t)page_st.hotplug_page); 
-					}
+					// if(page_st.hotplug_flag == 0x5a)
+					// {
+					// 	SwitchPageById((uint16_t)page_st.hotplug_page); 
+					// }
 					r11_state.delay_count = 0;
 				}else if(frame[5] == R11_RECV_OK&&frame[6] == camera_magnifier.camera_type&&frame[7] == cameraOPEN_STATUS)
 				{
 					camera_process_state = CAMERA_SEND_T5L;
 					r11_state.delay_count = 0;
+				}
+				break;
+			case cameraHOTPLUG_CHECK:
+				if(frame[5] == R11_RECV_OK && frame[7] <= 4)
+				{
+					/** 摄像头没数据的情况 */
+					if(camera_process_state == CAMERA_PROCESS_END)
+					{
+						camera_process_state = CAMERA_INSERT_CHECK;
+						R11ClearPicture(0);
+						read_dgus_vp(sysDGUS_PIC_NOW,(uint8_t*)&now_pic,1);
+						if(page_st.hotplug_flag == 0x5a&&(now_pic == (uint16_t)page_st.main_page||now_pic == (uint16_t)page_st.detail_page))
+						{
+							prev_pic = now_pic;
+							SwitchPageById((uint16_t)page_st.hotplug_page); 
+						}
+					}
+				}else if(frame[5] == R11_RECV_OK && frame[7] == 5)
+				{
+					/** 摄像头有数据的情况 */
+					if(camera_process_state == CAMERA_INSERT_CHECK)
+					{
+						camera_process_state = CAMERA_PROCESS_END;
+						if(page_st.main_flag == 0x5a && prev_pic == (uint16_t)page_st.main_page)
+						{
+							SwitchPageById((uint16_t)page_st.main_page); 
+						}else if(page_st.detail_flag == 0x5a && prev_pic == (uint16_t)page_st.detail_page)
+						{
+							SwitchPageById((uint16_t)page_st.detail_page); 
+						}
+					}
 				}
 				break;
 			case cameraINSERT_CHECK:
@@ -1323,7 +1346,6 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         switch (frame[4])
         {
 			case 0x02:
-				/** 处理json数据格式 */
 				R11JsonToWeChatString(frame,len);
 				break;
 			case 0x01:

@@ -56,11 +56,11 @@
  * D1:0：读写字长度，必须是偶数。
  */
 #define sysDGUS_FLASH_RW_CMD                0x0008
-#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号，每一块有16个扇区 */
+#define flashMAIN_BLOCK_ORDER              (uint8_t )0                            /**< 主块序号，每一块有32个扇区 */
 #if flashDUAL_BACKUP_ENABLED
 #define flashDGUS_COPY_VP_ADDRESS           0x1000                      /**< DGUS VP地址 */
-#define FLASH_COPY_ONCE_SIZE                0x1000                          /**< 每次复制的Flash数据块大小，4k数据 */
-#define FLASH_COPY_MAX_SECTOR                 16                              /**< 最大复制扇区个数 */
+#define FLASH_COPY_ONCE_SIZE                0x800                          /**< 每次复制的Flash数据块大小，4k字节数据，2k字数据 */
+#define FLASH_COPY_MAX_SECTOR                 32                              /**< 最大复制扇区个数 */
 #define flashBACKUP_BLOCK_ORDER             (uint8_t )2                            /**< 用作双备份块的序号 */
 #define flashBACKUP_FLAG_ADDRESS            0x0000                      /**< 双备份改动标志缓存地址 */
 #define flashBACKUP_FLAG_DEFAULT_VALUE      (uint16_t )0x5aa5      /**< 双备份改动标志默认值 */

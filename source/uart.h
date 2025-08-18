@@ -170,4 +170,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
  */
 void UartReadFrame(UART_TYPE *uart);
 
+#define UART_TASK_INTERVAL      2
+void UartProtocalHandleTask(void);
+
 #endif /* __UART_H__ */

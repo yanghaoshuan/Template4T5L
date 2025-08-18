@@ -644,3 +644,11 @@ void UartReadFrame(UART_TYPE *uart)
     }
 }
 
+
+void UartProtocalHandleTask(void)
+{
+    UartReadFrame(&Uart2);
+    UartReadFrame(&Uart4);
+    UartReadFrame(&Uart_R11);
+}
+

@@ -40,7 +40,7 @@
 
 #include "T5losConfig.h"
 
-typedef unsigned   short       json_size_t; /**< @brief Size type for memory operations. */
+typedef uint16_t       json_size_t; /**< @brief Size type for memory operations. */
 
 
 /**
@@ -322,6 +322,11 @@ JSONStatus_t JSON_Iterate( const char * buf,
                            json_size_t * next,
                            JSONPair_t * outPair );
 /* @[declare_json_iterate] */
+
+
+
+JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint8_t *outArray);
+JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint16_t *number);
 
 
 #endif /* ifndef CORE_JSON_H_ */

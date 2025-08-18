@@ -107,6 +107,7 @@
 #define cameraSUPPORT_FORMAT    0xb4
 #define cameraINSERT_CHECK      0xb8
 #define cameraOPEN_THREAD       0xb5
+#define cameraHOTPLUG_CHECK     0xb7
 #define cameraSEND_T5L          0xa0
 #define cameraDEL_PICTURE       0xa6
 #define cameraENL_PICTURE       0xa7
