@@ -89,7 +89,7 @@
 
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
-#define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期，50对应5s */
+#define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期R11_TASK_INTERVAL，50对应5s */
 #define netWIFI_STATUS_ADDR     0x18b4
 #define cameraNOW_NUM_ADDR      0x18b7
 
@@ -136,8 +136,6 @@ typedef struct
     uint8_t camera_local;        /* 摄像头显示位置，从0开始 */
     uint8_t camera_status;       /* 是否发给摄像头显示，0不显示，1显示 */
     uint8_t camera_num[6];        /* 当前摄像头显示的编号，默认0-5 */
-    uint8_t camera_process;    /* 当前摄像头发送指令状态，0为没发送b5指令，1为已经发送b5指令没发送a0指令，2为已经发送a0指令 */
-    uint8_t cap_status;          /* 摄像头拍照状态标志 */
 } CAMERA_MA;
 
 
@@ -150,8 +148,6 @@ typedef struct
     char   websocket_url[64];          /* 发送的websocket的地址 */
     char   weixin_url[128];          /* 微信小程序的二维码 */
     char   store_url[128];           /* 店铺的二维码 */
-    char   weixin_id[32];           /* 微信的id */
-    char   open_id[32];             /* 微信的openid */
     char   weixin_tel[32];          /* 微信的电话 */
     char   weixin_name[32];         /* 微信的名字 */
     uint16_t remove_flag;           /* 清除成功的标记 */
@@ -331,19 +327,52 @@ extern CAMERA_PROCESS_STATE camera_process_state;
 extern NET_CONNECTED_STATE net_connected_state;
 extern R11_STATE r11_state;
 
+
+/**
+ * @brief 从lib文件初始化配置参数。
+ * @note 需在系统启动时调用，完成各项参数的初始化。
+ * @note 在sysSET_FROM_LIB打开时调用
+ */
 void R11ConfigInitFormLib(void);
 
+/**
+ * @brief 扫描并处理R11值任务。
+ */
 void R11ValueScanTask(void);
 
+/**
+ * @brief 初始化R11标志位。
+ * @note 包括页面、摄像头、缩放参数等初始化。
+ */
 void R11FlagBitInit(void);
 
+/**
+ * @brief R11重启初始化。
+ * @note 重启后需调用，完成标志位及参数初始化。
+ */
 void R11RestartInit(void);
 
+/**
+ * @brief 网络连接流程处理。
+ * @note 包括CPU信息获取、WebSocket连接、云端透传等。
+ */
 void R11NetConnectProcess(void);
 
+/**
+ * @brief R11皮肤分析主任务。
+ * @note 包含重启检测与主流程调度。
+ */
 void R11NetskinAnalyzeTask(void);
 
+/**
+ * @brief 处理美容协议帧。
+ * @param uart 串口类型指针
+ * @param frame 协议帧数据
+ * @param len 协议帧长度
+ * @note 用于接收和解析R11相关协议。
+ */
 void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len);
+
 #endif /* sysBEAUTY_MODE_ENABLED */
 
 #endif /* R11_NETSKINANALYZE_H */

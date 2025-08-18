@@ -1925,13 +1925,11 @@ JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uin
     result = JSON_Search( frame, len, query, queryLength,
                                 &value, &valueLength );
 
-    write_dgus_vp(0x5004,(uint8_t*)&valueLength,1);
     if( result == JSONSuccess )
     {
         save = value[valueLength];
         value[valueLength] = 0x00;
         CopyAsciiString(outArray,value,0);
-        write_dgus_vp(0x5020,outArray,(valueLength+1)/2);
         value[valueLength] = save;
         return JSONSuccess;
     }
@@ -1948,7 +1946,6 @@ JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,ui
     result = JSON_Search( frame, len, query, queryLength,
                                 &value, &valueLength );
 
-    write_dgus_vp(0x5004,(uint8_t*)&valueLength,1);
     if( result == JSONSuccess )
     {
         save = value[valueLength];
@@ -1959,7 +1956,6 @@ JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,ui
             temp = temp*10 + (value[i] - '0');
         }
         *number = temp;
-        write_dgus_vp(0x5006,(uint8_t*)&temp,1);
         value[valueLength] = save;
         return JSONSuccess;
     }

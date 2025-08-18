@@ -47,6 +47,7 @@ typedef            long			int32_t;
  * @details 如果值大于0则递减，否则保持不变
  * @param x 要递减的变量
  * @note 常用于超时计数器的递减操作
+ * @warning 会带来额外的汇编负担，尽量不使用
  */
 #define DECREASE_IF_POSITIVE(x) ((x)>0 && (x)--)
 

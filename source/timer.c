@@ -136,23 +136,7 @@ void Timer1Isr() interrupt 3
     TL1 = timeT1_TICK;
 
     /* use timer1*/
-    #if uartUART2_ENABLED
-    DECREASE_IF_POSITIVE(Uart2.RxTimeout);
-    #endif /* uartUART2_ENABLED */
-
-    #if uartUART3_ENABLED
-    DECREASE_IF_POSITIVE(Uart3.RxTimeout);
-    #endif /* uartUART3_ENABLED */
-
-    #if uartUART4_ENABLED
-    DECREASE_IF_POSITIVE(Uart4.RxTimeout);
-    #endif /* uartUART4_ENABLED */
-
-    #if uartUART5_ENABLED
-		if(Uart5.RxTimeout)
-			Uart5.RxTimeout--;
-    DECREASE_IF_POSITIVE(Uart5.RxTimeout);
-    #endif /* uartUART5_ENABLED */
+    __NOP();
     ET1 = 1;
 }
 #endif /* timeTIMER1_ENABLED */

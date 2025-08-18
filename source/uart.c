@@ -649,6 +649,8 @@ void UartProtocalHandleTask(void)
 {
     UartReadFrame(&Uart2);
     UartReadFrame(&Uart4);
+    #if sysBEAUTY_MODE_ENABLED
     UartReadFrame(&Uart_R11);
+    #endif /* sysBEAUTY_MODE_ENABLED */
 }
 

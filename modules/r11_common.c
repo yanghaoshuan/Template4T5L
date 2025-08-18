@@ -1,3 +1,8 @@
+
+/*
+ * 文件名: r11_common.c
+ * 说明: R11模块通用实现文件，包含视频播放、WiFi等相关功能实现。
+ */
 #include "r11_common.h"
 #include "r11_netskinAnalyze.h"
 #include "sys.h"
@@ -7,7 +12,10 @@
 
 #if sysBEAUTY_MODE_ENABLED
 
-/** 调试数据定义区域 */
+/**
+ * @brief 调试数据定义区域
+ * @note 所有变量均有物理地址映射，便于调试和数据追踪。
+ */
 volatile uint8_t    xdata       buf_jpeg[0x8000]            _at_    0x8000;
 volatile uint8_t    data        EX1_Len                     _at_    0x20;
 volatile uint8_t    data        Picture_Count               _at_    0x21;
@@ -68,8 +76,6 @@ uint16_t pixels_arr_l[5]={720,600,600,480,768};
 
 uint16_t pixels_arr_h2[5]={1920,1024,800,800,1024};
 uint16_t pixels_arr_l2[5]={1080,600,600,480,768};
-
-
 
 
 void T5lJpegInit(void)
@@ -209,6 +215,7 @@ void R11VideoPlayerProcess(void)
         __NOP();
     }
 }
+
 
 void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
 {
@@ -526,16 +533,23 @@ void R11DebugValueHandle(uint16_t dgus_value)
         }
     }else if(dgus_value == 0x11a)
     {
+        /** 将设置项写入Flash */
         DgusToFlash(flashMAIN_BLOCK_ORDER, PIXELS_SET_ADDR, PIXELS_SET_ADDR, 0x48);
+        #if sysSET_FROM_LIB
         R11ConfigInitFormLib();
+        #endif /* sysSET_FROM_LIB */
     }
     else if(dgus_value == 0x11c)
     {
+        /** 查询摄像头支持格式 */
         UartSendData ( &Uart_R11,"\xAA\x55\x00\x02\xB4\x01", 6);
     }
 }
 
 
+/*
+ * @brief 连接WiFi，组装并发送WiFi连接协议帧。
+ */
 static void R11ConnectWifi(void)
 {
     uint8_t now_len = 0,now_len2;
@@ -564,6 +578,9 @@ static void R11ConnectWifi(void)
 }
 
 
+/*
+ * @brief 扫描WiFi，组装并发送WiFi扫描协议帧。
+ */
 static void R11ScanWifi(uint8_t scan_offset)
 {
     uint8_t r11_send_buf[7];
@@ -800,6 +817,10 @@ void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 }
 
 
+/*
+ * @brief 外部中断1服务函数，处理JPEG数据写入等。
+ * @note 此函数在外部中断1触发时执行，用于处理一个数据包图片（16kb）接收完成后的数据处理。
+ */
 void inter_extern1_1_fun_C ( void ) interrupt 2
 {
     uint8_t data Temp,Index, ADR_H_Bak,ADR_M_Bak,ADR_L_Bak,ADR_INC_Bak,DATA3_Bak,DATA2_Bak,DATA1_Bak,DATA0_Bak,RAMMODE_Bak;
@@ -851,7 +872,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                         data_write_f = 7;
                         EX0 = 0;
                         EX1 = 0;
-                        //                        EX1_Start();
                         break;
                     }
                 }
@@ -862,7 +882,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                 data_write_f = 4;
                 EX0 = 0;
                 EX1 = 0;
-                //EX1_Start();
             }
             break;
         }

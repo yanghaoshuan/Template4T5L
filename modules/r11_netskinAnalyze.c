@@ -1,3 +1,9 @@
+
+#/**
+# * @file r11_netskinAnalyze.c
+# * @brief R11网络皮肤分析相关实现文件
+# * @details 包含摄像头、WiFi、页面、主视图等功能实现，负责R11美容屏的主流程、参数初始化、协议处理等。
+# */
 #include "r11_netskinAnalyze.h"
 #include <string.h>
 
@@ -196,6 +202,9 @@ void R11ConfigInitFormLib(void)
 }
 
 
+/*
+ * @brief 页面切换时调整图片显示位置。
+ */
 static void R11PageInitChange()
 {
 	uint16_t now_pic;
@@ -213,6 +222,9 @@ static void R11PageInitChange()
 }
 
 
+/*
+ * @brief 摄像头打开线程控制，组装并发送相关协议帧。
+ */
 static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,uint8_t camera_type)
 {
 	uint8_t r11_send_buf[15];
@@ -240,6 +252,9 @@ static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,ui
 }
 
 
+/*
+ * @brief 摄像头发送T5L控制指令。
+ */
 static void R11CameraSendT5lCtrl(uint8_t camera_mode,uint8_t send_flag)
 {
     uint8_t r11_send_buf[25];
@@ -275,6 +290,9 @@ static void R11CameraSendT5lCtrl(uint8_t camera_mode,uint8_t send_flag)
 }
 
 
+/*
+ * @brief 摄像头上传图片（预留）。
+ */
 static void R11CameraUploadPicture(void)
 {
 	/** not use */
@@ -282,6 +300,9 @@ static void R11CameraUploadPicture(void)
 }
 
 
+/*
+ * @brief 放大镜放大操作，组装并发送相关协议帧。
+ */
 static void R11MagnifierEnlarge(uint8_t enlarge_type,uint8_t* item_en_name,ENLARGE_P* source2)
 {
     uint8_t r11_send_buf[20];
@@ -312,6 +333,9 @@ static void R11MagnifierEnlarge(uint8_t enlarge_type,uint8_t* item_en_name,ENLAR
 }
 
 
+/*
+ * @brief 摄像头放大相关按键处理。
+ */
 static void R11CameraEnlargeHandle(uint16_t dgus_value)
 {
 	uint8_t curr_enlarge_type;
@@ -448,6 +472,9 @@ static void R11CameraEnlargeHandle(uint16_t dgus_value)
 }
 
 
+/*
+ * @brief 放大镜相关按键处理。
+ */
 static void MagnifierKeyHandle(uint16_t dgus_value)
 {
 	uint8_t r11_send_buf[100];
@@ -726,11 +753,13 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 }
 
 
+/*
+ * @brief 网络连接流程处理。
+ */
 void R11NetConnectProcess(void)
 {
 	uint8_t r11_send_buf[100];
 	uint16_t curr_data_len,curr_len;
-	uint16_t temp_val =0xff;
 	/** 
 	 * 1.发送0xc6指令获取cpuinfo信息
 	 * 2.发送0xa9指令建立websocket连接
@@ -742,8 +771,6 @@ void R11NetConnectProcess(void)
 	 */
 	if(net_connected_state == NET_CPUINFO_QUERY)
 	{
-		temp_val = 1;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_send_buf[0] = 0xaa;
 		r11_send_buf[1] = 0x55;
 		r11_send_buf[2] = 0x00;
@@ -754,8 +781,6 @@ void R11NetConnectProcess(void)
 		net_connected_state = NET_WEBSOCKET_SEND;
 	}else if(net_connected_state == NET_WEBSOCKET_SEND)
 	{
-		temp_val = 2;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_send_buf[0] = 0xaa;
 		r11_send_buf[1] = 0x55;
 		r11_send_buf[2] = 0x00;
@@ -786,8 +811,6 @@ void R11NetConnectProcess(void)
 	}
 	else if(net_connected_state == NET_WEBSOCKET_WAITING)
 	{
-		temp_val = 3;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_state.wifi_delay_count++;
 		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
 		{
@@ -796,18 +819,12 @@ void R11NetConnectProcess(void)
 		}
 	}else if(net_connected_state == NET_DISCONNECTED)
 	{
-		temp_val = 4;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		__NOP();
 	}else if(net_connected_state == NET_CONNECTED)
 	{
-		temp_val = 5;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		net_connected_state = NET_REMOVEUSER_SEND;
 	}else if(net_connected_state == NET_REMOVEUSER_SEND)
 	{
-		temp_val = 6;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_send_buf[0] = 0xaa;
 		r11_send_buf[1] = 0xcc;
 		r11_send_buf[2] = 0x00;
@@ -824,8 +841,6 @@ void R11NetConnectProcess(void)
 		net_connected_state = NET_REMOVEUSER_WAITING;
 	}else if(net_connected_state == NET_REMOVEUSER_WAITING)
 	{
-		temp_val = 7;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_state.wifi_delay_count++;
 		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
 		{
@@ -834,8 +849,6 @@ void R11NetConnectProcess(void)
 		}
 	}else if(net_connected_state == NET_GETSKINAPI_SEND)
 	{
-		temp_val = 8;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_send_buf[0] = 0xaa;
 		r11_send_buf[1] = 0xcc;
 		r11_send_buf[2] = 0x00;
@@ -852,8 +865,6 @@ void R11NetConnectProcess(void)
 		net_connected_state = NET_GETSKINAPI_WAITING;
 	}else if(net_connected_state == NET_GETSKINAPI_WAITING)
 	{
-		temp_val = 9;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		r11_state.wifi_delay_count++;
 		if(r11_state.wifi_delay_count >= cameraRETRY_MAX_COUNT)
 		{
@@ -862,13 +873,14 @@ void R11NetConnectProcess(void)
 		}
 	}else if(net_connected_state == NET_PROCESS_END)
 	{
-		temp_val = 10;
-		write_dgus_vp(0x5001,(uint8_t*)&temp_val,1);
 		__NOP();
 	}
 }
 
 
+/*
+ * @brief 扫描并处理R11相关键值任务。
+ */
 static void R11ValueScanTask(void)
 {
     const uint16_t uint16_port_zero = 0;
@@ -904,6 +916,9 @@ static void R11ValueScanTask(void)
 
 
 
+/*
+ * @brief 初始化R11标志位。
+ */
 static void R11FlagBitInit(void)
 {
 	/** 1.针对当前页面调整显示大小 */
@@ -917,8 +932,6 @@ static void R11FlagBitInit(void)
     camera_magnifier.camera_send_width = 480;
     camera_magnifier.camera_local = 0;
     camera_magnifier.camera_status = 1;
-    camera_magnifier.camera_process = 0;
-	camera_magnifier.cap_status = 0;
 
     /** 3.针对缩放参数进行初始化 */
     enl_enlarge_mode.enlarge_x_acc = ACC_X;
@@ -936,6 +949,9 @@ static void R11FlagBitInit(void)
 }
 
 
+/*
+ * @brief WiFi扫描结果处理。
+ */
 static void R11WifiScanResultHandle(uint8_t *frame)
 {
 	uint16_t write_param[4],i,j,zero_arr[32] = 0;
@@ -1003,6 +1019,9 @@ static void R11WifiScanResultHandle(uint8_t *frame)
 }
 
 
+/*
+ * @brief IP结果处理，提取IP和MAC并生成二维码。
+ */
 static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 {
 	uint16_t i,curr_data_len,curr_data_len_bak;
@@ -1033,6 +1052,9 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 
 
 
+/*
+ * @brief 解析JSON帧并写入相关参数。
+ */
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
 	/** 此处需要去掉帧头 */
@@ -1059,7 +1081,6 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 			/** 处理removeUser的逻辑 */
 			if(JSONSearchToNumber(&frame[5],len-5,"code",sizeof("code") - 1,(uint16_t *)&Json_Wechat.remove_flag) == JSONSuccess)
 			{
-				write_dgus_vp(0x5003,(uint8_t*)&Json_Wechat.remove_flag,1);
 				if(Json_Wechat.remove_flag == 0 && net_connected_state == NET_REMOVEUSER_WAITING)
 				{
 					net_connected_state = NET_GETSKINAPI_SEND;
@@ -1082,6 +1103,9 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 }
 
 
+/*
+ * @brief 云平台图片数据转为JPEG并写入显示缓冲区。
+ */
 static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 {
 	uint16_t CRC16,write_param[20],i,Temp8;
@@ -1108,6 +1132,10 @@ static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 }
 
 
+/*
+ * @brief 上电初始化，发送相关参数到R11。
+ * @note 该函数用来设置显示质量，分频系数，8线或者16线。
+ */
 static void R11StartPowerInit(void)
 {
 	uint8_t r11_send_buf[10];
@@ -1125,6 +1153,9 @@ static void R11StartPowerInit(void)
 	UartSendData(&Uart_R11,r11_send_buf,8);
 }
 
+/*
+ * @brief R11重启初始化。
+ */
 static void R11RestartInit(void)
 {
     R11FlagBitInit();
@@ -1132,6 +1163,12 @@ static void R11RestartInit(void)
 }
 
 
+/*
+ * @brief 处理美容协议帧。
+ * @param uart  串口类型指针
+ * @param frame 协议帧数据
+ * @param len   协议帧长度
+ */
 void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
 	static uint16_t prev_pic = 0;
@@ -1161,10 +1198,6 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				if(frame[5] == R11_RECV_OK&&frame[6] == camera_magnifier.camera_type&&frame[7] == cameraCLOSE_STATUS)
 				{
 					camera_process_state = CAMERA_INSERT_CHECK;
-					// if(page_st.hotplug_flag == 0x5a)
-					// {
-					// 	SwitchPageById((uint16_t)page_st.hotplug_page); 
-					// }
 					r11_state.delay_count = 0;
 				}else if(frame[5] == R11_RECV_OK&&frame[6] == camera_magnifier.camera_type&&frame[7] == cameraOPEN_STATUS)
 				{
@@ -1365,6 +1398,9 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 }
 
 
+/*
+ * @brief R11皮肤分析主任务。
+ */
 void R11NetskinAnalyzeTask(void)
 {
     /** 在重启之后，R11RestartInit只运行一次，R11VideoPlayerProcess会一直运行直到完成 */

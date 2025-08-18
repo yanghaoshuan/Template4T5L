@@ -26,9 +26,9 @@ void main(void)
   T5lNorFlashInit();
   #endif /* flashDUAL_BACKUP_ENABLED */
 
-  #if sysBEAUTY_MODE_ENABLED
+  #if sysSET_FROM_LIB
   R11ConfigInitFormLib();
-  #endif /* sysBEAUTY_MODE_ENABLED */
+  #endif /* sysSET_FROM_LIB */
 
   T5LCpuInit();
 

@@ -618,12 +618,10 @@ void T5lNorFlashInit(void)
     for(i=0;i<FLASH_COPY_MAX_SECTOR;i++)
     {
         FlashToDgusWithData(flashMAIN_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)main_flag_param, 2);
-        write_dgus_vp(0x5005, (uint8_t *)main_flag_param, 2);
         if(main_flag_param[0] ==flashBACKUP_FLAG_DEFAULT_VALUE && main_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
         {
             /* 双备份标志未被修改，将备份区改为主区的值 */
             FlashToDgusWithData(flashBACKUP_BLOCK_ORDER, flashBACKUP_FLAG_ADDRESS+i*FLASH_COPY_ONCE_SIZE, flashBACKUP_DGUS_CACHE_ADDRESS, (uint8_t *)&backup_flag_param, 2);
-            write_dgus_vp(0x5001, (uint8_t *)backup_flag_param, 2);
             if(backup_flag_param[0] == flashBACKUP_FLAG_DEFAULT_VALUE && backup_flag_param[1] == flashBACKUP_FLAG_DEFAULT_VALUE)
             {
                 /* 双备份标志未被修改，不做任何操作 */
@@ -739,7 +737,6 @@ void T5LCpuInit(void)
     InterruptInit();
     UartInit();
 	TimerInit();
-    T5lJpegInit();
 }
 
 
