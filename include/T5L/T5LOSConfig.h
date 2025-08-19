@@ -105,19 +105,36 @@ typedef            long			int32_t;
 #define sysMAX_TASK_NUM             10
 
 
+
 /**
  * @brief 广告屏和美容屏功能使能标志
  * @details 1: 启用广告屏和美容屏功能, 0: 禁用
  * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
+ * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
-#define sysBEAUTY_MODE_ENABLED         1       
+#define sysADVERTISE_MODE_ENABLED       1
+#define sysN5CAMERA_MODE_ENABLED       0
+#define sysBEAUTY_MODE_ENABLED         0       
+
+#if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
+#error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
+#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED) > 1) */
+
+#if sysN5CAMERA_MODE_ENABLED
+#define Uart_R11                     Uart5
+#endif /* sysN5CAMERA_MODE_ENABLED */
 
 #if sysBEAUTY_MODE_ENABLED
 #define Uart_R11                     Uart5
 #define R11_WIFI_ENABLED              1
 #endif /* sysBEAUTY_MODE_ENABLED */
 
-#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED
+#if sysADVERTISE_MODE_ENABLED
+#define Uart_R11                     Uart5
+#define R11_WIFI_ENABLED              1
+#endif /* sysADVERTISE_MODE_ENABLED */  
+
+#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
 
 #if sysSET_FROM_LIB
 extern uint16_t sys_2k_ratio;
@@ -298,7 +315,11 @@ extern uint32_t sysFCLK;
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
+    #if sysADVERTISE_MODE_ENABLED
+    #define uartUART5_BAUDRATE           115200
+    #elif sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED
     #define uartUART5_BAUDRATE           921600
+    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED */
     #define uartUART5_485_ENABLED        0
     
     #if uartUART5_485_ENABLED

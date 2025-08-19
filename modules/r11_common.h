@@ -10,7 +10,8 @@
 #include "T5LOSConfig.h"
 #include "core_json.h"             
 
-#if sysBEAUTY_MODE_ENABLED
+#if sysBEAUTY_MODE_ENABLED ||sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+
 
 /**
  * @struct PAGE_S
@@ -38,6 +39,18 @@ typedef struct
 } PAGE_S;
 extern PAGE_S page_st;
 
+/** 图标叠加相关控件定义区域 */
+#define Icon_Overlay_SP_Mode 0xFF00
+extern code uint16_t Icon_Overlay_SP[11];
+extern uint32_t Icon_Overlay_SP_VP[11];
+extern uint16_t Icon_Overlay_SP_X[10];  
+extern uint16_t Icon_Overlay_SP_Y[10];
+extern uint16_t Icon_Overlay_SP_L[10];
+extern uint16_t Icon_Overlay_SP_H[10]; 
+extern uint16_t Locate_arr[10]; 
+extern volatile uint8_t data data_write_f;
+extern volatile uint8_t data Bit8_16_Flag;
+
 /**
  * @enum VIDEO_INIT_PROCESS
  * @brief 视频初始化流程枚举类型。
@@ -54,15 +67,6 @@ typedef enum
 	VIDEO_PROCESS_COMPLETE         /**< 初始化完成 */
 } VIDEO_INIT_PROCESS;
 
-/** 图标叠加相关控件定义区域 */
-#define Icon_Overlay_SP_Mode 0xFF00
-extern code uint16_t Icon_Overlay_SP[11];
-extern uint32_t Icon_Overlay_SP_VP[11];
-extern uint16_t Icon_Overlay_SP_X[10];  
-extern uint16_t Icon_Overlay_SP_Y[10];
-extern uint16_t Icon_Overlay_SP_L[10];
-extern uint16_t Icon_Overlay_SP_H[10]; 
-extern uint16_t Locate_arr[10]; 
 extern VIDEO_INIT_PROCESS video_init_process; 
 
 
@@ -189,8 +193,6 @@ extern PLAYER_T r11_player;
 extern uint16_t pixels_arr_h2[5];
 extern uint16_t pixels_arr_l2[5];
 extern uint8_t wifi_now_offset;
-extern volatile uint8_t data data_write_f;
-extern volatile uint8_t data Bit8_16_Flag;
 
 #define Init_Jpeg_Parament();	\
                 buf_os_tail         = 0x8000;\
@@ -215,11 +217,11 @@ extern volatile uint8_t data Bit8_16_Flag;
 #define EX1_Stop();	\
 		EX1 = 0;
 
-
 /**
  * @brief JPEG参数初始化，设置相关缓冲区和计数器。
  */
 void T5lJpegInit(void);
+
 
 /**
  * @brief 更改图片显示位置和大小。
@@ -231,24 +233,6 @@ void T5lJpegInit(void);
  */
 void R11ChangePictureLocate(uint16_t x_point, uint16_t y_point, uint16_t high, uint16_t weight, uint8_t big_small_flag);
 
-/**
- * @brief 视频播放器主流程处理。
- */
-void R11VideoPlayerProcess(void);
-
-/**
- * @brief 处理串口协议帧，提取文件名等。
- * @param uart  串口类型指针
- * @param frame 协议帧数据
- * @param len   协议帧长度
- */
-void UartR11UserVideoProtocal(UART_TYPE *uart, uint8_t *frame, uint16_t len);
-
-/**
- * @brief 处理视频相关的按键值。
- * @param dgus_value 按键值
- */
-void R11VideoValueHandle(uint16_t dgus_value);
 
 /**
  * @brief 处理调试相关的按键值。
@@ -256,11 +240,6 @@ void R11VideoValueHandle(uint16_t dgus_value);
  */
 void R11DebugValueHandle(uint16_t dgus_value);
 
-/**
- * @brief 处理WiFi相关的按键值。
- * @param dgus_value 按键值
- */
-void R11WifiValueHandle(uint16_t dgus_value);
 
 /**
  * @brief 发送数据到R11串口。
@@ -269,11 +248,43 @@ void R11WifiValueHandle(uint16_t dgus_value);
  */
 void T5lSendUartDataToR11(uint8_t cmd, uint8_t *buf);
 
+
 /**
  * @brief 清除图片显示。
  * @param clear_type 清除类型
  */
 void R11ClearPicture(uint8_t clear_type);
+
+
+/**
+ * @brief 视频播放器主流程处理。
+ */
+void R11VideoPlayerProcess(void);
+
+
+/**
+ * @brief 处理视频相关的按键值。
+ * @param dgus_value 按键值
+ */
+void R11VideoValueHandle(uint16_t dgus_value);
+
+/**
+ * @brief 处理串口协议帧，提取文件名等。
+ * @param uart  串口类型指针
+ * @param frame 协议帧数据
+ * @param len   协议帧长度
+ */
+void UartR11UserVideoProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len);
+
+
+#if sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+/**
+ * @brief 处理WiFi相关的按键值。
+ * @param dgus_value 按键值
+ */
+void R11WifiValueHandle(uint16_t dgus_value);
+#endif /* sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
+
 
 /**
  * @brief 判断数据包计数（汇编实现，见startup_m51.A51）。
@@ -285,6 +296,6 @@ void Judge_Packet_Count(void);
  */
 void Display_Debug_Message(void);
 
-#endif /* sysBEAUTY_MODE_ENABLED */
+#endif /* sysBEAUTY_MODE_ENABLED ||sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
 
 #endif /* R11_COMMON_H */

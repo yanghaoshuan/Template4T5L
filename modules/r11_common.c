@@ -4,13 +4,21 @@
  * 说明: R11模块通用实现文件，包含视频播放、WiFi等相关功能实现。
  */
 #include "r11_common.h"
+#if sysBEAUTY_MODE_ENABLED
 #include "r11_netskinAnalyze.h"
+#endif /* sysBEAUTY_MODE_ENABLED */
+#if sysN5CAMERA_MODE_ENABLED
+#include "r11_n5camera.h"
+#endif /* sysN5CAMERA_MODE_ENABLED */
+#if sysADVERTISE_MODE_ENABLED
+#include "r11_advertise.h"
+#endif /* sysADVERTISE_MODE_ENABLED */
 #include "sys.h"
 #include "T5LOSConfig.h"
 #include "uart.h"
 #include <string.h>
 
-#if sysBEAUTY_MODE_ENABLED
+#if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
 
 /**
  * @brief 调试数据定义区域
@@ -62,11 +70,12 @@ uint16_t Icon_Overlay_SP_Y[10];
 uint16_t Icon_Overlay_SP_L[10];
 uint16_t Icon_Overlay_SP_H[10]; 
 uint16_t Locate_arr[10]; 
+PAGE_S page_st;
 
 uint8_t mp4_name[5][MAX_MP3_NAME_LEN]=0;
 uint16_t mp4_name_len[5];
 PLAYER_T r11_player;
-PAGE_S page_st;
+
 VIDEO_INIT_PROCESS video_init_process = VIDEO_PROCESS_UNINIT;
 uint8_t wifi_now_offset = 0;
 
@@ -76,7 +85,6 @@ uint16_t pixels_arr_l[5]={720,600,600,480,768};
 
 uint16_t pixels_arr_h2[5]={1920,1024,800,800,1024};
 uint16_t pixels_arr_l2[5]={1080,600,600,480,768};
-
 
 void T5lJpegInit(void)
 {
@@ -111,6 +119,185 @@ void R11ChangePictureLocate(uint16_t x_point,uint16_t y_point,uint16_t high,uint
     {
         __NOP();
     }
+}
+
+
+void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
+{
+    #define BUF_MAX_LEN  256
+    uint8_t 	i,len,now_len,Temp_Buf_uint8_t[10];
+    uint8_t     r11_buf[BUF_MAX_LEN];
+    uint16_t    CRC16;
+    r11_buf[0] = 0xAA;
+    r11_buf[1] = 0x55;
+    r11_buf[4] = cmd;
+    switch (cmd)
+    {
+        case cmdMP4_UPDATEFILE: 
+        case cmdMP4_ROTATE_ANGLE: 
+        case cmdMP4_LOOP_MODE_SET:
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x03;
+            r11_buf[5] = buf[0];
+            r11_buf[6] = buf[1];
+            break;
+        case cmdMP4_AUX_SET:
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x02;
+            r11_buf[5] = buf[0];
+            break;
+        case cmdMP4_PREVFILE:
+        case cmdMP4_NEXTFILE: 
+        case cmdMP4_PAUSE: 
+        case cmdMP4_REPLAY: 
+        case cmdMP4_STOP: 
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x02;
+            r11_buf[5] = 0x00;
+            break;
+        case cmdMP4_PLAY: 
+            len = mp4_name_len[r11_player.serial];
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x01;
+            if (len > MAX_MP3_NAME_LEN)
+            {
+                return;
+            }
+            now_len = 5;
+
+            switch (r11_player.store_type)
+            {
+                case 1:
+                case 2:
+                case 3:
+                    Temp_Buf_uint8_t[0] = strlen ( DirPath ( r11_player.store_type ) );
+                    memcpy ( &r11_buf[5], DirPath ( r11_player.store_type ), Temp_Buf_uint8_t[0] );
+                    now_len += Temp_Buf_uint8_t[0];
+                    break;
+                default:
+                    r11_player.store_type = 2;
+                    Temp_Buf_uint8_t[0] = strlen ( DirPath ( r11_player.store_type ) ) ;
+                    memcpy ( &r11_buf[5], DirPath ( r11_player.store_type ), Temp_Buf_uint8_t[0] );
+                    now_len += Temp_Buf_uint8_t[0];
+                    break;
+            }
+            memcpy ( &r11_buf[now_len], buf, len );
+            len += now_len;
+            r11_buf[len++] = 0x00;
+            r11_buf[3] += len - 5;
+            break;
+        case cmdMP4_IMG_SET: 
+        case (cmdMP4_IMG_SET+1): 
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x05;
+            r11_buf[5] = buf[0];
+            r11_buf[6] = buf[1];
+            r11_buf[7] = buf[2];
+            r11_buf[8] = buf[3];
+            break;
+        case cmdCHECK_STATUS_NET:
+        case cmdCHECK_STATUS_DEVICE: 
+            r11_buf[2] = buf[2];
+            r11_buf[3] = buf[3];
+            r11_buf[4] = buf[4];
+            r11_buf[5] = buf[5];
+            break;
+        #if sysADVERTISE_MODE_ENABLED
+        /** 适用于广告屏，用来进行三元码的注册和websocket连接设置 */
+        case cmdSET_TERNARY_CODE:
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 12;
+            read_dgus_vp(0x411, ( uint8_t * ) &r11_buf[5],5 );
+            r11_buf[15] = '\0';
+            break;
+        case cmdSET_WEBSOCKET:
+            read_dgus_vp(0x680, ( uint8_t * ) &r11_buf[5],32 );
+            for ( i=0; i<64; i++ )
+            {
+                if ( r11_buf[5+i] == 0xFF )
+                {
+                    r11_buf[5+i] = '\0';
+                    i++;
+                    break;
+                }
+            }
+            r11_buf[2] = 0x00;
+            r11_buf[3] = i+1;
+            break;
+        #endif /* sysADVERTISE_MODE_ENABLED */
+        #if sysN5CAMERA_MODE_ENABLED
+        case cmdN5_CAMERA_OPEN:
+        case cmdN5_CAMERA_CLOSE:
+            r11_buf[2] = buf[2];
+            r11_buf[3] = buf[3];
+            r11_buf[4] = buf[4];
+            r11_buf[5] = buf[5];
+            break;
+        #endif /* sysN5CAMERA_MODE_ENABLED */
+        default:
+            return;
+            break;
+    }
+    CRC16 = crc_16 ( &r11_buf[4], r11_buf[3] );
+    r11_buf[r11_buf[3]+4] = CRC16 >> 8;
+    r11_buf[r11_buf[3]+5] = CRC16 & 0xFF;
+    r11_buf[3] += 2;
+    UartSendData ( &Uart_R11, r11_buf, r11_buf[3]+4 );
+    return;
+}
+
+
+void R11DebugValueHandle(uint16_t dgus_value)
+{
+    #define DEBUG_UART_ORDER         Uart2
+    uint32_t i;
+    uint8_t r11_send_buf[6];
+    if(dgus_value == 0x111)
+    {
+        for ( i=0; i<16384*3; i++ )
+        {
+            read_dgus_vp ( Icon_Overlay_SP_VP[0]+2*i, ( uint8_t * ) &r11_send_buf[0],2 );
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[3], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[2], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[1], 1);
+            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[0], 1);
+            delay_ms ( 1 );
+        }
+    }else if(dgus_value == 0x11a)
+    {
+        /** 将设置项写入Flash */
+        DgusToFlash(flashMAIN_BLOCK_ORDER, PIXELS_SET_ADDR, PIXELS_SET_ADDR, 0x48);
+        #if sysSET_FROM_LIB
+        R11ConfigInitFormLib();
+        #endif /* sysSET_FROM_LIB */
+    }
+    #if sysBEAUTY_MODE_ENABLED
+    else if(dgus_value == 0x11c)
+    {
+        /** 查询摄像头支持格式 */
+        UartSendData ( &Uart_R11,"\xAA\x55\x00\x02\xB4\x01", 6);
+    }
+    #endif /* sysBEAUTY_MODE_ENABLED */
+}
+
+
+void R11ClearPicture(uint8_t clear_type)
+{
+    uint16_t write_param[2] = {0x5b5b,0x5b5b},i;
+
+    write_dgus_vp(Icon_Overlay_SP_VP[0],(uint8_t*)write_param,2);
+    write_dgus_vp(Icon_Overlay_SP_VP[1],(uint8_t*)write_param,2);
+    #if sysBEAUTY_MODE_ENABLED
+    if(clear_type)
+    {
+        for(i=0;i<screen_opt.thumbnail_num;i++)
+        {
+            write_dgus_vp(Icon_Overlay_SP_VP[4+i],(uint8_t*)write_param,2);
+            camera_magnifier.camera_num[i] = 0;
+        }
+        r11_state.now_choose_pic = 0;
+    }
+    #endif /* sysBEAUTY_MODE_ENABLED */
 }
 
 
@@ -214,120 +401,6 @@ void R11VideoPlayerProcess(void)
     }else if(video_init_process == VIDEO_PROCESS_COMPLETE){
         __NOP();
     }
-}
-
-
-void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
-{
-    #define BUF_MAX_LEN  256
-    uint8_t 	i,len,now_len,Temp_Buf_uint8_t[10];
-    uint8_t     r11_buf[BUF_MAX_LEN];
-    uint16_t    CRC16;
-    r11_buf[0] = 0xAA;
-    r11_buf[1] = 0x55;
-    r11_buf[4] = cmd;
-    switch (cmd)
-    {
-        case cmdMP4_UPDATEFILE: 
-        case cmdMP4_ROTATE_ANGLE: 
-        case cmdMP4_LOOP_MODE_SET:
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x03;
-            r11_buf[5] = buf[0];
-            r11_buf[6] = buf[1];
-            break;
-        case cmdMP4_AUX_SET:
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x02;
-            r11_buf[5] = buf[0];
-            break;
-        case cmdMP4_PREVFILE:
-        case cmdMP4_NEXTFILE: 
-        case cmdMP4_PAUSE: 
-        case cmdMP4_REPLAY: 
-        case cmdMP4_STOP: 
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x02;
-            r11_buf[5] = 0x00;
-            break;
-        case cmdMP4_PLAY: 
-            len = mp4_name_len[r11_player.serial];
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x01;
-            if (len > MAX_MP3_NAME_LEN)
-            {
-                return;
-            }
-            now_len = 5;
-
-            switch (r11_player.store_type)
-            {
-                case 1:
-                case 2:
-                case 3:
-                    Temp_Buf_uint8_t[0] = strlen ( DirPath ( r11_player.store_type ) );
-                    memcpy ( &r11_buf[5], DirPath ( r11_player.store_type ), Temp_Buf_uint8_t[0] );
-                    now_len += Temp_Buf_uint8_t[0];
-                    break;
-                default:
-                    r11_player.store_type = 2;
-                    Temp_Buf_uint8_t[0] = strlen ( DirPath ( r11_player.store_type ) ) ;
-                    memcpy ( &r11_buf[5], DirPath ( r11_player.store_type ), Temp_Buf_uint8_t[0] );
-                    now_len += Temp_Buf_uint8_t[0];
-                    break;
-            }
-            memcpy ( &r11_buf[now_len], buf, len );
-            len += now_len;
-            r11_buf[len++] = 0x00;
-            r11_buf[3] += len - 5;
-            break;
-        case cmdMP4_IMG_SET: 
-        case (cmdMP4_IMG_SET+1): 
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 0x05;
-            r11_buf[5] = buf[0];
-            r11_buf[6] = buf[1];
-            r11_buf[7] = buf[2];
-            r11_buf[8] = buf[3];
-            break;
-        case cmdCHECK_STATUS_NET:
-        case cmdCHECK_STATUS_DEVICE: 
-            r11_buf[2] = buf[2];
-            r11_buf[3] = buf[3];
-            r11_buf[4] = buf[4];
-            r11_buf[5] = buf[5];
-            break;
-        /** 适用于广告屏，用来进行三元码的注册和websocket连接设置 */
-        case cmdSET_TERNARY_CODE:
-            r11_buf[2] = 0x00;
-            r11_buf[3] = 12;
-            read_dgus_vp(0x411, ( uint8_t * ) &r11_buf[5],5 );
-            r11_buf[15] = '\0';
-            break;
-        case cmdSET_WEBSOCKET:
-            read_dgus_vp(0x680, ( uint8_t * ) &r11_buf[5],32 );
-            for ( i=0; i<64; i++ )
-            {
-                if ( r11_buf[5+i] == 0xFF )
-                {
-                    r11_buf[5+i] = '\0';
-                    i++;
-                    break;
-                }
-            }
-            r11_buf[2] = 0x00;
-            r11_buf[3] = i+1;
-            break;
-        default:
-            return;
-            break;
-    }
-    CRC16 = crc_16 ( &r11_buf[4], r11_buf[3] );
-    r11_buf[r11_buf[3]+4] = CRC16 >> 8;
-    r11_buf[r11_buf[3]+5] = CRC16 & 0xFF;
-    r11_buf[3] += 2;
-    UartSendData ( &Uart_R11, r11_buf, r11_buf[3]+4 );
-    return;
 }
 
 
@@ -515,38 +588,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
 }
 
 
-void R11DebugValueHandle(uint16_t dgus_value)
-{
-    #define DEBUG_UART_ORDER         Uart2
-    uint32_t i;
-    uint8_t r11_send_buf[6];
-    if(dgus_value == 0x111)
-    {
-        for ( i=0; i<16384*3; i++ )
-        {
-            read_dgus_vp ( Icon_Overlay_SP_VP[0]+2*i, ( uint8_t * ) &r11_send_buf[0],2 );
-            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[3], 1);
-            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[2], 1);
-            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[1], 1);
-            UartSendData ( &DEBUG_UART_ORDER,&r11_send_buf[0], 1);
-            delay_ms ( 1 );
-        }
-    }else if(dgus_value == 0x11a)
-    {
-        /** 将设置项写入Flash */
-        DgusToFlash(flashMAIN_BLOCK_ORDER, PIXELS_SET_ADDR, PIXELS_SET_ADDR, 0x48);
-        #if sysSET_FROM_LIB
-        R11ConfigInitFormLib();
-        #endif /* sysSET_FROM_LIB */
-    }
-    else if(dgus_value == 0x11c)
-    {
-        /** 查询摄像头支持格式 */
-        UartSendData ( &Uart_R11,"\xAA\x55\x00\x02\xB4\x01", 6);
-    }
-}
-
-
+#if sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
 /*
  * @brief 连接WiFi，组装并发送WiFi连接协议帧。
  */
@@ -689,24 +731,8 @@ void R11WifiValueHandle(uint16_t dgus_value)
         T5lSendUartDataToR11(cmdCHECK_STATUS_DEVICE, r11_send_buf);
     }
 }
+#endif /* sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
 
-
-void R11ClearPicture(uint8_t clear_type)
-{
-    uint16_t write_param[2] = {0x5b5b,0x5b5b},i;
-
-    write_dgus_vp(Icon_Overlay_SP_VP[0],(uint8_t*)write_param,2);
-    write_dgus_vp(Icon_Overlay_SP_VP[1],(uint8_t*)write_param,2);
-    if(clear_type)
-    {
-        for(i=0;i<screen_opt.thumbnail_num;i++)
-        {
-            write_dgus_vp(Icon_Overlay_SP_VP[4+i],(uint8_t*)write_param,2);
-            camera_magnifier.camera_num[i] = 0;
-        }
-        r11_state.now_choose_pic = 0;
-    }
-}
 
 /**
  * @brief 从串口协议中提取以双0x23字符分隔的文件名
@@ -781,7 +807,7 @@ static void ExtractFilenamesFromProtocol(uint8_t *frame, uint16_t len)
 }
 
 
-void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
+void UartR11UserVideoProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     uint16_t write_param[10];
     if(frame[0] == 0xAA && frame[1] == 0x55)
@@ -815,7 +841,6 @@ void UartR11UserVideoProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         }
     }
 }
-
 
 /*
  * @brief 外部中断1服务函数，处理JPEG数据写入等。
@@ -981,7 +1006,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                 data_write_f = 4;
                 EX0 = 0;
                 EX1 = 0;
-                //EX1_Start();
             }
             break;
         }
@@ -1015,8 +1039,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 data_write_f = 8;
                                                 EX0 = 0;
                                                 EX1 = 0;
-                                                //EX1_Start();
-                                                //break;
                                             }
                                             else
                                             {
@@ -1033,7 +1055,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 												DATA1 = DATA2;
 												DATA3 = 0x5A;
 												DATA2 = 0xA5;
-												//DATA1 = 0xFF;
+												// DATA1 = 0xFF;
 												DATA0 = 0xFE;
 												APP_EN = 1;
 												while ( APP_EN );
@@ -1079,20 +1101,20 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 {
                                                     Pic_Count[0]++;
                                                 }
+												#if sysBEAUTY_MODE_ENABLED
                                                 else
                                                 {
-													
 													if(Icon_Num == r11_state.now_choose_pic+5)
 													{
 														r11_state.pic_capture_flag = 1;
 													}
                                                     Pic_Count[ ( Icon_Num-1 )]++;
                                                 }
+                                                #endif /* sysBEAUTY_MODE_ENABLED */
                                                 data_write_f = 0;
                                                 EX1_Start();
                                             }
                                         }
-                                        //break;
                                     }
                                     else
                                     {
@@ -1100,7 +1122,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                         data_write_f = 0x03;
                                         EX0 = 0;
                                         EX1 = 0;
-                                        //EX1_Start();
                                     }
                                 }
                                 else
@@ -1116,8 +1137,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 data_write_f = 8;
                                                 EX0 = 0;
                                                 EX1 = 0;
-                                                //EX1_Start();
-                                                //break;
                                             }
                                             else
                                             {
@@ -1184,6 +1203,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 {
                                                     Pic_Count[0]++;
                                                 }
+                                                #if sysBEAUTY_MODE_ENABLED
                                                 else
                                                 {
 													if(Icon_Num == r11_state.now_choose_pic+5)
@@ -1192,6 +1212,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 													}
                                                     Pic_Count[ ( Icon_Num-1 )]++;
                                                 }
+                                                #endif /* sysBEAUTY_MODE_ENABLED */
                                                 data_write_f = 0;
                                                 EX1_Start();
                                             }
@@ -1203,7 +1224,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                         data_write_f = 0x03;
                                         EX0 = 0;
                                         EX1 = 0;
-                                        //EX1_Start();
                                     }
                                 }
                             }
@@ -1213,7 +1233,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                 data_write_f = 8;
                                 EX0 = 0;
                                 EX1 = 0;
-                                //EX1_Start();
                             }
                         }
                         else
@@ -1222,7 +1241,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                             data_write_f = 9;
                             EX0 = 0;
                             EX1 = 0;
-                            //EX1_Start();
                         }
                     }
                     else
@@ -1231,7 +1249,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                         data_write_f = 7;
                         EX0 = 0;
                         EX1 = 0;
-                        //EX1_Start();
                     }
                 }
                 else
@@ -1240,7 +1257,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                     data_write_f = 4;
                     EX0 = 0;
                     EX1 = 0;
-                    //EX1_Start();
                 }
             }
             break;
@@ -1270,4 +1286,4 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 }
 
 
-#endif /* sysBEAUTY_MODE_ENABLED */
+#endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */

@@ -190,7 +190,7 @@ void R11ConfigInitFormLib(void)
 	memcpy(&addr_st, &read_param[0], 22);
 
 	read_dgus_vp(CMD_82_RETURN_ADDR,(uint8_t*)&screen_opt.cmd_82_return_flag,1);
-	//7.针对wifi相关过渡页进行初始化
+	/** 7.针对wifi相关过渡页进行初始化 */
 	read_dgus_vp(WIFI_SCAN_PAGE_ADDR,(uint8_t*)&read_param[0],7);
 	memcpy(&wifi_page, &read_param[0], 14);
 

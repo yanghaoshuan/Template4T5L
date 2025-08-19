@@ -17,15 +17,26 @@
 #include "modbus.h"
 #endif /* uartMODBUS_PROTOCOL_ENABLED */
 
-#if sysBEAUTY_MODE_ENABLED
-#include "r11_netskinAnalyze.h"
-#include "r11_common.h"
 #if sysSET_FROM_LIB
 uint16_t sys_2k_ratio;
 uint32_t sysFOSC;
 uint32_t sysFCLK;
-#endif
+#endif /* sysSET_FROM_LIB */
+
+#if sysBEAUTY_MODE_ENABLED
+#include "r11_netskinAnalyze.h"
+#include "r11_common.h"
 #endif /* sysBEAUTY_MODE_ENABLED */
+
+#if sysN5CAMERA_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_n5camera.h"
+#endif /* sysN5CAMERA_MODE_ENABLED */
+
+#if sysADVERTISE_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_advertise.h"
+#endif /* sysADVERTISE_MODE_ENABLED */
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
@@ -638,9 +649,18 @@ void UartReadFrame(UART_TYPE *uart)
         UartStandardModbusRTUProtocal(uart, frame, i);
         #endif /* uartMODBUS_PROTOCOL_ENABLED */
         #if sysBEAUTY_MODE_ENABLED
-        UartR11UserVideoProtocal(uart, frame, i);
+        UartR11UserVideoProtocol(uart, frame, i);
         UartR11UserBeautyProtocol(uart, frame, i);
         #endif /* sysBEAUTY_MODE_ENABLED */
+        #if sysN5CAMERA_MODE_ENABLED
+        UartR11UserVideoProtocol(uart, frame, i);
+        UartR11UserN5CameraProtocol(uart, frame, i);
+        #endif /* sysN5CAMERA_MODE_ENABLED */
+        #if sysADVERTISE_MODE_ENABLED
+        UartR11UserVideoProtocol(uart, frame, i);
+        UartR11UserAdvertiseProtocol(uart, frame, i);
+        #endif /* sysADVERTISE_MODE_ENABLED */
+
     }
 }
 
@@ -649,8 +669,8 @@ void UartProtocalHandleTask(void)
 {
     UartReadFrame(&Uart2);
     UartReadFrame(&Uart4);
-    #if sysBEAUTY_MODE_ENABLED
+    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     UartReadFrame(&Uart_R11);
-    #endif /* sysBEAUTY_MODE_ENABLED */
+    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
 }
 

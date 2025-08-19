@@ -19,6 +19,16 @@
 #include "r11_netskinAnalyze.h"
 #endif /* sysBEAUTY_MODE_ENABLED */
 
+#if sysN5CAMERA_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_n5camera.h"
+#endif /* sysN5CAMERA_MODE_ENABLED */
+
+#if sysADVERTISE_MODE_ENABLED
+#include "r11_common.h"
+#include "r11_advertise.h"
+#endif /* sysADVERTISE_MODE_ENABLED */
+
 void main(void)
 {
 
@@ -43,11 +53,15 @@ void main(void)
   #if sysBEAUTY_MODE_ENABLED
   SysTaskAdd(3, R11_TASK_INTERVAL, R11NetskinAnalyzeTask);
   #endif /* sysBEAUTY_MODE_ENABLED */
+
+  #if sysN5CAMERA_MODE_ENABLED
+  SysTaskAdd(3, R11_TASK_INTERVAL, R11N5CameraTask);
+  #endif /* sysN5CAMERA_MODE_ENABLED */
   
   while(1)
   {
 	/** 这个任务需要在主循环中运行，用来进行数据出错后的处理 */
-	#if sysBEAUTY_MODE_ENABLED
+	#if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED
 	if(data_write_f > 2)
 	{
 	  EX0 = 0;
@@ -58,7 +72,7 @@ void main(void)
   /** debug
    * Display_Debug_Message();
    */
-	#endif /* sysBEAUTY_MODE_ENABLED */
+	#endif /* sysBEAUTY_MODE_ENABLED||sysN5CAMERA_MODE_ENABLED */
 
   SysTaskRun();
   }
