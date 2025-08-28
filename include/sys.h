@@ -196,7 +196,7 @@ void read_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
  * @param[in] buf 待写入数据的缓冲区指针
  * @param[in] len 要写入的数据长度
  */
-void write_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
+void write_dgus_vp(uint32_t addr, uint8_t *buf, uint16_t len);
 
 
 /**

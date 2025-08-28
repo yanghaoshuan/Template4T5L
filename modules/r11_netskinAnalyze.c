@@ -86,15 +86,15 @@ void R11ConfigInitFormLib(void)
 		
 	}else if(screen_opt.thumbnail_num == 6)
 	{
-		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x07000;
-		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1d000;
-		Icon_Overlay_SP_VP[4] = 0x33000;
-		Icon_Overlay_SP_VP[5] = 0x35000;
-		Icon_Overlay_SP_VP[6] = 0x37000;
-		Icon_Overlay_SP_VP[7] = 0x39000;
-		Icon_Overlay_SP_VP[8] = 0x3b000;
-		Icon_Overlay_SP_VP[9] = 0x3d000;
-		Icon_Overlay_SP_VP[10] = 0x3f000;
+		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x02000;
+		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x09000;
+		// Icon_Overlay_SP_VP[4] = 0x33000;
+		// Icon_Overlay_SP_VP[5] = 0x35000;
+		// Icon_Overlay_SP_VP[6] = 0x37000;
+		// Icon_Overlay_SP_VP[7] = 0x39000;
+		// Icon_Overlay_SP_VP[8] = 0x3b000;
+		// Icon_Overlay_SP_VP[9] = 0x3d000;
+		// Icon_Overlay_SP_VP[10] = 0x3f000;
 	}
 
 	if(screen_opt.jpeg_type> 4)
@@ -199,6 +199,10 @@ void R11ConfigInitFormLib(void)
 	read_dgus_vp(VIDEO_FULL_ADDR,(uint8_t*)&read_param[0],1);
 	page_st.fullvideo_flag = read_param[0] >> 8;
 	page_st.fullvideo_page = read_param[0] & 0xff;
+	read_dgus_vp(FOLDER_PAGE_ADDR,(uint8_t*)&read_param[0],1);
+	page_st.folder_flag = read_param[0] >> 8;
+	page_st.folder_page = read_param[0] & 0xff;
+	read_dgus_vp(FOLDER_PATH_ADDR,(uint8_t*)&addr_st.folder_addr,1);
 }
 
 
@@ -477,7 +481,7 @@ static void R11CameraEnlargeHandle(uint16_t dgus_value)
  */
 static void MagnifierKeyHandle(uint16_t dgus_value)
 {
-	uint8_t r11_send_buf[100];
+	uint8_t r11_send_buf[100],write_param[2]={0x5b5b,0x5b5b};
 	const uint16_t uin16_port_zero = 0;
 	uint16_t rotate_angle;
     if(dgus_value == 0xA501)
@@ -562,11 +566,11 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		}
 		if(r11_state.delay_count == 5)
 		{
-			write_dgus_vp(Icon_Overlay_SP_VP[4+r11_state.now_choose_pic],"\x5b\x5b\x5b\x5b",2);
+			write_dgus_vp(Icon_Overlay_SP_VP[4+r11_state.now_choose_pic],write_param,2);
 			r11_send_buf[0] = 0xaa;
 			r11_send_buf[1] = 0x55;
 			r11_send_buf[2] = 0x00;
-			r11_send_buf[3] = 0x07;
+			r11_send_buf[3] = (7+32);
 			r11_send_buf[4] = cameraCAP_PICTURE;
 			r11_send_buf[5] = r11_state.now_choose_pic;
 			r11_send_buf[6] = camera_magnifier.camera_cap_high>>8;
@@ -574,7 +578,10 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 			r11_send_buf[8] = camera_magnifier.camera_cap_width >> 8;
 			r11_send_buf[9] = (uint8_t)camera_magnifier.camera_cap_width;
 			r11_send_buf[10] = 50;
-			UartSendData(&Uart_R11,r11_send_buf,11);
+			/** 2025.08.26:增加指定路径创建大图 */
+			read_dgus_vp(addr_st.folder_addr,(uint8_t*)&r11_send_buf[11],16);
+			FormatArrayToFullPath(&r11_send_buf[11], 32);
+			UartSendData(&Uart_R11,r11_send_buf,11+32);
 			r11_state.delay_count = 0;
 		}else
 		{
@@ -585,7 +592,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		/** 摄像头删除 */
 		if(camera_magnifier.camera_num[r11_state.now_choose_pic] == 1)   
 		{
-			write_dgus_vp(Icon_Overlay_SP_VP[4+r11_state.now_choose_pic],"\x5b\x5b\x5b\x5b",2);
+			write_dgus_vp(Icon_Overlay_SP_VP[4+r11_state.now_choose_pic],write_param,2);
 			camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;
 			r11_send_buf[0] = 0xaa;
 			r11_send_buf[1] = 0x55;
@@ -749,6 +756,14 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
         enl_enlarge_mode.enlarge_cap_width = camera_magnifier.camera_show_width;
         R11MagnifierEnlarge(cameraENL_PICTURE,NULL,&enl_enlarge_mode);
         write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+	}else if(dgus_value == 0xa520)
+	{
+		/** 跳转到文件夹页面 */
+		if(page_st.folder_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)page_st.folder_page); 
+		}
+		write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 	}
 }
 
@@ -885,7 +900,7 @@ static void R11ValueScanTask(void)
 {
     const uint16_t uint16_port_zero = 0;
     uint16_t dgus_value;
-  
+	uint16_t write_param[10];
     #if sysDGUS_AUTO_UPLOAD_ENABLED
     DgusAutoUpload();
     #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
@@ -1323,7 +1338,6 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				}
 				break;
 			case netCONNECT_STATUS:
-				UartSendData(&Uart2,&frame[4],1);
 				read_dgus_vp(sysDGUS_PIC_NOW,(uint8_t*)&now_pic,1);
 				if ( frame[8] == 2||frame[8] == 3||frame[8] == 1 )
 				{

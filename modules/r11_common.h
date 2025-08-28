@@ -36,6 +36,8 @@ typedef struct
 	uint8_t upload_page;         /**< 上传页面编号，广告屏不包含，设置为0 */
 	uint8_t fullvideo_flag;      /**< 全屏视频页面标志 */
 	uint8_t fullvideo_page;      /**< 全屏视频页面编号 */
+	uint8_t folder_flag;		 /**< 文件夹页面标志，广告屏不包含，设置为0 */
+	uint8_t folder_page;		 /**< 文件夹页面编号，广告屏不包含，设置为0 */
 } PAGE_S;
 extern PAGE_S page_st;
 
@@ -221,6 +223,13 @@ extern uint8_t wifi_now_offset;
  * @brief JPEG参数初始化，设置相关缓冲区和计数器。
  */
 void T5lJpegInit(void);
+
+
+/**
+ * 遍历len长度的数组，遇到0x00，或者0xff，或者'\0',将剩下的数据替换成0x00
+ * 如果前几个字符不是/mnt/UDISK/或者/mnt/SDCARD/或者/mnt/exUDISK/,则替换为/mnt/UDISK/tmp
+ */
+void FormatArrayToFullPath(uint8_t *buf, uint8_t len);
 
 
 /**

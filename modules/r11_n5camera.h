@@ -38,6 +38,7 @@
 #define CROP_SCREEN_ADDR        0x05a8
 #define VIDEO_SCREEN_ADDR       0x05a9
 #define UPLOAD_SCREEN_ADDR      0x05aa
+#define N5_CAMERA_MODE_ADDR     0x05ab
 
 
 #define VIDEO_FULL_ADDR         0x05c0
@@ -48,6 +49,7 @@
 
 #define cmdN5_CAMERA_OPEN        0x71
 #define cmdN5_CAMERA_CLOSE       0x7b
+#define cmdN5_CAMERA_MODE        0x50
 
 
 typedef struct
@@ -78,6 +80,38 @@ typedef struct
 	uint16_t crop_y_point;       /* 裁剪区域Y坐标 */
 } MAINVIEW_S;
 
+
+typedef enum NC_VIVO_CH_FORMATDEF_E
+{
+    NC_VIVO_CH_FORMATDEF_UNKNOWN = 0,
+
+    SD_H720_NT = 1,
+    SD_H720_PAL,
+    SD_960H_NT,
+    SD_960H_PAL,
+    SD_960H_EX_NT,  //1920*480
+    SD_960H_EX_PAL,	//1920*576
+    SD_960H_2EX_NT,	//3840*480
+    SD_960H_2EX_PAL,	//3840*576
+    AHD_720P_30P,
+    AHD_720P_25P,
+    AHD_720P_30P_EX, //2560*720
+    AHD_720P_25P_EX, //2560*720
+    AHD_960P_30P,
+    AHD_960P_25P,
+    AHD_1080P_30P,
+    AHD_1080P_25P,
+    AHD_1080P_60P,
+    AHD_1080P_50P,
+    AHD_4M_30P,
+    AHD_4M_25P,
+    AHD_8M_15P,
+    AHD_8M_12_5P,
+    AHD_1080P_15P,
+
+    NC_VIVO_CH_FORMATDEF_MAX,
+
+} NC_VIVO_CH_FORMATDEF_E;
 
 typedef struct 
 {

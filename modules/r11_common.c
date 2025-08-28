@@ -59,7 +59,6 @@ volatile uint8_t    data        Picture_Flag                _at_    0x44;
 volatile uint8_t    data        pic_time_cnt                _at_    0x45;
 volatile uint8_t    data        Bit8_16_Flag                _at_    0x46;
 volatile uint16_t   data        write_f_time                _at_    0x47;
-
 volatile uint8_t    idata       Pic_Count[10]               _at_    0xb0;
 
 
@@ -120,6 +119,30 @@ void R11ChangePictureLocate(uint16_t x_point,uint16_t y_point,uint16_t high,uint
         __NOP();
     }
 }
+
+
+/** 遍历len长度的数组，遇到0x00，或者0xff，或者'\0',将剩下的数据替换成0x00
+ * 如果前几个字符不是/mnt/UDISK/和/mnt/SDCARD/和/mnt/exUDISK/,则替换为/mnt/UDISK/tmp
+ */
+void FormatArrayToFullPath(uint8_t *buf, uint8_t len)
+{
+    uint8_t i;
+    if (memcmp(buf, "/mnt/", 5) != 0)
+    {
+        memcpy(buf, "/mnt/UDISK/tmp", 14);
+        buf[14] = 0x00;
+    }
+
+    for (i = 0; i < len; i++)
+    {
+        if (buf[i] == 0x00 || buf[i] == 0xff || buf[i] == '\0')
+        {
+            memset(&buf[i], 0x00, len - i);
+            break;
+        }
+    }
+}
+
 
 
 void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
@@ -228,6 +251,7 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
         #if sysN5CAMERA_MODE_ENABLED
         case cmdN5_CAMERA_OPEN:
         case cmdN5_CAMERA_CLOSE:
+        case cmdN5_CAMERA_MODE:
             r11_buf[2] = buf[2];
             r11_buf[3] = buf[3];
             r11_buf[4] = buf[4];
@@ -503,6 +527,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
         r11_send_buf[0] = r11_player.store_type;
         r11_send_buf[1] = r11_player.Document_type = MP4;
         T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
+        R11ClearPicture(0);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
     }else if(dgus_value == keyMP4_NEXTFILE)
     {
@@ -877,6 +902,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                 {
                     case 0:
                     case 1:
+                    case 2:
                     case 3:
                     case 4:
                     case 10:

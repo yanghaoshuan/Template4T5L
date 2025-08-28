@@ -112,13 +112,13 @@ typedef            long			int32_t;
  * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
-#define sysADVERTISE_MODE_ENABLED       1
+#define sysADVERTISE_MODE_ENABLED       0
 #define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0       
+#define sysBEAUTY_MODE_ENABLED         1       
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
-#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED) > 1) */
+#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
 
 #if sysN5CAMERA_MODE_ENABLED
 #define Uart_R11                     Uart5
@@ -145,7 +145,7 @@ extern uint32_t sysFCLK;
  * @brief 2k分辨率模式
  * @details 1: 1920*1080分辨率屏幕, 0: 其他
  */
-#define sys2K_RATIO                  1
+#define sys2K_RATIO                  0
 
 #if sys2K_RATIO
 /**

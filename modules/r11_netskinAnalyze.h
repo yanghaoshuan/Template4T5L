@@ -86,6 +86,8 @@
 #define WIFI_START_ADDR         0x05be
 #define CAMERA_OPEN_ADDR        0x05bf
 #define VIDEO_FULL_ADDR         0x05c0
+#define FOLDER_PAGE_ADDR        0x05c1
+#define FOLDER_PATH_ADDR        0x05c2
 
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
@@ -193,6 +195,7 @@ typedef struct
 	uint16_t camera_para_addr;   /* 摄像头参数地址 */
 	uint16_t t5l_ver_addr;       /* T5L版本地址 */
 	uint16_t r11_ver_addr;       /* R11版本地址 */
+	uint16_t folder_addr;        /* 文件夹路径保存地址 */
 } ADDR_S;
 
 

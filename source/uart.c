@@ -493,10 +493,10 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 {
     uint16_t crc16,min_frame_len;
-    if(frame[2] == 0x83)
+    if(frame[3] == 0x83)
     {
         min_frame_len = 7;
-    }else if(frame[2] == 0x82)
+    }else if(frame[3] == 0x82)
     {
         min_frame_len = 6;
     }
@@ -568,7 +568,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         UartSendData(uart, send_return_frame, i);
         #endif /* uartUART_82CMD_RETURN */
     }else if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x83)
-    {
+    {      
         if(prvDwin8283CrcCheck(frame,len,&CrcFlag) == 0)
         {
             return;
@@ -601,16 +601,19 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 void UartReadFrame(UART_TYPE *uart)
 {
     uint8_t frame[uartUART_COMMON_FRAME_SIZE];
-    uint16_t i;
+    uint16_t i,rx_head_bak;
     if(uart->RxFlag == UART_NON_REC)
         return;
     if(uart->RxTimeout == 0)
     {
-			
+        rx_head_bak = uart->RxHead;
         uart->RxFlag = UART_NON_REC;
-        SysEnterCritical();
+        /**
+         * @note:不再关闭中断，改为静态变量进行备份
+         */
+        // SysEnterCritical();
         i=0;
-        while(uart->RxHead != uart->RxTail)
+        while(rx_head_bak != uart->RxTail)
         {
             #if uartUART2_ENABLED
             if(uart == &Uart2)
@@ -643,7 +646,7 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART5_ENABLED */
         }
-        SysExitCritical();
+        // SysExitCritical();
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);

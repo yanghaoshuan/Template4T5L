@@ -32,8 +32,8 @@ void R11ConfigInitFormLib(void)
 
 
 	/* 3.针对主显示位置进行初始化 */
-	read_dgus_vp(MAIN_HIGH_ADDR,(uint8_t*)&read_param[0],8);
-	memcpy(&mainview, &read_param[0], 16);
+	read_dgus_vp(VIDEO_HIGH_ADDR,(uint8_t*)&read_param[0],16);
+	memcpy(&mainview, &read_param[0], 32);
 
 	Icon_Overlay_SP_X[0] = Icon_Overlay_SP_X[1] = mainview.main_x_point;
 	Icon_Overlay_SP_X[2] = Icon_Overlay_SP_X[3] = mainview.detail_x_point;
@@ -70,20 +70,38 @@ static void R11PageInitChange()
     read_dgus_vp(sysDGUS_PIC_NOW, (uint8_t *)&now_pic, 1);
     if(now_pic == (uint16_t)page_st.detail_page)
 	{
-		R11ChangePictureLocate(mainview.detail_x_point,mainview.detail_y_point,mainview.detail_high,mainview.detail_weight,0x02);
+		R11ChangePictureLocate(mainview.detail_x_point,mainview.detail_y_point,mainview.detail_high,mainview.detail_weight,0x01);
 	}else if(now_pic == (uint16_t)page_st.main_page)
 	{
-		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
+		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x01);
 	}else
 	{
-		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
+		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x01);
 	}
+}
+
+
+static void R11N5CameraModeSet()
+{
+    uint16_t mode = 0;
+    uint8_t write_param[9];
+    read_dgus_vp(N5_CAMERA_MODE_ADDR, (uint8_t *)&mode, 1);
+    write_param[0] = 0xAA;
+    write_param[1] = 0x55;
+    write_param[2] = 0x00;
+    write_param[3] = 0x02;
+    write_param[4] = cmdN5_CAMERA_MODE;
+    write_param[5] = (uint8_t)mode;
+    T5lSendUartDataToR11(cmdN5_CAMERA_MODE, write_param);
+
 }
 
 
 static void R11RestartInit()
 {
-    R11PageInitChange();
+    R11N5CameraModeSet();
+    T5lJpegInit();
+    // R11PageInitChange();
 }
 
 
@@ -105,6 +123,7 @@ static void N5CameraKeyHandle(uint16_t dgus_value)
         {
             SwitchPageById((uint16_t)page_st.main_page); 
         }
+        R11PageInitChange();
         write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
     }else if(dgus_value == 0xA50A)
     {
@@ -121,6 +140,81 @@ static void N5CameraKeyHandle(uint16_t dgus_value)
         {
             SwitchPageById((uint16_t)page_st.menu_page); 
         }
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }else if(dgus_value == 0xA530)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = SD_H720_NT;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }else if(dgus_value == 0xA531)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = SD_H720_PAL;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }
+    else if(dgus_value == 0xA532)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = SD_960H_NT;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }
+    else if(dgus_value == 0xA533)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = SD_960H_PAL;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }
+    else if(dgus_value == 0xA534)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = AHD_720P_25P;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }
+    else if(dgus_value == 0xA535)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = AHD_1080P_25P;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
+        write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
+    }
+    else if(dgus_value == 0xA536)
+    {
+        r11_send_buf[0] = 0xaa;
+        r11_send_buf[1] = 0x55;
+        r11_send_buf[2] = 0x00;
+        r11_send_buf[3] = 0x02;
+        r11_send_buf[4] = cmdN5_CAMERA_MODE;
+        r11_send_buf[5] = AHD_1080P_15P;
+        T5lSendUartDataToR11(cmdN5_CAMERA_MODE,r11_send_buf);
         write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
     }
 }
@@ -158,7 +252,7 @@ void R11N5CameraTask(void)
         r11_state.restart_flag = 2;  /* 重置重启标志 */
     }else if(r11_state.restart_flag == 2)
 	{
-        R11VideoPlayerProcess();
+        // R11VideoPlayerProcess();
 		R11ValueScanTask();
 	}
 }
@@ -168,13 +262,13 @@ void UartR11UserN5CameraProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
 	static uint16_t prev_pic = 0;
 	uint16_t write_param[10],now_pic;
-    if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x82)
+    if(frame[0] == 0x5a && frame[1] == 0xa5)
     {
         if(len < frame[2] + 3) 
         {
             return; 
         }
-        if(frame[4] == 0x04 && frame[5] == 0x82 && uart == &Uart_R11)
+        if(frame[4] == 0x04 && frame[5] == 0x11 && uart == &Uart_R11)
         {
             r11_state.restart_flag = 1;  /* 设置重启标志 */
         }
