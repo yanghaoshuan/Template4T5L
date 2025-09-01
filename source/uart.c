@@ -611,7 +611,6 @@ void UartReadFrame(UART_TYPE *uart)
         /**
          * @note:不再关闭中断，改为静态变量进行备份
          */
-        // SysEnterCritical();
         i=0;
         while(rx_head_bak != uart->RxTail)
         {
@@ -646,8 +645,6 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART5_ENABLED */
         }
-        UartSendData(&Uart2,frame,i);
-        // SysExitCritical();
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);

@@ -206,10 +206,7 @@ void R11ConfigInitFormLib(void)
 }
 
 
-/*
- * @brief 页面切换时调整图片显示位置。
- */
-static void R11PageInitChange()
+void R11PageInitChange(void)
 {
 	uint16_t now_pic;
     read_dgus_vp(sysDGUS_PIC_NOW, (uint8_t *)&now_pic, 1);
@@ -219,6 +216,9 @@ static void R11PageInitChange()
 	}else if(now_pic == (uint16_t)page_st.main_page)
 	{
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
+	}else if(now_pic == (uint16_t)page_st.video_page)
+	{
+		R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
 	}else
 	{
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
@@ -1143,6 +1143,8 @@ static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 		frame[9+4*i] = Temp8;
 	}
 	write_dgus_vp(Icon_Overlay_SP_VP[10] + 2, ( uint8_t * ) &frame[7],2048 );
+	write_param[0] = 0x5AA5;
+	write_param[1] = 0xFFFE;
 	write_dgus_vp(Icon_Overlay_SP_VP[10], ( uint8_t * ) &write_param[0],2 );
 }
 
@@ -1173,7 +1175,6 @@ static void R11CameraInit()
 {
 	uint16_t now_pic;
 	R11ClearPicture(1);
-	r11_state.now_choose_pic = 0;
 	read_dgus_vp(sysDGUS_PIC_NOW,(uint8_t*)&now_pic,1);
 	if(now_pic == (uint16_t)page_st.detail_page || now_pic == (uint16_t)page_st.main_page)
 	{
@@ -1190,9 +1191,9 @@ static void R11CameraInit()
  */
 static void R11RestartInit(void)
 {
+	R11CameraInit();
     R11FlagBitInit();
 	R11StartPowerInit();
-	R11CameraInit();
 }
 
 

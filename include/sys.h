@@ -197,7 +197,7 @@ void read_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
  * @param[in] len 要写入的数据长度
  */
 void write_dgus_vp(uint32_t addr, uint8_t *buf, uint16_t len);
-
+//void write_dgus_vp(uint32_t addr, uint8_t *buf, uint8_t len);
 
 /**
  * @brief 将数值转换为ASCII字符并复制到指定数组

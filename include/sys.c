@@ -275,57 +275,6 @@ void read_dgus_vp(uint32_t addr,uint8_t *buf,uint8_t len)
     RAMMODE=0x00;           
 }
 
-#if 0
-void write_dgus_vp(uint32_t addr,uint8_t *buf,uint8_t len)
-{
-	uint16_t OS_addr = 0;
-	uint16_t OS_addr_offset = 0;
-	uint16_t OS_len = 0, OS_len_offset = 0;
-	
-	EA = 0;
-	OS_addr = addr >> 1;
-	OS_addr_offset = addr & 0x01;
-	ADR_H = (uint8_t)(OS_addr>>16);
-	ADR_M = (uint8_t)(OS_addr >> 8);
-	ADR_L = (uint8_t)OS_addr;
-	ADR_INC = 0x01; 
-	RAMMODE = 0x83;
-	while (!APP_ACK)
-		__NOP();
-	if (OS_addr_offset)
-	{
-		DATA1 = *buf++;
-		DATA0 = *buf++;
-		APP_EN = 1;
-		while (APP_EN);
-		len--;
-	}
-	OS_len = len >> 1;
-	OS_len_offset = len & 0x01;
-	RAMMODE = 0x8F; 
-	while (OS_len--)
-	{
-		DATA3 = *buf++;
-		DATA2 = *buf++;
-		DATA1 = *buf++;
-		DATA0 = *buf++;
-		APP_EN = 1;
-		while (APP_EN)
-			__NOP();
-	}
-	if (OS_len_offset)
-	{
-		RAMMODE = 0x8C;
-		DATA3 = *buf++;
-		DATA2 = *buf++;
-		APP_EN = 1;
-		while (APP_EN)
-			__NOP();
-	}
-	RAMMODE = 0x00; 
-	EA = 1;
-}
-#endif
 
 void write_dgus_vp ( uint32_t  addr, uint8_t *buf, uint16_t len )
 {
@@ -370,6 +319,7 @@ void write_dgus_vp ( uint32_t  addr, uint8_t *buf, uint16_t len )
     RAMMODE=0x00;
 
 }
+
 
 uint16_t CopyAsciiValue(uint8_t *arr,uint16_t value,uint16_t start) 
 {

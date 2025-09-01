@@ -292,6 +292,9 @@ void R11DebugValueHandle(uint16_t dgus_value)
         DgusToFlash(flashMAIN_BLOCK_ORDER, PIXELS_SET_ADDR, PIXELS_SET_ADDR, 0x48);
         #if sysSET_FROM_LIB
         R11ConfigInitFormLib();
+        #if sysBEAUTY_MODE_ENABLED
+        R11PageInitChange();
+        #endif /* sysBEAUTY_MODE_ENABLED */
         #endif /* sysSET_FROM_LIB */
     }
     #if sysBEAUTY_MODE_ENABLED
@@ -301,6 +304,16 @@ void R11DebugValueHandle(uint16_t dgus_value)
         UartSendData ( &Uart_R11,"\xAA\x55\x00\x02\xB4\x01", 6);
     }
     #endif /* sysBEAUTY_MODE_ENABLED */
+    else if(dgus_value == 0x11d)
+    {
+        if(data_write_f > 2)
+        {
+            EX0 = 0;
+            EX1 = 0;
+            data_write_f = 0;
+            EX1_Start();
+        }
+    }
 }
 
 
@@ -319,6 +332,7 @@ void R11ClearPicture(uint8_t clear_type)
             camera_magnifier.camera_num[i] = 0;
         }
         r11_state.now_choose_pic = 0;
+        write_dgus_vp(cameraNOW_NUM_ADDR,(uint8_t*)&r11_state.now_choose_pic,1);
     }
     #endif /* sysBEAUTY_MODE_ENABLED */
 }
@@ -332,7 +346,7 @@ void R11VideoPlayerProcess(void)
     uint8_t r11_send_buf[6];
     if(video_init_process == VIDEO_PROCESS_UNINIT)
     {
-        T5lJpegInit();
+	    T5lJpegInit();
         r11_send_buf[0] = 0x00;
         r11_send_buf[1] = 20;
         write_dgus_vp(sysWAE_PLAY_ADDR, r11_send_buf, 1);
@@ -872,13 +886,11 @@ void UartR11UserVideoProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
     }
 }
 
-/*
- * @brief 外部中断1服务函数，处理JPEG数据写入等。
- * @note 此函数在外部中断1触发时执行，用于处理一个数据包图片（16kb）接收完成后的数据处理。
- */
+
 void inter_extern1_1_fun_C ( void ) interrupt 2
 {
-    uint8_t data Temp,Index, ADR_H_Bak,ADR_M_Bak,ADR_L_Bak,ADR_INC_Bak,DATA3_Bak,DATA2_Bak,DATA1_Bak,DATA0_Bak,RAMMODE_Bak;
+    uint8_t idata Temp,Index, ADR_H_Bak,ADR_M_Bak,ADR_L_Bak,ADR_INC_Bak,DATA3_Bak,DATA2_Bak,DATA1_Bak,DATA0_Bak,RAMMODE_Bak;
+	uint16_t zero_value = 0;
     state = P1;
     if ( RAMMODE )
     {
@@ -1086,7 +1098,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 												DATA1 = DATA2;
 												DATA3 = 0x5A;
 												DATA2 = 0xA5;
-												// DATA1 = 0xFF;
+												//DATA1 = 0xFF;
 												DATA0 = 0xFE;
 												APP_EN = 1;
 												while ( APP_EN );
@@ -1128,13 +1140,14 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                
 
 
-                                                if ( Icon_Num <= 4 )
+                                                if ( Icon_Num == 1 ||Icon_Num == 2 )
                                                 {
-                                                    Pic_Count[0]++;
+                                                    Pic_Count[ ( Icon_Num-1 ) /2]++;
                                                 }
-												#if sysBEAUTY_MODE_ENABLED
+                                                #if sysBEAUTY_MODE_ENABLED
                                                 else
                                                 {
+													
 													if(Icon_Num == r11_state.now_choose_pic+5)
 													{
 														r11_state.pic_capture_flag = 1;
@@ -1146,6 +1159,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 EX1_Start();
                                             }
                                         }
+                                        //break;
                                     }
                                     else
                                     {
@@ -1230,9 +1244,9 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 
 
 
-                                                if ( Icon_Num <= 4 )
+                                                if ( Icon_Num == 1 ||Icon_Num == 2 )
                                                 {
-                                                    Pic_Count[0]++;
+                                                    Pic_Count[ ( Icon_Num-1 ) /2]++;
                                                 }
                                                 #if sysBEAUTY_MODE_ENABLED
                                                 else
@@ -1315,6 +1329,5 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
         while ( ~APP_ACK );
     }
 }
-
 
 #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */

@@ -338,6 +338,13 @@ extern R11_STATE r11_state;
  */
 void R11ConfigInitFormLib(void);
 
+
+/*
+ * @brief 页面切换时调整图片显示位置。
+ */
+void R11PageInitChange(void);
+
+
 /**
  * @brief 扫描并处理R11值任务。
  */
