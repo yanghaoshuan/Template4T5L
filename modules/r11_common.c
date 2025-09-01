@@ -908,6 +908,9 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
     RAMMODE = 0x00;
     EX1_Len++;
     Temp = state & 0xE0;
+    /** debug
+    * Display_Debug_Message();
+    */
     switch ( Temp )
     {
         case 0x80:
