@@ -113,15 +113,15 @@ typedef            long			int32_t;
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
 #define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         1       
+#define sysN5CAMERA_MODE_ENABLED       1
+#define sysBEAUTY_MODE_ENABLED         0       
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
 #endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
 
 #if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart5
+#define Uart_R11                     Uart3
 #endif /* sysN5CAMERA_MODE_ENABLED */
 
 #if sysBEAUTY_MODE_ENABLED
@@ -273,7 +273,7 @@ extern uint32_t sysFCLK;
 #endif  /* uartUART2_ENABLED */
 
 /* UART3配置参数，配置同uart2 */
-#define uartUART3_ENABLED               0
+#define uartUART3_ENABLED               1
 
 #if uartUART3_ENABLED
     #define uartUART3_TXBUF_SIZE         256
@@ -282,7 +282,7 @@ extern uint32_t sysFCLK;
     #if uartUART3_TIMEOUT_ENABLED
         #define uartUART3_TIMEOUTSET     5
     #endif /* uartUART3_TIMEOUT_ENABLED */  
-    #define uartUART3_BAUDRATE           115200
+    #define uartUART3_BAUDRATE           921600
 #endif /* uartUART3_ENABLED */
 
 /* UART4配置参数，配置同uart2 */

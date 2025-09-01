@@ -82,6 +82,7 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define JPG 2
 
 #define MAX_MP3_NAME_LEN  		32
+#define MAX_VOLUME              40
 #define MAX_WIFI_NAME_LEN 		32
 #define MP4_FILENAME_VP_LIST1       0x0610
 #define MP4_FILENAME_VP_LIST2       0x0620
@@ -138,6 +139,7 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define keyMP4_NONE_LOOP_MODE 	 	0x0036
 #define keyMP4_SINGLE_LOOP_MODE   	0x0037
 #define keyMP4_ALL_LOOP_MODE      	0x0038
+#define keyMP4_CLEAR_PAGE           0x00ff
 #define keyMP4_NEXTFILE            	0x0002
 #define keyMP4_PREVFILE            	0x0001
 

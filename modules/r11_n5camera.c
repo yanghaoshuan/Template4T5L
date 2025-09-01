@@ -100,7 +100,6 @@ static void R11N5CameraModeSet()
 static void R11RestartInit()
 {
     R11N5CameraModeSet();
-    T5lJpegInit();
     // R11PageInitChange();
 }
 
@@ -252,7 +251,7 @@ void R11N5CameraTask(void)
         r11_state.restart_flag = 2;  /* 重置重启标志 */
     }else if(r11_state.restart_flag == 2)
 	{
-        // R11VideoPlayerProcess();
+        R11VideoPlayerProcess();
 		R11ValueScanTask();
 	}
 }

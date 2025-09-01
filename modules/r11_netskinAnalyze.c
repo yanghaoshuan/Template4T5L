@@ -86,15 +86,15 @@ void R11ConfigInitFormLib(void)
 		
 	}else if(screen_opt.thumbnail_num == 6)
 	{
-		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x02000;
-		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x09000;
-		// Icon_Overlay_SP_VP[4] = 0x33000;
-		// Icon_Overlay_SP_VP[5] = 0x35000;
-		// Icon_Overlay_SP_VP[6] = 0x37000;
-		// Icon_Overlay_SP_VP[7] = 0x39000;
-		// Icon_Overlay_SP_VP[8] = 0x3b000;
-		// Icon_Overlay_SP_VP[9] = 0x3d000;
-		// Icon_Overlay_SP_VP[10] = 0x3f000;
+		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x07000;
+		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1d000;
+		Icon_Overlay_SP_VP[4] = 0x33000;
+		Icon_Overlay_SP_VP[5] = 0x35000;
+		Icon_Overlay_SP_VP[6] = 0x37000;
+		Icon_Overlay_SP_VP[7] = 0x39000;
+		Icon_Overlay_SP_VP[8] = 0x3b000;
+		Icon_Overlay_SP_VP[9] = 0x3d000;
+		Icon_Overlay_SP_VP[10] = 0x3f000;
 	}
 
 	if(screen_opt.jpeg_type> 4)
@@ -1168,6 +1168,23 @@ static void R11StartPowerInit(void)
 	UartSendData(&Uart_R11,r11_send_buf,8);
 }
 
+
+static void R11CameraInit()
+{
+	uint16_t now_pic;
+	R11ClearPicture(1);
+	r11_state.now_choose_pic = 0;
+	read_dgus_vp(sysDGUS_PIC_NOW,(uint8_t*)&now_pic,1);
+	if(now_pic == (uint16_t)page_st.detail_page || now_pic == (uint16_t)page_st.main_page)
+	{
+		camera_process_state = CAMERA_INSERT_CHECK;
+		if(page_st.hotplug_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)page_st.hotplug_page);
+		}
+	}
+}
+
 /*
  * @brief R11重启初始化。
  */
@@ -1175,6 +1192,7 @@ static void R11RestartInit(void)
 {
     R11FlagBitInit();
 	R11StartPowerInit();
+	R11CameraInit();
 }
 
 

@@ -76,6 +76,7 @@ void main(void)
   /** debug
    * Display_Debug_Message();
    */
+  Display_Debug_Message();
 	#endif /* sysBEAUTY_MODE_ENABLED||sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
 
   SysTaskRun();

@@ -646,6 +646,7 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART5_ENABLED */
         }
+        UartSendData(&Uart2,frame,i);
         // SysExitCritical();
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED

@@ -19,7 +19,6 @@
 #include <string.h>
 
 #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-
 /**
  * @brief 调试数据定义区域
  * @note 所有变量均有物理地址映射，便于调试和数据追踪。
@@ -343,9 +342,9 @@ void R11VideoPlayerProcess(void)
         video_init_process = VIDEO_PROCESS_VOLUME;
     }else if(video_init_process == VIDEO_PROCESS_VOLUME)
     {
-        if(read_param[0] > 100)
+        if(read_param[0] > MAX_VOLUME)
         {
-            read_param[0] = 100;
+            read_param[0] = MAX_VOLUME;
             write_dgus_vp(VOLUME_SET_ADDR,(uint8_t*)&read_param[0],1);
         }
         r11_player.r11_volunme = (uint8_t)read_param[0];
@@ -430,7 +429,7 @@ void R11VideoPlayerProcess(void)
 
 void R11VideoValueHandle(uint16_t dgus_value)
 {
-    uint8_t r11_send_buf[6];
+    uint8_t r11_send_buf[6],i;
     if(dgus_value == keyMP4_REPLAY)
     {
         r11_send_buf[0] = 0x00;
@@ -470,7 +469,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
         DgusToFlash(flashMAIN_BLOCK_ORDER, VOLUME_SET_ADDR, VOLUME_SET_ADDR, 0x02);
     }else if(dgus_value == keyMP4_AUX_ADD)
     {
-        if(r11_player.r11_volunme < 100)
+        if(r11_player.r11_volunme < MAX_VOLUME)
         {
             r11_player.r11_volunme++;
             T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
@@ -493,9 +492,9 @@ void R11VideoValueHandle(uint16_t dgus_value)
     }else if(dgus_value == keyMP4_AUX_SET)
     {
         read_dgus_vp(VOLUME_SET_ADDR, (uint8_t *)&r11_send_buf[0], 1);
-        if(r11_send_buf[1] > 100)
+        if(r11_send_buf[1] > MAX_VOLUME)
         {
-            r11_send_buf[1] = 100;
+            r11_send_buf[1] = MAX_VOLUME;
         }
         r11_player.r11_volunme = r11_send_buf[1];
         T5lSendUartDataToR11(cmdMP4_AUX_SET, &r11_player.r11_volunme);
@@ -523,11 +522,11 @@ void R11VideoValueHandle(uint16_t dgus_value)
         }else{
             r11_player.store_type = SDCARD;
         }
+
         R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
         r11_send_buf[0] = r11_player.store_type;
         r11_send_buf[1] = r11_player.Document_type = MP4;
         T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
-        R11ClearPicture(0);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
     }else if(dgus_value == keyMP4_NEXTFILE)
     {
@@ -539,6 +538,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
         r11_send_buf[0] = 0x00;
         T5lSendUartDataToR11(cmdMP4_PREVFILE, r11_send_buf);
         memset((uint8_t *)mp4_name, 0, sizeof(mp4_name));
+        
     }else if(dgus_value == keyMP4_IMG_SET_BIG)
     {
         read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&r11_send_buf[0], 1);
@@ -555,6 +555,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
             pixels_arr_l[screen_opt.screen_ratio],
             pixels_arr_h[screen_opt.screen_ratio],0x01);
         }
+        R11ClearPicture(0);
         Big_Small_Flag = 0x01;
         r11_send_buf[0] = 0x00;
         r11_send_buf[1] = 0x01;
@@ -563,6 +564,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
     }else if(dgus_value == keyMP4_IMG_SET_SMALL)
     {
         R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+        R11ClearPicture(0);
         Big_Small_Flag = 0x00;
         r11_send_buf[0] = 0x00;
         r11_send_buf[1] = 0x00;
@@ -609,6 +611,9 @@ void R11VideoValueHandle(uint16_t dgus_value)
         T5lSendUartDataToR11(cmdMP4_LOOP_MODE_SET, r11_send_buf);
         write_dgus_vp(LOOP_MODE_ADDR, (uint8_t *)&r11_send_buf[0], 0x01);
         DgusToFlash(flashMAIN_BLOCK_ORDER, LOOP_MODE_ADDR, LOOP_MODE_ADDR, 0x02);
+    }else if(dgus_value == keyMP4_CLEAR_PAGE)
+    {
+        R11ClearPicture(0);
     }
 }
 
