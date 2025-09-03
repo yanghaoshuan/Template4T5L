@@ -74,7 +74,6 @@ void main(void)
 	  EX1_Start();
 	}
 	#endif /* sysBEAUTY_MODE_ENABLED||sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
-
   SysTaskRun();
   }
 }

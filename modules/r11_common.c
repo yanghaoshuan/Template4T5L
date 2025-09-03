@@ -229,11 +229,11 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
         case cmdSET_TERNARY_CODE:
             r11_buf[2] = 0x00;
             r11_buf[3] = 12;
-            read_dgus_vp(0x411, ( uint8_t * ) &r11_buf[5],5 );
+            read_dgus_vp(TERNARY_CODE_ADDR+0x01, ( uint8_t * ) &r11_buf[5],5 );
             r11_buf[15] = '\0';
             break;
         case cmdSET_WEBSOCKET:
-            read_dgus_vp(0x680, ( uint8_t * ) &r11_buf[5],32 );
+            read_dgus_vp(WEBSOCKET_ADDR, ( uint8_t * ) &r11_buf[5],32 );
             for ( i=0; i<64; i++ )
             {
                 if ( r11_buf[5+i] == 0xFF )
@@ -387,16 +387,27 @@ void R11VideoPlayerProcess(void)
             read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&rotate_angle, 1);
             if((rotate_angle & 0x0003) == 0x00 || (rotate_angle & 0x0003) == 0x02)
             {
+                #if sysBEAUTY_MODE_ENABLED
                 R11ChangePictureLocate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
                 (pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
                 pixels_arr_h[screen_opt.screen_ratio],
                 pixels_arr_l[screen_opt.screen_ratio],0x01);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysADVERTISE_MODE_ENABLED
+                R11ChangePictureLocate(0,0,pixels_arr_h2[screen_opt.screen_ratio],pixels_arr_l2[screen_opt.screen_ratio],0x01);
+                #endif /* sysADVERTISE_MODE_ENABLED */
+
             }else if((rotate_angle & 0x0003) == 0x01 || (rotate_angle & 0x0003) == 0x03)
             {
+                #if sysBEAUTY_MODE_ENABLED
                 R11ChangePictureLocate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
                 (pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
                 pixels_arr_l[screen_opt.screen_ratio],
                 pixels_arr_h[screen_opt.screen_ratio],0x01);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysADVERTISE_MODE_ENABLED
+                R11ChangePictureLocate(0,0,pixels_arr_l2[screen_opt.screen_ratio],pixels_arr_h2[screen_opt.screen_ratio],0x01);
+                #endif /* sysADVERTISE_MODE_ENABLED */
             }
         }else if(read_param[5] == 0x0000)
         {
@@ -410,7 +421,13 @@ void R11VideoPlayerProcess(void)
         video_init_process = VIDEO_PROCESS_QUERY;
     }else if(video_init_process == VIDEO_PROCESS_QUERY)
     {
+        #if sysBEAUTY_MODE_ENABLED
         r11_send_buf[0] = r11_player.store_type = SDCARD;
+        #elif sysADVERTISE_MODE_ENABLED
+        r11_send_buf[0] = r11_player.store_type = exUDISK;
+        #else
+        r11_send_buf[0] = r11_player.store_type = SDCARD;
+        #endif /* sysADVERTISE_MODE_ENABLED END */
         r11_send_buf[1] = MP4;
         T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
         video_init_process = VIDEO_PROCESS_PLAY;
@@ -537,7 +554,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
             r11_player.store_type = SDCARD;
         }
 
-        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x02);
         r11_send_buf[0] = r11_player.store_type;
         r11_send_buf[1] = r11_player.Document_type = MP4;
         T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);
@@ -558,16 +575,26 @@ void R11VideoValueHandle(uint16_t dgus_value)
         read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&r11_send_buf[0], 1);
         if((r11_send_buf[1] & 0x03) == 0x00 || (r11_send_buf[1] & 0x03) == 0x02)
         {
+            #if sysBEAUTY_MODE_ENABLED
             R11ChangePictureLocate((pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
             (pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
             pixels_arr_h[screen_opt.screen_ratio],
             pixels_arr_l[screen_opt.screen_ratio],0x01);
+            #endif /* sysBEAUTY_MODE_ENABLED */
+            #if sysADVERTISE_MODE_ENABLED
+            R11ChangePictureLocate(0,0,pixels_arr_h2[screen_opt.screen_ratio],pixels_arr_l2[screen_opt.screen_ratio],0x01);
+            #endif /* sysADVERTISE_MODE_ENABLED */
         }else if((r11_send_buf[1] & 0x03) == 0x01 || (r11_send_buf[1] & 0x03) == 0x03)
         {
+            #if sysBEAUTY_MODE_ENABLED
             R11ChangePictureLocate((pixels_arr_l2[screen_opt.screen_ratio]-pixels_arr_l[screen_opt.screen_ratio])/2,
             (pixels_arr_h2[screen_opt.screen_ratio]-pixels_arr_h[screen_opt.screen_ratio])/2,
             pixels_arr_l[screen_opt.screen_ratio],
             pixels_arr_h[screen_opt.screen_ratio],0x01);
+            #endif /* sysBEAUTY_MODE_ENABLED */
+            #if sysADVERTISE_MODE_ENABLED
+            R11ChangePictureLocate(0,0,pixels_arr_l2[screen_opt.screen_ratio],pixels_arr_h2[screen_opt.screen_ratio],0x01);
+            #endif /* sysADVERTISE_MODE_ENABLED */
         }
         R11ClearPicture(0);
         Big_Small_Flag = 0x01;
@@ -632,7 +659,77 @@ void R11VideoValueHandle(uint16_t dgus_value)
 }
 
 
-#if sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+#if R11_WIFI_ENABLED
+/*
+ * @brief WiFi扫描结果处理。
+ */
+static void R11WifiScanResultHandle(uint8_t *frame)
+{
+	uint16_t write_param[4],i,j,zero_arr[32] = 0;
+	if(frame[6] == 0x0a)
+	{
+		if(wifi_now_offset > 0)
+		{
+			wifi_now_offset--;
+		}
+		if(wifi_page.scan_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)wifi_page.scan_page); 
+		}
+	}else
+	{
+		write_param[0] = (frame[2]<<8|frame[3]) + 4;
+		write_param[2] = 0;
+		for ( i=6,j=6; i<write_param[0]; i++ )
+		{
+			//每次间隔两个0x0a
+			if ( frame[i] == '\n' )
+			{
+				write_param[1] = i-j;
+				if ( write_param[1]>32 )
+				{
+					write_param[1] = 32;
+					write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
+				}
+				else
+				{
+					if ( write_param[1] %2 !=0 )
+					{
+						frame[i] = 0x00;
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j], ( write_param[1]+1 ) /2 );
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+ ( write_param[1]+1 ) /2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1]-1 ) /2 );
+					}
+					else
+					{
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
+						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+write_param[1]/2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1] ) /2 );
+					}
+				}
+				write_param[2]++;
+
+				i=i+2;
+				j=i;
+			}
+			if ( write_param[2]>=5 )
+			{
+				break;
+			}
+		}
+		if ( write_param[2]<5 )
+		{
+			for(i=write_param[2];i<5;i++)
+			{
+				write_dgus_vp ( wifi_page.wifi_start_addr+i*0x10, ( uint8_t * ) zero_arr, MAX_WIFI_NAME_LEN/2 );
+			}
+		}
+		if(wifi_page.scan_flag == 0x5a)
+		{
+			SwitchPageById((uint16_t)wifi_page.scan_page); 
+		}
+	}
+}
+
+
 /*
  * @brief 连接WiFi，组装并发送WiFi连接协议帧。
  */
@@ -681,6 +778,46 @@ static void R11ScanWifi(uint8_t scan_offset)
 }
 
 
+void UartR11UserWifiProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
+{
+    uint16_t write_param[2] = 0;
+    if(frame[0] == 0xAA && frame[1] == 0x55)
+    {
+        if(len < 6 || len < ((frame[2]<<8|frame[3])+4))
+        {
+            return;
+        }
+        switch (frame[4])
+        {
+			case cmdWIFI_SCAN:
+				if(frame[5] != R11_RECV_OK)
+				{
+					if(wifi_page.scan_flag == 0x5a)
+					{
+						SwitchPageById((uint16_t)wifi_page.scan_page); 
+					}
+					return;
+				}else
+				{
+					R11WifiScanResultHandle(frame);
+				}
+				break;
+			case cmdWIFI_CONNECT:
+				if(frame[5] == R11_RECV_OK)
+				{
+                    #if sysBEAUTY_MODE_ENABLED
+					net_connected_state = NET_CPUINFO_QUERY;
+                    #endif /* sysBEAUTY_MODE_ENABLED */
+                    #if sysADVERTISE_MODE_ENABLED
+                    net_connected_state = NET_DISCONNECTED;
+                    #endif /* sysADVERTISE_MODE_ENABLED */
+				}
+				break;
+        }
+    }
+}
+
+
 void R11WifiValueHandle(uint16_t dgus_value)
 {
     uint8_t r11_send_buf[15];
@@ -713,9 +850,9 @@ void R11WifiValueHandle(uint16_t dgus_value)
         __NOP();
     }else if(dgus_value == keyWIFI_SCAN)
     {
-        if(wifi_page.tr_detail_flag == 0x5a)
+        if(wifi_page.tr_scan_flag == 0x5a)
         {
-            SwitchPageById((uint16_t)wifi_page.tr_detail_page); 
+            SwitchPageById((uint16_t)wifi_page.tr_scan_page); 
         }
         wifi_now_offset = 0;
         R11ScanWifi(wifi_now_offset);
@@ -775,7 +912,7 @@ void R11WifiValueHandle(uint16_t dgus_value)
         T5lSendUartDataToR11(cmdCHECK_STATUS_DEVICE, r11_send_buf);
     }
 }
-#endif /* sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
+#endif /** R11_WIFI_ENABLED */
 
 
 /**
@@ -860,12 +997,21 @@ void UartR11UserVideoProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         {
             return;
         }
+        /** @note 广告屏含有crc校验 */
+        #if sysADVERTISE_MODE_ENABLED
+        if((frame[len-1]<<8 |frame[len-2]) != crc_16(&frame[4], len-6))
+        {
+            return;
+        }else{
+            len -= 2;
+        }
+        #endif /* sysADVERTISE_MODE_ENABLED */
         switch (frame[4])
         {
         case cmdMP4_UPDATEFILE:
         case cmdMP4_PREVFILE:
         case cmdMP4_NEXTFILE:
-            /* 提取以0x23 0x23(##)为分隔符的文件名 */
+            /* 提取以0x23 0x23(##)为分隔符的文件名 */            
             ExtractFilenamesFromProtocol(frame, len);
             break;
             break;
@@ -911,6 +1057,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
     /** debug
     * Display_Debug_Message();
     */
+   Display_Debug_Message();
     switch ( Temp )
     {
         case 0x80:
@@ -1133,7 +1280,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 APP_EN = 1;
                                                 while ( APP_EN );
                                                 DATA3 = 0x00;
-                                                DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 );
+                                                DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 ) | 0x40;
                                                 DATA1 = 00;
                                                 DATA0 = 00;
                                                 APP_EN = 1;

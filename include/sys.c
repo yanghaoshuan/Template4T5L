@@ -222,13 +222,17 @@ static void InterruptInit(void)
      *   G4  .4      .4          UART2 中断      UART5 发送中断 
      *   G5  .5      .5          T2 定时器中断   UART5 接收中断
      ********************************************************/
-    /*********** 
-    IP0     = sysDEFAULT_ZERO; 
-	IP1     = sysDEFAULT_ZERO;
-    ******************/
-    IP1 = 0x19;//0b0001 1001		
-	IP0 = 0x05;//0b0000 0101
-
+    
+    #if sysN5CAMERA_MODE_ENABLED
+    IP1 = 0x19;/* 0b0001 1001 */		
+	IP0 = 0x05;/* 0b0000 0101 */
+    #elif sysADVERTISE_MODE_ENABLED || sysBEAUTY_MODE_ENABLED
+    IP1 = 0x21;/* 0b0010 0001 */
+	IP0 = 0x05;/* 0b0000 0101 */
+    #else
+    IP1 = sysDEFAULT_ZERO;    
+	IP0 = sysDEFAULT_ZERO;
+    #endif
 }
 
 

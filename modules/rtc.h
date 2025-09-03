@@ -16,7 +16,7 @@
  * @details 定义此宏以启用RX-8130 RTC芯片的驱动代码
  * @note rtc芯片互斥，只能选择一种芯片类型
  */
-//#define rtcRX_8130
+#define rtcRX_8130
 //#define rtcSD_2058
 
 #include "sys.h"

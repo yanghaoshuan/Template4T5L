@@ -8,6 +8,8 @@
 #include "r11_common.h"
 
 #if sysADVERTISE_MODE_ENABLED
+#define TERNARY_CODE_ADDR       0x0410
+#define WEBSOCKET_ADDR          0x0680
 #define PIXELS_SET_ADDR         0x0580      
 
 
@@ -51,6 +53,8 @@
 
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
+#define netWIFI_STATUS_ADDR     0x18b4
+#define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 
 #define cmdN5_CAMERA_OPEN        0x71
 #define cmdN5_CAMERA_CLOSE       0x7b
@@ -117,10 +121,21 @@ typedef struct
 	uint16_t restart_flag;		  /* 重启标志，0为未重启，1为重启 */
 }R11_STATE;
 
+/**
+ * @brief 网络连接状态
+ * @note 广告屏连接状态只有断开和连接两种状态
+ */
+typedef enum
+{
+	NET_DISCONNECTED,
+	NET_CONNECTED
+}NET_CONNECTED_STATE;
+
 extern MAINVIEW_S mainview;
 extern SCREEN_S screen_opt;
 extern R11_STATE r11_state;
 extern WIFI_PAGE_S wifi_page;
+extern NET_CONNECTED_STATE net_connected_state;
 
 void R11ConfigInitFormLib(void);
 void R11AdvertiseTask(void);

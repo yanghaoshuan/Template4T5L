@@ -922,11 +922,14 @@ static void R11ValueScanTask(void)
 	{
 		R11DebugValueHandle(dgus_value);
 		write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uint16_port_zero,1);
-	}else if((dgus_value>>8) >= 0xaa && (dgus_value>>8) <= 0xaf)
+	}
+	#if R11_WIFI_ENABLED
+	else if((dgus_value>>8) >= 0xaa && (dgus_value>>8) <= 0xaf)
 	{
 		R11WifiValueHandle(dgus_value);
 		write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uint16_port_zero,1);
 	}
+	#endif /* R11_WIFI_ENABLED */
 }
 
 
@@ -965,76 +968,6 @@ static void R11FlagBitInit(void)
 
 
 /*
- * @brief WiFi扫描结果处理。
- */
-static void R11WifiScanResultHandle(uint8_t *frame)
-{
-	uint16_t write_param[4],i,j,zero_arr[32] = 0;
-	if(frame[6] == 0x0a)
-	{
-		if(wifi_now_offset > 0)
-		{
-			wifi_now_offset--;
-		}
-		if(wifi_page.scan_flag == 0x5a)
-		{
-			SwitchPageById((uint16_t)wifi_page.scan_page); 
-		}
-	}else
-	{
-		write_param[0] = (frame[2]<<8|frame[3]) + 4;
-		write_param[2] = 0;
-		for ( i=6,j=6; i<write_param[0]; i++ )
-		{
-			//每次间隔两个0x0a
-			if ( frame[i] == '\n' )
-			{
-				write_param[1] = i-j;
-				if ( write_param[1]>32 )
-				{
-					write_param[1] = 32;
-					write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
-				}
-				else
-				{
-					if ( write_param[1] %2 !=0 )
-					{
-						frame[i] = 0x00;
-						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j], ( write_param[1]+1 ) /2 );
-						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+ ( write_param[1]+1 ) /2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1]-1 ) /2 );
-					}
-					else
-					{
-						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10,&frame[j],write_param[1]/2 );
-						write_dgus_vp ( wifi_page.wifi_start_addr+write_param[2]*0x10+write_param[1]/2, ( uint8_t * ) zero_arr, ( MAX_WIFI_NAME_LEN-write_param[1] ) /2 );
-					}
-				}
-				write_param[2]++;
-
-				i=i+2;
-				j=i;
-			}
-			if ( write_param[2]>=5 )
-			{
-				break;
-			}
-		}
-		if ( write_param[2]<5 )
-		{
-			for(i=write_param[2];i<5;i++)
-			{
-				write_dgus_vp ( wifi_page.wifi_start_addr+i*0x10, ( uint8_t * ) zero_arr, MAX_WIFI_NAME_LEN/2 );
-			}
-		}
-		if(wifi_page.scan_flag == 0x5a)
-		{
-			SwitchPageById((uint16_t)wifi_page.scan_page); 
-		}
-	}
-}
-
-
-/*
  * @brief IP结果处理，提取IP和MAC并生成二维码。
  */
 static void R11IPResultHandle(uint8_t *frame,uint16_t len)
@@ -1055,10 +988,11 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 			curr_data_len = CopyAsciiString(write_param,"http://",0);
 			curr_data_len = CopyAsciiString(write_param,Json_Wechat.send_ip,curr_data_len);
 			curr_data_len_bak = curr_data_len;
-			curr_data_len = CopyAsciiString(write_param,"\/#\/realTime2",curr_data_len);
+			/** 250902 :为画面同步添加端口号 */
+			curr_data_len = CopyAsciiString(write_param,":8080\/#\/realTime2",curr_data_len);
 			write_dgus_vp ( addr_st.broadcast_qr_addr,write_param,(curr_data_len+1)/2 );
 
-			curr_data_len = CopyAsciiString(write_param,"\/#\/customer2",curr_data_len_bak);
+			curr_data_len = CopyAsciiString(write_param,":8080\/#\/customer2",curr_data_len_bak);
 			write_dgus_vp ( addr_st.offline_qr_addr,write_param,(curr_data_len+1)/2 );
 			break;
 		}
@@ -1073,6 +1007,7 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
 	/** 此处需要去掉帧头 */
+	UartSendData(&Uart2,frame,len);
 	if(JSONSearchToArray(&frame[5],len-5,"cmd",sizeof("cmd") - 1,Json_Wechat.send_cmd) == JSONSuccess)
 	{
 		write_dgus_vp(0x5020,Json_Wechat.send_cmd,10);
@@ -1191,9 +1126,11 @@ static void R11CameraInit()
  */
 static void R11RestartInit(void)
 {
+	uint16_t write_param = 1;
 	R11CameraInit();
     R11FlagBitInit();
 	R11StartPowerInit();
+	write_dgus_vp(COMIC_STATUS_ADDR,(uint8_t *)&write_param,1);
 }
 
 
@@ -1331,29 +1268,19 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				__NOP();
 				net_connected_state = NET_DISCONNECTED; 
 				break;
-			case cmdWIFI_SCAN:
-				if(frame[5] != R11_RECV_OK)
-				{
-					if(wifi_page.scan_flag == 0x5a)
-					{
-						SwitchPageById((uint16_t)wifi_page.scan_page); 
-					}
-					return;
-				}else
-				{
-					R11WifiScanResultHandle(frame);
-				}
-				break;
-			case cmdWIFI_CONNECT:
-				if(frame[5] == R11_RECV_OK)
-				{
-					net_connected_state = NET_CPUINFO_QUERY;
-				}
-				break;
 			case netIPINFO_QUERY:
 				if(frame[5] == R11_RECV_OK)
 				{
 					R11IPResultHandle(frame, len);
+				}
+				break;
+			case netCPUINFO_QUERY:
+				if(frame[5] == R11_RECV_OK)
+				{
+					memcpy ( Json_Wechat.cpuinfo,&frame[6],16 );
+					Json_Wechat.cpuinfo[16]= 0x00;
+					Json_Wechat.cpuinfo[17]= 0x00;
+					write_dgus_vp ( addr_st.mac_addr,Json_Wechat.cpuinfo,16 );
 				}
 				break;
 			case netCONNECT_STATUS:
@@ -1387,15 +1314,6 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 						write_dgus_vp(netWIFI_STATUS_ADDR,(uint8_t*)&write_param[0],1);
 						net_connected_state = NET_CONNECTED;
 					}
-				}
-				break;
-			case netCPUINFO_QUERY:
-				if(frame[5] == R11_RECV_OK)
-				{
-					memcpy ( Json_Wechat.cpuinfo,&frame[6],16 );
-					Json_Wechat.cpuinfo[16]= 0x00;
-					Json_Wechat.cpuinfo[17]= 0x00;
-					write_dgus_vp ( addr_st.mac_addr,Json_Wechat.cpuinfo,16 );
 				}
 				break;
 			#endif /* R11_WIFI_ENABLED */

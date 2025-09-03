@@ -1930,6 +1930,10 @@ JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uin
         save = value[valueLength];
         value[valueLength] = 0x00;
         CopyAsciiString(outArray,value,0);
+        /**
+         * @note:使用一个结束符，用于进行strcmp
+         */
+        outArray[valueLength] = '\0';
         value[valueLength] = save;
         return JSONSuccess;
     }

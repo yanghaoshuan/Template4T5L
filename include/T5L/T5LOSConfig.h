@@ -176,7 +176,7 @@ extern uint32_t sysFCLK;
 
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
-#define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
+#define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
 
 
 
@@ -315,11 +315,11 @@ extern uint32_t sysFCLK;
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #if sysADVERTISE_MODE_ENABLED
-    #define uartUART5_BAUDRATE           115200
-    #elif sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED
+    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     #define uartUART5_BAUDRATE           921600
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED */
+    #else 
+    #define uartUART5_BAUDRATE           921600
+    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #define uartUART5_485_ENABLED        0
     
     #if uartUART5_485_ENABLED

@@ -170,6 +170,7 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define R11_RECV_OK                0x01
 #define R11_RECV_FAIL              0x00
 
+
 #define DirPath(Index) ((Index==1)?("url:/mnt/SDCARD/VIDEO/"):\
 					   ((Index==2)?("url:/mnt/exUDISK/VIDEO/"):\
                        ((Index==3)?("url:/mnt/UDISK/VIDEO/"):("url:/mnt/exUDISK/VIDEO/"))))
@@ -288,13 +289,22 @@ void R11VideoValueHandle(uint16_t dgus_value);
 void UartR11UserVideoProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len);
 
 
-#if sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+#if R11_WIFI_ENABLED
 /**
  * @brief 处理WiFi相关的按键值。
  * @param dgus_value 按键值
  */
 void R11WifiValueHandle(uint16_t dgus_value);
-#endif /* sysBEAUTY_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
+
+
+/**
+ * @brief 处理WiFi相关的协议帧。
+ * @param uart  串口类型指针
+ * @param frame 协议帧数据
+ * @param len   协议帧长度
+ */
+void UartR11UserWifiProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len);
+#endif /* R11_WIFI_ENABLED */
 
 
 /**

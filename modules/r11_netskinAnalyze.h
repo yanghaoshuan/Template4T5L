@@ -93,6 +93,7 @@
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
 #define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期R11_TASK_INTERVAL，50对应5s */
 #define netWIFI_STATUS_ADDR     0x18b4
+#define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 #define cameraNOW_NUM_ADDR      0x18b7
 
 #define MIN_HIGH  		160

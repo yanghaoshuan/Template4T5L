@@ -530,7 +530,6 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
  * @note 支持0x82写命令和0x83读命令
  * @note 自动处理CRC校验和响应帧生成
  * @note 0x82命令可选择是否返回确认帧
- * @warning frame缓冲区会被修改，调用者需注意
  */
 static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
@@ -644,11 +643,14 @@ void UartReadFrame(UART_TYPE *uart)
                 uart->RxTail %= uartUART5_RXBUF_SIZE;
             }
             #endif /* uartUART5_ENABLED */
-        }
+        }        
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);
         #endif /* uartMODBUS_PROTOCOL_ENABLED */
+        #if R11_WIFI_ENABLED
+        UartR11UserWifiProtocol(uart, frame, i);
+        #endif /* R11_WIFI_ENABLED */
         #if sysBEAUTY_MODE_ENABLED
         UartR11UserVideoProtocol(uart, frame, i);
         UartR11UserBeautyProtocol(uart, frame, i);
