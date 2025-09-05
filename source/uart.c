@@ -643,7 +643,7 @@ void UartReadFrame(UART_TYPE *uart)
                 uart->RxTail %= uartUART5_RXBUF_SIZE;
             }
             #endif /* uartUART5_ENABLED */
-        }        
+        }   
         UartStandardDwin8283Protocal(uart,frame, i); 
         #if uartMODBUS_PROTOCOL_ENABLED
         UartStandardModbusRTUProtocal(uart, frame, i);

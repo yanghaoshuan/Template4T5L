@@ -248,7 +248,8 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
             break;
         #endif /* sysADVERTISE_MODE_ENABLED */
         #if sysN5CAMERA_MODE_ENABLED
-        case cmdN5_CAMERA_OPEN:
+        case cmdN5_CAMERA_AV1_OPEN:
+        case cmdN5_CAMERA_AV2_OPEN:
         case cmdN5_CAMERA_CLOSE:
         case cmdN5_CAMERA_MODE:
             r11_buf[2] = buf[2];
@@ -1280,7 +1281,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 APP_EN = 1;
                                                 while ( APP_EN );
                                                 DATA3 = 0x00;
-                                                DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 ) | 0x40;
+                                                DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 );
                                                 DATA1 = 00;
                                                 DATA0 = 00;
                                                 APP_EN = 1;

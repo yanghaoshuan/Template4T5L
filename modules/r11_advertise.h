@@ -56,8 +56,6 @@
 #define netWIFI_STATUS_ADDR     0x18b4
 #define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 
-#define cmdN5_CAMERA_OPEN        0x71
-#define cmdN5_CAMERA_CLOSE       0x7b
 
 
 typedef struct

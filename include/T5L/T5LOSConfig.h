@@ -113,8 +113,8 @@ typedef            long			int32_t;
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
 #define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         1     
+#define sysN5CAMERA_MODE_ENABLED       1
+#define sysBEAUTY_MODE_ENABLED         0     
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
@@ -122,6 +122,7 @@ typedef            long			int32_t;
 
 #if sysN5CAMERA_MODE_ENABLED
 #define Uart_R11                     Uart5
+#define R11_WIFI_ENABLED              0
 #endif /* sysN5CAMERA_MODE_ENABLED */
 
 #if sysBEAUTY_MODE_ENABLED

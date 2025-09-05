@@ -100,7 +100,6 @@ static void R11N5CameraModeSet()
 static void R11RestartInit()
 {
     R11N5CameraModeSet();
-    // R11PageInitChange();
 }
 
 
@@ -115,9 +114,9 @@ static void N5CameraKeyHandle(uint16_t dgus_value)
         r11_send_buf[1] = 0x55;
         r11_send_buf[2] = 0x00;
         r11_send_buf[3] = 0x02;
-        r11_send_buf[4] = cmdN5_CAMERA_OPEN;
+        r11_send_buf[4] = cmdN5_CAMERA_AV1_OPEN;
         r11_send_buf[5] = 0x00;
-        T5lSendUartDataToR11(cmdN5_CAMERA_OPEN,r11_send_buf);
+        T5lSendUartDataToR11(cmdN5_CAMERA_AV1_OPEN,r11_send_buf);
         if(page_st.main_flag == 0x5a)
         {
             SwitchPageById((uint16_t)page_st.main_page); 
@@ -248,10 +247,10 @@ void R11N5CameraTask(void)
     if(r11_state.restart_flag == 1)
     {
         R11RestartInit();
+        T5lJpegInit();
         r11_state.restart_flag = 2;  /* 重置重启标志 */
     }else if(r11_state.restart_flag == 2)
 	{
-        R11VideoPlayerProcess();
 		R11ValueScanTask();
 	}
 }
@@ -279,7 +278,8 @@ void UartR11UserN5CameraProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         }
         switch (frame[4])
         {
-            case cmdN5_CAMERA_OPEN:
+            case cmdN5_CAMERA_AV1_OPEN:
+            case cmdN5_CAMERA_AV2_OPEN:
                 break;
             case cmdN5_CAMERA_CLOSE:
                 break;

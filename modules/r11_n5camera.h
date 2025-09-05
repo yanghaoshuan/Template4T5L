@@ -47,9 +47,10 @@
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
 
-#define cmdN5_CAMERA_OPEN        0x71
-#define cmdN5_CAMERA_CLOSE       0x7b
-#define cmdN5_CAMERA_MODE        0x50
+#define cmdN5_CAMERA_AV1_OPEN           0x71
+#define cmdN5_CAMERA_AV2_OPEN           0x72
+#define cmdN5_CAMERA_CLOSE              0x7b
+#define cmdN5_CAMERA_MODE               0x50
 
 
 typedef struct
