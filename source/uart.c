@@ -600,7 +600,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 void UartReadFrame(UART_TYPE *uart)
 {
     uint8_t frame[uartUART_COMMON_FRAME_SIZE];
-    uint16_t i,rx_head_bak;
+    uint16_t i,rx_head_bak,one_frame_len,total_frame_len;
     if(uart->RxFlag == UART_NON_REC)
         return;
     if(uart->RxTimeout == 0)
@@ -644,26 +644,68 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART5_ENABLED */
         }   
-        UartStandardDwin8283Protocal(uart,frame, i); 
-        #if uartMODBUS_PROTOCOL_ENABLED
-        UartStandardModbusRTUProtocal(uart, frame, i);
-        #endif /* uartMODBUS_PROTOCOL_ENABLED */
-        #if R11_WIFI_ENABLED
-        UartR11UserWifiProtocol(uart, frame, i);
-        #endif /* R11_WIFI_ENABLED */
-        #if sysBEAUTY_MODE_ENABLED
-        UartR11UserVideoProtocol(uart, frame, i);
-        UartR11UserBeautyProtocol(uart, frame, i);
-        #endif /* sysBEAUTY_MODE_ENABLED */
-        #if sysN5CAMERA_MODE_ENABLED
-        UartR11UserVideoProtocol(uart, frame, i);
-        UartR11UserN5CameraProtocol(uart, frame, i);
-        #endif /* sysN5CAMERA_MODE_ENABLED */
-        #if sysADVERTISE_MODE_ENABLED
-        UartR11UserVideoProtocol(uart, frame, i);
-        UartR11UserAdvertiseProtocol(uart, frame, i);
-        #endif /* sysADVERTISE_MODE_ENABLED */
-
+        total_frame_len = i;
+        while(1)
+        {
+            if(frame[total_frame_len - i] == 0x5a && frame[total_frame_len - i + 1] == 0xa5)
+            {
+                one_frame_len = frame[total_frame_len - i + 2] + 3;
+                if(i < one_frame_len)
+                {
+                    break;
+                }
+                UartStandardDwin8283Protocal(uart, &frame[total_frame_len - i], one_frame_len);
+                #if sysBEAUTY_MODE_ENABLED
+                UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                i -= one_frame_len;
+            }else if(frame[total_frame_len - i] == 0xaa && frame[total_frame_len - i + 1] == 0x55)
+            {
+                one_frame_len = (frame[total_frame_len - i + 2] << 8 | frame[total_frame_len - i + 3]) + 4;
+                if(i < one_frame_len)
+                {
+                    break;
+                }
+                #if R11_WIFI_ENABLED
+                UartR11UserWifiProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* R11_WIFI_ENABLED */
+                #if sysBEAUTY_MODE_ENABLED
+                UartR11UserVideoProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysN5CAMERA_MODE_ENABLED
+                UartR11UserVideoProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                UartR11UserN5CameraProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysN5CAMERA_MODE_ENABLED */
+                #if sysADVERTISE_MODE_ENABLED
+                UartR11UserVideoProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                UartR11UserAdvertiseProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysADVERTISE_MODE_ENABLED */
+                i -= one_frame_len;
+            }
+            #if uartMODBUS_PROTOCOL_ENABLED
+            else if(frame[total_frame_len - i] == modbusSLAVE_ADDRESS)
+            {
+                one_frame_len = frame[total_frame_len - i + 2] + 5;
+                if(i < one_frame_len)
+                {
+                    break;
+                }
+                UartStandardModbusRTUProtocal(uart, &frame[total_frame_len - i], one_frame_len);
+                i -= one_frame_len;
+            }
+            #endif /* uartMODBUS_PROTOCOL_ENABLED */
+            #if 
+            else
+            {
+                if(i>0)
+                {
+                    i--;
+                }else{
+                    break;
+                }
+            }
+        }
     }
 }
 

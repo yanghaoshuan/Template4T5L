@@ -113,8 +113,8 @@ typedef            long			int32_t;
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
 #define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       1
-#define sysBEAUTY_MODE_ENABLED         0     
+#define sysN5CAMERA_MODE_ENABLED       0
+#define sysBEAUTY_MODE_ENABLED         1     
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
@@ -234,6 +234,8 @@ extern uint32_t sysFCLK;
  * @details 1: 启用Modbus协议支持, 0: 禁用Modbus协议支持
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
+
+
 
 #define uartUART_82CMD_RETURN            1       /*UART2命令返回使能标志 0:禁用 1启用 */   
 

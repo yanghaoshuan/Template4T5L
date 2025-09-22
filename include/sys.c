@@ -227,7 +227,7 @@ static void InterruptInit(void)
     IP1 = 0x19;/* 0b0001 1001 */		
 	IP0 = 0x05;/* 0b0000 0101 */
     #elif sysADVERTISE_MODE_ENABLED || sysBEAUTY_MODE_ENABLED
-    IP1 = 0x21;/* 0b0010 0001 */
+    IP1 = 0x19;/* 0b0010 0001 */
 	IP0 = 0x05;/* 0b0000 0101 */
     #else
     IP1 = sysDEFAULT_ZERO;    
