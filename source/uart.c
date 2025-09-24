@@ -17,6 +17,10 @@
 #include "modbus.h"
 #endif /* uartMODBUS_PROTOCOL_ENABLED */
 
+#if uartTA_PROTOCOL_ENABLED
+#include "TA_protocal.h"
+#endif /* uartTA_PROTOCOL_ENABLED */
+
 #if sysSET_FROM_LIB
 uint16_t sys_2k_ratio;
 uint32_t sysFOSC;
@@ -37,6 +41,7 @@ uint32_t sysFCLK;
 #include "r11_common.h"
 #include "r11_advertise.h"
 #endif /* sysADVERTISE_MODE_ENABLED */
+
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
@@ -695,7 +700,30 @@ void UartReadFrame(UART_TYPE *uart)
                 i -= one_frame_len;
             }
             #endif /* uartMODBUS_PROTOCOL_ENABLED */
-            #if 
+            #if uartTA_PROTOCOL_ENABLED
+            else if(frame[total_frame_len - i] == 0xAA)
+            {
+
+                if(i<6)
+                {
+                    break;
+                }
+                for(one_frame_len = 0;one_frame_len<(i-3);one_frame_len++)
+                {
+                    if(frame[total_frame_len - i + one_frame_len] == 0xcc && frame[total_frame_len - i + one_frame_len + 1] == 0x33
+                    && frame[total_frame_len - i + one_frame_len + 2] == 0xc3 && frame[total_frame_len - i + one_frame_len + 3] == 0x3c)
+                    {
+                        break;
+                    }
+                }
+                if(one_frame_len == (i-3))
+                {
+                    break;
+                }
+                UartStandardTAProtocal(uart, &frame[total_frame_len - i], one_frame_len);
+                i -= one_frame_len;
+            }
+            #endif /* uartTA_PROTOCOL_ENABLED */
             else
             {
                 if(i>0)

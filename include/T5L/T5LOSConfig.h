@@ -235,7 +235,11 @@ extern uint32_t sysFCLK;
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
 
-
+/**
+ * @brief TA指令集支持使能标志
+ * @details 1: 启用TA指令集支持, 0: 禁用TA指令集支持
+ */
+#define uartTA_PROTOCOL_ENABLED        1      
 
 #define uartUART_82CMD_RETURN            1       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
