@@ -114,7 +114,7 @@ typedef            long			int32_t;
  */
 #define sysADVERTISE_MODE_ENABLED       0
 #define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         1     
+#define sysBEAUTY_MODE_ENABLED         0     
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
@@ -177,7 +177,7 @@ extern uint32_t sysFCLK;
 
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
-#define flashDUAL_BACKUP_ENABLED            1               /**< 双备份使能标志 */
+#define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
 
 
 

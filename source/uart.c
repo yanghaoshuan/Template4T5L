@@ -695,7 +695,6 @@ void UartReadFrame(UART_TYPE *uart)
                 i -= one_frame_len;
             }
             #endif /* uartMODBUS_PROTOCOL_ENABLED */
-            #if 
             else
             {
                 if(i>0)
@@ -718,4 +717,5 @@ void UartProtocalHandleTask(void)
     UartReadFrame(&Uart_R11);
     #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
 }
+
 

@@ -10,6 +10,8 @@
 
 #include "rtc.h"
 
+#include "database.h"
+
 #if gpioGPIO_ENABLE
 #include "gpio.h"
 #endif /* gpioGPIO_ENABLE */
@@ -43,13 +45,14 @@ void main(void)
   T5LCpuInit();
 
   RtcInit();
+  FlashToDgus(flashMAIN_BLOCK_ORDER, 0, DB_START_ADDR, DB_MAX_RECORD * DB_RECORD_SIZE);
   SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
   SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
   SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 
-
+  SysTaskAdd(4, 100, DatabaseScanTask);
   #if sysBEAUTY_MODE_ENABLED
   SysTaskAdd(3, R11_TASK_INTERVAL, R11NetskinAnalyzeTask);
   #endif /* sysBEAUTY_MODE_ENABLED */
