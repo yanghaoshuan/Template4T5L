@@ -6,6 +6,8 @@
 
 uint16_t string_vp_addr[MAX_STRING_NUM] = {0x3000,0x3020,0x3040,0x3060,0x3080,0x30A0,0x30C0,0x30E0,0x3100,0x3120};
 uint16_t string_sp_addr[MAX_STRING_NUM] = {0x2000,0x2020,0x2040,0x2060,0x2080,0x20A0,0x20C0,0x20E0,0x2100,0x2120};
+uint16_t number_vp_addr[MAX_STRING_NUM] = {0x3200,0x3220,0x3240,0x3260,0x3280,0x32A0,0x32C0,0x32E0,0x3300,0x3320};
+uint16_t number_sp_addr[MAX_STRING_NUM] = {0x2200,0x2220,0x2240,0x2260,0x2280,0x22A0,0x22C0,0x22E0,0x2300,0x2320};
 
 static uint16_t FindNumberIsInArray(uint16_t x_point,uint16_t y_point,uint16_t *array,uint16_t len)
 {
@@ -31,14 +33,16 @@ static uint16_t FindNumberIsInArray(uint16_t x_point,uint16_t y_point,uint16_t *
 }
 
 
-void UartStandardTAProtocal(UART_TYPE *uart, uint8_t *frame, uint16_t len)
+void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
 {
-    uint16_t crc16,write_param[32];
-    uint16_t index,string_mode;
+    uint16_t crc16,crc_flag,write_param[32];
+    uint16_t index;
+    uint8_t string_mode,number_mode;
     static uint16_t string_point_array[MAX_STRING_NUM*2] = {0};
-    read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc16,1);
-    crc16 = crc16 & 0x0080;
-    if(crc16 != 0)
+    static uint16_t number_point_array[MAX_STRING_NUM*2] = {0};
+    read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc_flag,1);
+    crc_flag = crc_flag & 0x0080;
+    if(crc_flag != 0)
     {
         crc16 = crc_16(frame,len-6);
         if(crc16 != ((frame[len-6] << 8) | frame[len-5]))
@@ -73,7 +77,7 @@ void UartStandardTAProtocal(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[3],5);
-            write_param[9] = 0x0000 | frame[6]; //字库位置
+            write_param[8] = 0x0000 | frame[6]; //字库位置
             string_mode = frame[7]&0x0f;
             /** 字体大小 */
             if(string_mode == 0 || string_mode == 5)
@@ -87,138 +91,226 @@ void UartStandardTAProtocal(UART_TYPE *uart, uint8_t *frame, uint16_t len)
                      * 16(0D)=96*96 17(0E)=112*112 18(0F)=128*128 19(10)=6*8 1A(11)=8*10 1B(12)=8*12 
                      * 1C(13)=100*200 1D(14)=200*200 1E(15)=48*64
                      */
-                    case 0x00: write_param[10] = 0x08<<8|0x08;break;     
-                    case 0x01: write_param[10] = 0x06<<8|0x0C;break;    
-                    case 0x03: write_param[10] = 0x0C<<8|0x18;break;     
-                    case 0x04: write_param[10] = 0x10<<8|0x20;break;   
-                    case 0x05: write_param[10] = 0x14<<8|0x28;break;    
-                    case 0x06: write_param[10] = 0x18<<8|0x30;break;   
-                    case 0x07: write_param[10] = 0x1C<<8|0x38;break;    
-                    case 0x08: write_param[10] = 0x20<<8|0x40;break;  
-                    case 0x09: write_param[10] = 0x0C<<8|0x0C;break; 
-                    case 0x0A: write_param[10] = 0x10<<8|0x10;break; 
-                    case 0x0B: write_param[10] = 0x18<<8|0x18;break; 
-                    case 0x0C: write_param[10] = 0x20<<8|0x20;break; 
-                    case 0x0D: write_param[10] = 0x28<<8|0x28;break; 
-                    case 0x0E: write_param[10] = 0x30<<8|0x30;break; 
-                    case 0x0F: write_param[10] = 0x38<<8|0x38;break;    
-                    case 0x10: write_param[10] = 0x40<<8|0x40;break;    
-                    case 0x11: write_param[10] = 0x28<<8|0x50;break;    
-                    case 0x12: write_param[10] = 0x30<<8|0x60;break;    
-                    case 0x13: write_param[10] = 0x38<<8|0x70;break;    
-                    case 0x14: write_param[10] = 0x40<<8|0x80;break;    
-                    case 0x15: write_param[10] = 0x50<<8|0x50;break;    
-                    case 0x16: write_param[10] = 0x60<<8|0x60;break;    
-                    case 0x17: write_param[10] = 0x70<<8|0x70;break;    
-                    case 0x18: write_param[10] = 0x80<<8|0x80;break;    
-                    case 0x19: write_param[10] = 0x06<<8|0x08;break;    
-                    case 0x1A: write_param[10] = 0x08<<8|0x0A;break;    
-                    case 0x1B: write_param[10] = 0x08<<8|0x0C;break;
-                    case 0x1C: write_param[10] = 0x64<<8|0xc8;break;
-                    case 0x1D: write_param[10] = 0xc8<<8|0xc8;break;
-                    case 0x1E: write_param[10] = 0x30<<8|0x40;break;   
+                    case 0x00: write_param[9] = 0x08<<8|0x08;break;     
+                    case 0x01: write_param[9] = 0x06<<8|0x0C;break;    
+                    case 0x03: write_param[9] = 0x0C<<8|0x18;break;     
+                    case 0x04: write_param[9] = 0x10<<8|0x20;break;   
+                    case 0x05: write_param[9] = 0x14<<8|0x28;break;    
+                    case 0x06: write_param[9] = 0x18<<8|0x30;break;   
+                    case 0x07: write_param[9] = 0x1C<<8|0x38;break;    
+                    case 0x08: write_param[9] = 0x20<<8|0x40;break;  
+                    case 0x09: write_param[9] = 0x0C<<8|0x0C;break; 
+                    case 0x0A: write_param[9] = 0x10<<8|0x10;break; 
+                    case 0x0B: write_param[9] = 0x18<<8|0x18;break; 
+                    case 0x0C: write_param[9] = 0x20<<8|0x20;break; 
+                    case 0x0D: write_param[9] = 0x28<<8|0x28;break; 
+                    case 0x0E: write_param[9] = 0x30<<8|0x30;break; 
+                    case 0x0F: write_param[9] = 0x38<<8|0x38;break;    
+                    case 0x10: write_param[9] = 0x40<<8|0x40;break;    
+                    case 0x11: write_param[9] = 0x28<<8|0x50;break;    
+                    case 0x12: write_param[9] = 0x30<<8|0x60;break;    
+                    case 0x13: write_param[9] = 0x38<<8|0x70;break;    
+                    case 0x14: write_param[9] = 0x40<<8|0x80;break;    
+                    case 0x15: write_param[9] = 0x50<<8|0x50;break;    
+                    case 0x16: write_param[9] = 0x60<<8|0x60;break;    
+                    case 0x17: write_param[9] = 0x70<<8|0x70;break;    
+                    case 0x18: write_param[9] = 0x80<<8|0x80;break;    
+                    case 0x19: write_param[9] = 0x06<<8|0x08;break;    
+                    case 0x1A: write_param[9] = 0x08<<8|0x0A;break;    
+                    case 0x1B: write_param[9] = 0x08<<8|0x0C;break;
+                    case 0x1C: write_param[9] = 0x64<<8|0xc8;break;
+                    case 0x1D: write_param[9] = 0xc8<<8|0xc8;break;
+                    case 0x1E: write_param[9] = 0x30<<8|0x40;break;   
 
-                    default:write_param[10] = 0x08<<8|0x08;break;    
+                    default:write_param[9] = 0x08<<8|0x08;break;    
                 }
             }else{
                 switch (frame[8])
                 {
-                    case 0x00: write_param[10] = 0x0C<<8|0x0C;break; 
-                    case 0x01: write_param[10] = 0x10<<8|0x10;break; 
-                    case 0x02: write_param[10] = 0x18<<8|0x18;break; 
-                    case 0x03: write_param[10] = 0x20<<8|0x20;break; 
-                    case 0x04: write_param[10] = 0x28<<8|0x28;break; 
-                    case 0x05: write_param[10] = 0x30<<8|0x30;break; 
-                    case 0x06: write_param[10] = 0x38<<8|0x38;break;    
-                    case 0x07: write_param[10] = 0x40<<8|0x40;break;    
-                    case 0x08: write_param[10] = 0x28<<8|0x50;break;    
-                    case 0x09: write_param[10] = 0x30<<8|0x60;break;    
-                    case 0x0A: write_param[10] = 0x38<<8|0x70;break;    
-                    case 0x0B: write_param[10] = 0x40<<8|0x80;break;    
-                    case 0x0C: write_param[10] = 0x50<<8|0x50;break;    
-                    case 0x0D: write_param[10] = 0x60<<8|0x60;break;    
-                    case 0x0E: write_param[10] = 0x70<<8|0x70;break;    
-                    case 0x0F: write_param[10] = 0x80<<8|0x80;break;    
-                    case 0x10: write_param[10] = 0x06<<8|0x08;break;    
-                    case 0x11: write_param[10] = 0x08<<8|0x0A;break;    
-                    case 0x12: write_param[10] = 0x08<<8|0x0C;break;
-                    case 0x13: write_param[10] = 0x64<<8|0xc8;break;
-                    case 0x14: write_param[10] = 0xc8<<8|0xc8;break;    
-                    case 0x15: write_param[10] = 0x30<<8|0x40;break;
-                    default:write_param[10] = 0x0C<<8|0x0C;break;
+                    case 0x00: write_param[9] = 0x0C<<8|0x0C;break; 
+                    case 0x01: write_param[9] = 0x10<<8|0x10;break; 
+                    case 0x02: write_param[9] = 0x18<<8|0x18;break; 
+                    case 0x03: write_param[9] = 0x20<<8|0x20;break; 
+                    case 0x04: write_param[9] = 0x28<<8|0x28;break; 
+                    case 0x05: write_param[9] = 0x30<<8|0x30;break; 
+                    case 0x06: write_param[9] = 0x38<<8|0x38;break;    
+                    case 0x07: write_param[9] = 0x40<<8|0x40;break;    
+                    case 0x08: write_param[9] = 0x28<<8|0x50;break;    
+                    case 0x09: write_param[9] = 0x30<<8|0x60;break;    
+                    case 0x0A: write_param[9] = 0x38<<8|0x70;break;    
+                    case 0x0B: write_param[9] = 0x40<<8|0x80;break;    
+                    case 0x0C: write_param[9] = 0x50<<8|0x50;break;    
+                    case 0x0D: write_param[9] = 0x60<<8|0x60;break;    
+                    case 0x0E: write_param[9] = 0x70<<8|0x70;break;    
+                    case 0x0F: write_param[9] = 0x80<<8|0x80;break;    
+                    case 0x10: write_param[9] = 0x06<<8|0x08;break;    
+                    case 0x11: write_param[9] = 0x08<<8|0x0A;break;    
+                    case 0x12: write_param[9] = 0x08<<8|0x0C;break;
+                    case 0x13: write_param[9] = 0x64<<8|0xc8;break;
+                    case 0x14: write_param[9] = 0xc8<<8|0xc8;break;    
+                    case 0x15: write_param[9] = 0x30<<8|0x40;break;
+                    default:write_param[9] = 0x0C<<8|0x0C;break;
                 }
             }
             
-            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[11],1);
-            write_param[11] = (write_param[11]&0x00ff) | (frame[7]<<8); //显示模式
-            write_dgus_vp(string_sp_addr[index],(uint8_t*)&write_param[0],11);    
-            write_dgus_vp(string_vp_addr[index],&frame[11],(len-17+1)>>1);    
+            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
+            write_param[10] = (write_param[10]&0xf0ff) | (string_mode<<8); //显示模式
+            write_dgus_vp(string_sp_addr[index]+0x01,(uint8_t*)&write_param[0],11);
+            write_dgus_vp(string_vp_addr[index],&frame[11],(len-17+1)>>1);
         }
     }else if(frame[1] == 0x54)
     {
-        /* 显示16*16 GBK字符串，字库是3*/
+        /* 显示16*16 GBK字符串，字库是51*/
         write_param[0] = frame[2]<<8|frame[3];    //写入x坐标
         write_param[1] = frame[4]<<8|frame[5];    //写入y坐标
         index = FindNumberIsInArray(write_param[0],write_param[1],string_point_array,MAX_STRING_NUM);
         if(index != 0xffff)
         {
-            read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[2],6);
-            write_param[9] = 0x0003; //字库位置
-            write_param[10] = 0x10<<8|0x10; //字体大小16*16
-            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[11],1);
-            write_param[11] = (write_param[11]&0x00ff) | 0x0200; //显示模式
-            write_dgus_vp(string_sp_addr[index],(uint8_t*)&write_param[0],11);    
-            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);    
+            read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[8] = 0x0033; //字库位置
+            write_param[9] = 0x10<<8|0x10; //字体大小16*16
+            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
+            write_param[10] = (write_param[10]&0x00ff) | 0x0200; //显示模式
+            write_dgus_vp(string_sp_addr[index]+0x01,(uint8_t*)&write_param[0],11);
+            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);
         }
-    }else if(frame[1] == 0x55)
+    }else if(frame[1] == 0x56)
     {
-        /* 显示32*32 GB2312字符串，字库是5*/
+        /* 显示32*32 GB2312字符串，字库是57*/
         write_param[0] = frame[2]<<8|frame[3];    //写入x坐标
         write_param[1] = frame[4]<<8|frame[5];    //写入y坐标
         index = FindNumberIsInArray(write_param[0],write_param[1],string_point_array,MAX_STRING_NUM);
         if(index != 0xffff)
         {
-            read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[2],6);
-            write_param[9] = 0x0005; //字库位置
-            write_param[10] = 0x20<<8|0x20; //字体大小32*32
-            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[11],1);
-            write_param[11] = (write_param[11]&0x00ff) | 0x0100; //显示模式
-            write_dgus_vp(string_sp_addr[index],(uint8_t*)&write_param[0],11);    
-            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);    
+            read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[8] = 0x0039; //字库位置
+            write_param[9] = 0x20<<8|0x20; //字体大小32*32
+            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
+            write_param[10] = (write_param[10]&0x00ff) | 0x0100; //显示模式
+            write_dgus_vp(string_sp_addr[index]+0x01,(uint8_t*)&write_param[0],11);
+            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);
         }
     }else if(frame[1] == 0x6e)
     {
-        /* 显示12*12 GBK字符串，字库是2*/
+        /* 显示12*12 GBK字符串，字库是48*/
         write_param[0] = frame[2]<<8|frame[3];    //写入x坐标
         write_param[1] = frame[4]<<8|frame[5];    //写入y坐标
         index = FindNumberIsInArray(write_param[0],write_param[1],string_point_array,MAX_STRING_NUM);
         if(index != 0xffff)
         {
-            read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[2],6);
-            write_param[9] = 0x0002; //字库位置
-            write_param[10] = 0x0C<<8|0x0C; //字体大小12*12
-            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[11],1);
-            write_param[11] = (write_param[11]&0x00ff) | 0x0200; //显示模式
-            write_dgus_vp(string_sp_addr[index],(uint8_t*)&write_param[0],11);    
-            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);    
+            read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[8] = 0x0030; //字库位置
+            write_param[9] = 0x0C<<8|0x0C; //字体大小12*12
+            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
+            write_param[10] = (write_param[10]&0x00ff) | 0x0200; //显示模式
+            write_dgus_vp(string_sp_addr[index]+0x01,(uint8_t*)&write_param[0],11);
+            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);
         }
     }else if(frame[1] == 0x6f)
     {
-        /* 显示24*24 GB2312字符串，字库是4*/
+        /* 显示24*24 GB2312字符串，字库是54*/
         write_param[0] = frame[2]<<8|frame[3];    //写入x坐标
         write_param[1] = frame[4]<<8|frame[5];    //写入y坐标
         index = FindNumberIsInArray(write_param[0],write_param[1],string_point_array,MAX_STRING_NUM);
         if(index != 0xffff)
         {
-            read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[2],6);
-            write_param[9] = 0x0004; //字库位置
-            write_param[10] = 0x18<<8|0x18; //字体大小24*24
-            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[11],1);
-            write_param[11] = (write_param[11]&0x00ff) | 0x0100; //显示模式
-            write_dgus_vp(string_sp_addr[index],(uint8_t*)&write_param[0],11);    
-            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);    
+            read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[8] = 0x0036; //字库位置
+            write_param[9] = 0x18<<8|0x18; //字体大小24*24
+            read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
+            write_param[10] = (write_param[10]&0x00ff) | 0x0100; //显示模式
+            write_dgus_vp(string_sp_addr[index]+0x01,(uint8_t*)&write_param[0],11);
+            write_dgus_vp(string_vp_addr[index],&frame[6],(len-12+1)>>1);
+        }
+    }else if(frame[1] == 0x14)
+    {
+        write_param[0] = frame[9]<<8|frame[10];    //写入x坐标
+        write_param[1] = frame[11]<<8|frame[12];    //写入y坐标
+        write_param[2] = frame[3]<<8|frame[4];   //写入颜色
+        index = FindNumberIsInArray(write_param[0],write_param[1],number_point_array,MAX_STRING_NUM);
+        if(index != 0xffff)
+        {
+            read_dgus_vp(number_sp_addr[index]+0x04,(uint8_t*)&write_param[3],4);
+            number_mode = frame[2];
+            switch((number_mode&0x0f))
+            {
+                /**
+                 * 0=8*12 01=8*12 02=6*12 03=8*16 04=12*24
+                 * 05=16*32 06=20*40 07=24*48 08=28*56 09=32*64
+                 * 字库位置和字体大小
+                 */
+                case 0x00:write_param[3] = (0x0000|0x0008);break; 
+                case 0x01:write_param[3] = (0x0000|0x0008);break; 
+                case 0x02:write_param[3] = (0x0000|0x0006);break;
+                case 0x03:write_param[3] = (0x0000|0x0008);break;
+                case 0x04:write_param[3] = (0x0000|0x000C);break;
+                case 0x05:write_param[3] = (0x0000|0x0010);break;
+                case 0x06:write_param[3] = (0x0000|0x0014);break;
+                case 0x07:write_param[3] = (0x0000|0x0018);break;
+                case 0x08:write_param[3] = (0x0000|0x001C);break;
+                case 0x09:write_param[3] = (0x0000|0x0020);break;
+                default:write_param[3] = (0x0000|0x0008);break;
+            }
+            write_param[4] = (write_param[4]&0xff00) | frame[7];    //对齐方式和整数位置
+
+            if(((write_param[5]&0x00ff) == 0x0000) || ((write_param[5]&0x00ff) == 0x0001)) //变量数据类型
+            {
+                if((number_mode&0x40)==0x00)
+                {
+                    write_param[5] = (frame[8]<<8) | ((write_param[5]+0x05)&0x00ff);
+                }
+            }else if(((write_param[5]&0x00ff) == 0x0005) || ((write_param[5]&0x00ff) == 0x0006))
+            {
+                if((number_mode&0x40)==0x40)
+                {
+                    write_param[5] = (frame[8]<<8) | ((write_param[5]-0x05)&0x00ff);
+                }
+            }
+            write_dgus_vp(number_sp_addr[index]+0x01,(uint8_t*)&write_param[0],6);
+            write_dgus_vp(number_vp_addr[index],&frame[13],(len-17)>>1);
         }
     }
 }
 
+
+
+void TAProtocolUpload(UART_TYPE *uart)
+{
+    uint16_t tp_status[3],crc16,crc_flag;
+    uint8_t send_ta_data[20];
+    static uint16_t last_tp_status[3] = {0};
+    read_dgus_vp(sysDGUS_TP_STATUS,(uint8_t*)&tp_status[0],3);
+    if(tp_status[0] != 0x5a02 && tp_status[0] != 0x5a03) return; //无触摸
+    if((tp_status[0] != last_tp_status[0])|| (tp_status[1] != last_tp_status[1]) || (tp_status[2] != last_tp_status[2]))
+    {
+        last_tp_status[0] = tp_status[0];
+        last_tp_status[1] = tp_status[1];
+        last_tp_status[2] = tp_status[2];
+        send_ta_data[0] = 0xAA;
+        send_ta_data[1] = (tp_status[0] -0x5a02) + 0x72;
+        send_ta_data[2] = tp_status[1]>>8;
+        send_ta_data[3] = tp_status[1]&0x00ff;
+        send_ta_data[4] = tp_status[2]>>8;
+        send_ta_data[5] = tp_status[2]&0x00ff;
+        read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc_flag,1);
+        crc_flag = crc_flag & 0x0080;
+        if(crc_flag != 0)
+        {
+            crc16 = crc_16(send_ta_data,6);
+            send_ta_data[6] = crc16 >> 8;
+            send_ta_data[7] = crc16 & 0x00ff;
+            send_ta_data[8] = 0xCC;
+            send_ta_data[9] = 0x33;
+            send_ta_data[10] = 0xC3;
+            send_ta_data[11] = 0x3C;
+            UartSendData(uart,send_ta_data,12);
+        }else{
+            send_ta_data[6] = 0xCC;
+            send_ta_data[7] = 0x33;
+            send_ta_data[8] = 0xC3;
+            send_ta_data[9] = 0x3C;
+            UartSendData(uart,send_ta_data,10);
+        }
+    }
+}
 #endif /* uartTA_PROTOCOL_ENABLED */

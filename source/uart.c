@@ -720,8 +720,9 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
-                UartStandardTAProtocal(uart, &frame[total_frame_len - i], one_frame_len);
-                i -= one_frame_len;
+                /* 加上帧尾 cc 33 c3 3c*/
+                UartStandardTAProtocol(uart, &frame[total_frame_len - i], one_frame_len+4);
+                i -= (one_frame_len+4);
             }
             #endif /* uartTA_PROTOCOL_ENABLED */
             else
@@ -745,5 +746,8 @@ void UartProtocalHandleTask(void)
     #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     UartReadFrame(&Uart_R11);
     #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
+    #if uartTA_PROTOCOL_ENABLED
+    TAProtocolUpload(&Uart2);
+    #endif /* uartTA_PROTOCOL_ENABLED */
 }
 
