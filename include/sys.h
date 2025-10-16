@@ -236,12 +236,12 @@ uint16_t ReadPageId(void);
 void SwitchPageById(uint16_t page_id);
 
 
-#if sysDGUS_AUTO_UPLOAD_ENABLED
+#if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 /**
  * @brief DGUS自动上传功能
  */
 void DgusAutoUpload(void);
-#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
+#endif /* sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED */
 
 
 /**

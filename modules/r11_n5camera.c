@@ -223,9 +223,9 @@ static void R11ValueScanTask(void)
     const uint16_t uint16_port_zero = 0;
     uint16_t dgus_value;
   
-    #if sysDGUS_AUTO_UPLOAD_ENABLED
+    #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
     DgusAutoUpload();
-    #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
+    #endif /* sysDGUS_AUTO_UPLOAD_ENABLED ||uartTA_PROTOCOL_ENABLED */
 
     read_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&dgus_value, 1);
     if((dgus_value>>8) == 0xA5)

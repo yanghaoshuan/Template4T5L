@@ -2,6 +2,8 @@
 #include "sys.h"
 #if uartTA_PROTOCOL_ENABLED
 #define BASIC_GRAPH_ADDR 0x3900
+#define STRING_XPOINT_SIZE    400
+#define STRING_YPOINT_SIZE    50
 #define MAX_STRING_NUM      10
 
 uint16_t string_vp_addr[MAX_STRING_NUM] = {0x3000,0x3020,0x3040,0x3060,0x3080,0x30A0,0x30C0,0x30E0,0x3100,0x3120};
@@ -36,8 +38,8 @@ static uint16_t FindNumberIsInArray(uint16_t x_point,uint16_t y_point,uint16_t *
 void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
 {
     uint16_t crc16,crc_flag,write_param[32];
-    uint16_t index;
-    uint8_t string_mode,number_mode;
+    uint16_t index,i;
+    uint8_t string_mode,number_mode,send_return_frame[20];
     static uint16_t string_point_array[MAX_STRING_NUM*2] = {0};
     static uint16_t number_point_array[MAX_STRING_NUM*2] = {0};
     read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc_flag,1);
@@ -77,6 +79,10 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x04,(uint8_t*)&write_param[3],5);
+            write_param[3] = write_param[0];
+            write_param[4] = write_param[1];
+            write_param[5] = write_param[0] + STRING_XPOINT_SIZE;
+            write_param[6] = write_param[1] + STRING_YPOINT_SIZE;
             write_param[8] = 0x0000 | frame[6]; //字库位置
             string_mode = frame[7]&0x0f;
             /** 字体大小 */
@@ -167,6 +173,10 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[3] = write_param[0];
+            write_param[4] = write_param[1];
+            write_param[5] = write_param[0] + STRING_XPOINT_SIZE;
+            write_param[6] = write_param[1] + STRING_YPOINT_SIZE;
             write_param[8] = 0x0033; //字库位置
             write_param[9] = 0x10<<8|0x10; //字体大小16*16
             read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
@@ -183,6 +193,10 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[3] = write_param[0];
+            write_param[4] = write_param[1];
+            write_param[5] = write_param[0] + STRING_XPOINT_SIZE;
+            write_param[6] = write_param[1] + STRING_YPOINT_SIZE;
             write_param[8] = 0x0039; //字库位置
             write_param[9] = 0x20<<8|0x20; //字体大小32*32
             read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
@@ -199,6 +213,10 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[3] = write_param[0];
+            write_param[4] = write_param[1];
+            write_param[5] = write_param[0] + STRING_XPOINT_SIZE;
+            write_param[6] = write_param[1] + STRING_YPOINT_SIZE;
             write_param[8] = 0x0030; //字库位置
             write_param[9] = 0x0C<<8|0x0C; //字体大小12*12
             read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
@@ -215,6 +233,10 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
         if(index != 0xffff)
         {
             read_dgus_vp(string_sp_addr[index]+0x03,(uint8_t*)&write_param[2],6);
+            write_param[3] = write_param[0];
+            write_param[4] = write_param[1];
+            write_param[5] = write_param[0] + STRING_XPOINT_SIZE;
+            write_param[6] = write_param[1] + STRING_YPOINT_SIZE;
             write_param[8] = 0x0036; //字库位置
             write_param[9] = 0x18<<8|0x18; //字体大小24*24
             read_dgus_vp(string_sp_addr[index]+0x0b,(uint8_t*)&write_param[10],1);
@@ -258,17 +280,70 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
                 if((number_mode&0x40)==0x00)
                 {
                     write_param[5] = (frame[8]<<8) | ((write_param[5]+0x05)&0x00ff);
+                }else
+                {
+                    write_param[5] = (frame[8]<<8) | ((write_param[5])&0x00ff);
                 }
             }else if(((write_param[5]&0x00ff) == 0x0005) || ((write_param[5]&0x00ff) == 0x0006))
             {
                 if((number_mode&0x40)==0x40)
                 {
                     write_param[5] = (frame[8]<<8) | ((write_param[5]-0x05)&0x00ff);
+                }else
+                {
+                    write_param[5] = (frame[8]<<8) | ((write_param[5])&0x00ff);
                 }
             }
             write_dgus_vp(number_sp_addr[index]+0x01,(uint8_t*)&write_param[0],6);
             write_dgus_vp(number_vp_addr[index],&frame[13],(len-17)>>1);
         }
+    }else if(frame[1] == 0xf0)   
+    {
+        /* 键值写入*/
+        write_dgus_vp((frame[2] << 8) | frame[3], &frame[4], (len-8) >> 1);
+        #if uartUART_82CMD_RETURN
+        i=0;
+        send_return_frame[i++] = 0xAA;
+        send_return_frame[i++] = 0xf1;  
+        send_return_frame[i++] = 0x4f;
+        send_return_frame[i++] = 0x4b;
+        if(crc_flag != 0)
+        {
+            crc16 = crc_16(&frame[0], 4);
+            send_return_frame[i++] = (uint8_t)crc16;
+            send_return_frame[i++] = crc16 >> 8;
+        }
+        send_return_frame[i++] = 0xcc;
+        send_return_frame[i++] = 0x33;
+        send_return_frame[i++] = 0xC3;
+        send_return_frame[i++] = 0x3C;
+        UartSendData(uart, send_return_frame, i);
+        #endif /* uartUART_82CMD_RETURN */
+
+    }else if(frame[1] == 0xf1)   
+    {
+        /* 键值读取*/
+        read_dgus_vp((frame[2] << 8) | frame[3], &send_return_frame[5], frame[4] >> 0);
+        i=0;
+        send_return_frame[i++] = 0xAA;  
+        send_return_frame[i++] = 0xf1;
+        send_return_frame[i++] = frame[2];
+        send_return_frame[i++] = frame[3];
+        send_return_frame[i++] = frame[4] << 1;
+        if(crc_flag != 0)
+        {
+            crc16 = crc_16(&send_return_frame[0], send_return_frame[4] + 5);
+            send_return_frame[send_return_frame[4] + 5] = (uint8_t)crc16;
+            send_return_frame[send_return_frame[4] + 6] = crc16 >> 8;
+            i  = send_return_frame[4] + 7;
+        }else{
+            i  = send_return_frame[4] + 5;
+        }
+        send_return_frame[i++] = 0xcc;
+        send_return_frame[i++] = 0x33;
+        send_return_frame[i++] = 0xC3;
+        send_return_frame[i++] = 0x3C;
+        UartSendData(uart, send_return_frame, i);
     }
 }
 
@@ -276,11 +351,14 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
 
 void TAProtocolUpload(UART_TYPE *uart)
 {
-    uint16_t tp_status[3],crc16,crc_flag;
+    #define TA_TOUCH_UPLOAD_ADDR    0x0601
+    uint16_t tp_status[3],crc16,crc_flag,key_status;
     uint8_t send_ta_data[20];
-    static uint16_t last_tp_status[3] = {0};
+    static uint16_t last_tp_status[3] = {0},old_key_status = 0;
     read_dgus_vp(sysDGUS_TP_STATUS,(uint8_t*)&tp_status[0],3);
     if(tp_status[0] != 0x5a02 && tp_status[0] != 0x5a03) return; //无触摸
+    read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc_flag,1);
+    crc_flag = crc_flag & 0x0080;
     if((tp_status[0] != last_tp_status[0])|| (tp_status[1] != last_tp_status[1]) || (tp_status[2] != last_tp_status[2]))
     {
         last_tp_status[0] = tp_status[0];
@@ -292,8 +370,6 @@ void TAProtocolUpload(UART_TYPE *uart)
         send_ta_data[3] = tp_status[1]&0x00ff;
         send_ta_data[4] = tp_status[2]>>8;
         send_ta_data[5] = tp_status[2]&0x00ff;
-        read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)&crc_flag,1);
-        crc_flag = crc_flag & 0x0080;
         if(crc_flag != 0)
         {
             crc16 = crc_16(send_ta_data,6);
@@ -312,5 +388,65 @@ void TAProtocolUpload(UART_TYPE *uart)
             UartSendData(uart,send_ta_data,10);
         }
     }
+    read_dgus_vp(TA_TOUCH_UPLOAD_ADDR, (uint8_t*)&key_status, 1);
+    if(key_status != 0 && key_status != old_key_status)
+    {
+        old_key_status = key_status;
+        send_ta_data[0] = 0xAA;
+        send_ta_data[1] = 0x79;
+        send_ta_data[2] = 0x00;
+        send_ta_data[3] = 0x00;
+        send_ta_data[4] = key_status << 8;
+        send_ta_data[5] = key_status & 0x00ff;
+        if(crc_flag != 0)
+        {
+            crc16 = crc_16(send_ta_data,6);
+            send_ta_data[6] = crc16 >> 8;
+            send_ta_data[7] = crc16 & 0x00ff;
+            send_ta_data[8] = 0xCC;
+            send_ta_data[9] = 0x33;
+            send_ta_data[10] = 0xC3;
+            send_ta_data[11] = 0x3C;
+            UartSendData(uart,send_ta_data,12);
+        }else{
+            send_ta_data[6] = 0xCC;
+            send_ta_data[7] = 0x33;
+            send_ta_data[8] = 0xC3;
+            send_ta_data[9] = 0x3C;
+            UartSendData(uart,send_ta_data,10);
+        }
+    }
+    if(tp_status[0] == 0x5a02)
+    {
+        read_dgus_vp(TA_TOUCH_UPLOAD_ADDR, (uint8_t*)&key_status, 1);
+        if(key_status != 0)
+        {
+            send_ta_data[0] = 0xAA;
+            send_ta_data[1] = 0x78;
+            send_ta_data[2] = 0x00;
+            send_ta_data[3] = 0x00;
+            if(crc_flag != 0)
+            {
+                crc16 = crc_16(send_ta_data,6);
+                send_ta_data[6] = crc16 >> 8;
+                send_ta_data[7] = crc16 & 0x00ff;
+                send_ta_data[8] = 0xCC;
+                send_ta_data[9] = 0x33;
+                send_ta_data[10] = 0xC3;
+                send_ta_data[11] = 0x3C;
+                UartSendData(uart,send_ta_data,12);
+            }else{
+                send_ta_data[6] = 0xCC;
+                send_ta_data[7] = 0x33;
+                send_ta_data[8] = 0xC3;
+                send_ta_data[9] = 0x3C;
+                UartSendData(uart,send_ta_data,10);
+            }
+            key_status = 0;
+            write_dgus_vp(TA_TOUCH_UPLOAD_ADDR, (uint8_t*)&key_status, 1);
+        }
+    }
+
+
 }
 #endif /* uartTA_PROTOCOL_ENABLED */

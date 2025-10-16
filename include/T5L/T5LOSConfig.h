@@ -167,11 +167,9 @@ extern uint32_t sysFCLK;
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
-#define sysDGUS_AUTO_UPLOAD_ENABLED     1      /**< 自动上传使能标志 */
-#if sysDGUS_AUTO_UPLOAD_ENABLED
+#define sysDGUS_AUTO_UPLOAD_ENABLED     0      /**< 自动上传使能标志 */
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
-#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 

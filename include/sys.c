@@ -417,6 +417,53 @@ void DgusAutoUpload()
 }
 #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
+#if uartTA_PROTOCOL_ENABLED
+void DgusAutoUpload()
+{
+    uint8_t auto_load_arr[4] = {0};
+	uint8_t crc_value=0;
+	uint16_t read_param;
+	read_dgus_vp(sysDGUS_AUTO_UPLOAD_VP_ADDR, auto_load_arr, 2);
+	if (auto_load_arr[0] == 0x5A) 
+	{
+		uint16_t auto_load_vp = *((uint16_t *)(&auto_load_arr[1]));
+		uint16_t auto_load_len = auto_load_arr[3] * 2;
+		uint8_t auto_load_ret_arr[sysDGUS_AUTO_UPLOAD_LEN] = {0xAA,0x78, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+  
+		read_dgus_vp(auto_load_vp, auto_load_ret_arr + 2, auto_load_len);
+        if(auto_load_ret_arr[2] == 0xaa)
+        {
+            auto_load_ret_arr[1] = 0x79;
+        }else
+        {
+            auto_load_ret_arr[1] = 0x78;
+        }
+
+		read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&read_param, 1);
+		if (read_param & 0x0080)
+		{
+            crc_value = crc_16(auto_load_ret_arr,4);
+            auto_load_ret_arr[5] = crc_value >> 8;
+            auto_load_ret_arr[6] = crc_value & 0x00ff;
+            auto_load_ret_arr[7] = 0xCC;
+            auto_load_ret_arr[8] = 0x33;
+            auto_load_ret_arr[9] = 0xC3;
+            auto_load_ret_arr[10] = 0x3C;
+            UartSendData(&Uart2,auto_load_ret_arr,11);
+        }else{
+            auto_load_ret_arr[4] = 0xCC;
+            auto_load_ret_arr[5] = 0x33;
+            auto_load_ret_arr[6] = 0xC3;
+            auto_load_ret_arr[7] = 0x3C;
+            UartSendData(&Uart2,auto_load_ret_arr,8);
+        }
+		auto_load_arr[0] = 0x00;
+		auto_load_arr[1] = 0x00;
+		write_dgus_vp(sysDGUS_AUTO_UPLOAD_VP_ADDR, auto_load_arr, 1);
+	}
+}
+#endif /* uartTA_PROTOCOL_ENABLED */
+
 
 static void first_enter_action(void)
 {
@@ -512,9 +559,9 @@ void DgusValueScanTask(void)
   const uint16_t uint16_port_zero = 0;
   uint16_t dgus_value;
   
-  #if sysDGUS_AUTO_UPLOAD_ENABLED
+  #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
   DgusAutoUpload();
-  #endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
+  #endif /* sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED*/
 
   read_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&dgus_value, 1);
   if(dgus_value == 0x0001)
