@@ -112,9 +112,9 @@ typedef            long			int32_t;
  * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
-#define sysADVERTISE_MODE_ENABLED       0
+#define sysADVERTISE_MODE_ENABLED       1
 #define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         1     
+#define sysBEAUTY_MODE_ENABLED         0     
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
@@ -167,9 +167,11 @@ extern uint32_t sysFCLK;
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
-#define sysDGUS_AUTO_UPLOAD_ENABLED     0      /**< 自动上传使能标志 */
+#define sysDGUS_AUTO_UPLOAD_ENABLED     1      /**< 自动上传使能标志 */
+#if sysDGUS_AUTO_UPLOAD_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
+#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 
@@ -225,7 +227,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     3000
+#define uartUART_COMMON_FRAME_SIZE     4500
 
 /**
  * @brief Modbus协议支持使能标志
@@ -233,13 +235,9 @@ extern uint32_t sysFCLK;
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
 
-/**
- * @brief TA指令集支持使能标志
- * @details 1: 启用TA指令集支持, 0: 禁用TA指令集支持
- */
-#define uartTA_PROTOCOL_ENABLED        1      
+#define uartTA_PROTOCOL_ENABLED          0
 
-#define uartUART_82CMD_RETURN            1       /*UART2命令返回使能标志 0:禁用 1启用 */   
+#define uartUART_82CMD_RETURN            0       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
 /* UART2配置参数 */
 /**
@@ -278,7 +276,7 @@ extern uint32_t sysFCLK;
 #endif  /* uartUART2_ENABLED */
 
 /* UART3配置参数，配置同uart2 */
-#define uartUART3_ENABLED               1
+#define uartUART3_ENABLED               0
 
 #if uartUART3_ENABLED
     #define uartUART3_TXBUF_SIZE         256
@@ -314,7 +312,7 @@ extern uint32_t sysFCLK;
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         3000
+    #define uartUART5_RXBUF_SIZE         4500
     #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED

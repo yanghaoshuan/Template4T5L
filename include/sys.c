@@ -386,7 +386,7 @@ void SwitchPageById(uint16_t page_id)
 void DgusAutoUpload()
 {
     uint8_t auto_load_arr[4] = {0};
-	uint8_t crc_value=0;
+	uint16_t crc_value=0;
 	uint16_t read_param;
 	read_dgus_vp(sysDGUS_AUTO_UPLOAD_VP_ADDR, auto_load_arr, 2);
 	if (auto_load_arr[0] == 0x5A) 
@@ -407,7 +407,7 @@ void DgusAutoUpload()
 			auto_load_len += 2;
 			crc_value = crc_16(&auto_load_ret_arr[3], auto_load_ret_arr[2] - 2);
 			auto_load_ret_arr[auto_load_ret_arr[2] + 1] = (uint8_t)crc_value;
-			auto_load_ret_arr[auto_load_ret_arr[2] + 2] = (uint8_t)(crc_value >> 8);
+			auto_load_ret_arr[auto_load_ret_arr[2] + 2] = crc_value >> 8;
 		}
 		UartSendData(&Uart2, auto_load_ret_arr, auto_load_len + 7);
 		auto_load_arr[0] = 0x00;

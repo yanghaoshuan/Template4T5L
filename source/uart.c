@@ -594,8 +594,8 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         {
             send_return_frame[2] += 2;
             CrcResult = crc_16(&send_return_frame[3], send_return_frame[2] - 2);
-            send_return_frame[frame[2]+1] = (uint8_t)CrcResult;
-            send_return_frame[frame[2]+2] = CrcResult >> 8;
+            send_return_frame[send_return_frame[2]+1] = (uint8_t)CrcResult;
+            send_return_frame[send_return_frame[2]+2] = CrcResult >> 8;
         }
         UartSendData(uart, send_return_frame, (send_return_frame[2]+3));
     }
