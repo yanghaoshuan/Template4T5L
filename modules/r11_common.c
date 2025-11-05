@@ -1015,16 +1015,15 @@ void UartR11UserVideoProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
             /* 提取以0x23 0x23(##)为分隔符的文件名 */            
             ExtractFilenamesFromProtocol(frame, len);
             break;
-            break;
         case cmdMP4_PAUSE:
             r11_player.state = 0x05;
-            break;
         case cmdMP4_REPLAY:
             r11_player.state = 0x01;
-            break;
         case cmdMP4_STOP:
             r11_player.state = 0x04;
-            write_param[0] = frame[5]<<8 & 0xFF00;
+        case cmdMP4_PLAY:     /* 播放状态反馈*/
+            r11_player.state = frame[5];
+            write_param[0] = (uint16_t)r11_player.state;
             write_dgus_vp(PLAY_STATUS_ADDR, (uint8_t*)&write_param[0], 1);
             break;
         default:
