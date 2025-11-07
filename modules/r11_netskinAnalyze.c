@@ -394,9 +394,9 @@ static void R11CameraEnlargeHandle(uint16_t dgus_value)
 	}else if((uint8_t)dgus_value == 0x03)
 	{
 		/** up */
-		if((*source).enlarge_start_X+(*source).enlarge_x_acc+(*source).enlarge_cap_high <= curr_cap_high)
+		if((*source).enlarge_start_Y >=(*source).enlarge_y_acc)
 		{
-			(*source).enlarge_start_X +=(*source).enlarge_x_acc;
+			(*source).enlarge_start_Y -=(*source).enlarge_y_acc;
 		}
 		R11MagnifierEnlarge(curr_enlarge_type,NULL,source);
 		write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uint16_port_zero,1);
