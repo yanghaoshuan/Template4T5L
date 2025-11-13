@@ -417,7 +417,8 @@ void R11VideoPlayerProcess(void)
             {
                 SwitchPageById((uint16_t)page_st.video_page); 
             }
-            R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
+
+            R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x01);
         }
         video_init_process = VIDEO_PROCESS_QUERY;
     }else if(video_init_process == VIDEO_PROCESS_QUERY)

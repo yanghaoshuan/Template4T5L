@@ -112,9 +112,9 @@ typedef            long			int32_t;
  * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
-#define sysADVERTISE_MODE_ENABLED       1
+#define sysADVERTISE_MODE_ENABLED       0
 #define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0     
+#define sysBEAUTY_MODE_ENABLED         1     
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
 #error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
@@ -235,7 +235,7 @@ extern uint32_t sysFCLK;
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
 
-#define uartTA_PROTOCOL_ENABLED          0
+#define uartTA_PROTOCOL_ENABLED          1
 
 #define uartUART_82CMD_RETURN            0       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
