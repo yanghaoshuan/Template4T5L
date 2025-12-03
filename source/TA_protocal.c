@@ -35,6 +35,25 @@ static uint16_t FindNumberIsInArray(uint16_t x_point,uint16_t y_point,uint16_t *
 }
 
 
+static void TAClearAllStringAndNumber(void)
+{
+    uint16_t i;
+    uint8_t zero_arr[MAX_STRING_NUM*2] = {0};
+
+    /* 清空基本图形显示 */
+    write_dgus_vp(BASIC_GRAPH_ADDR,(uint8_t*)&zero_arr[0],10);    
+    for(i=0;i<MAX_STRING_NUM;i++)
+    {
+        /* 清空字符串显示*/
+        write_dgus_vp(string_vp_addr[i],&zero_arr[0],MAX_STRING_NUM);
+
+        /* 清空数字显示，将数字写到0，0位置*/
+        write_dgus_vp(number_sp_addr[i] + 0x01,&zero_arr[0],2);
+        write_dgus_vp(number_vp_addr[i],&zero_arr[0],MAX_STRING_NUM);
+    }
+}
+
+
 void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
 {
     uint16_t crc16,crc_flag,write_param[32];
@@ -54,6 +73,7 @@ void UartStandardTAProtocol(UART_TYPE *uart, uint8_t *frame, uint16_t len)
     }
     if(frame[1] == 0x70)
     {
+        TAClearAllStringAndNumber();
         SwitchPageById((uint16_t)frame[2]);
     }else if(frame[1] == 0x71)
     {
