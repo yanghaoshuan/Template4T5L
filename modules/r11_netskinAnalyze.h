@@ -89,12 +89,25 @@
 #define FOLDER_PAGE_ADDR        0x05c1
 #define FOLDER_PATH_ADDR        0x05c2
 
+#define ABBR_QUALITY            50
+
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
+#define R11_HAIR_ANALYZE_ADDR   (uint32_t)0x0601
 #define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期R11_TASK_INTERVAL，50对应5s */
 #define netWIFI_STATUS_ADDR     0x18b4
 #define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 #define cameraNOW_NUM_ADDR      0x18b7
+#define HAIR_ANALYZE_RESULT_ADDR 0x3500
+#define HAIR_ANALYZE_HAIR_RGB_ADDR	 0x3500
+#define HAIR_ANALYZE_SKIN_RGB_ADDR   0x3501
+#define HAIR_ANALYZE_HAIR_DENSE_ADDR 0x3502
+
+#define HAIR_ANALYZE_PROCESS_ADDR  0x3504
+#define HAIR_ANALYZE_WAITING_ADDR    0x3506
+#define HAIR_ANALYZE_FAIL_ADDR   0x350a
+#define HAIR_ANALYZE_HAIR_LEVEL_ADDR 0x350b
+#define HAIR_ANALYZE_SKIN_LEVEL_ADDR 0x350c
 
 #define MIN_HIGH  		160
 #define MIN_WIDTH  		120
@@ -122,6 +135,8 @@
 #define netCPUINFO_QUERY        0xc6
 #define netWEBSOCKET_SEND       0xa9
 
+#define cameraHAIR_ANALYZE      0xf6
+
 
 /** 美容屏相关结构体定义区域 */
 typedef struct
@@ -139,6 +154,7 @@ typedef struct
     uint8_t camera_local;        /* 摄像头显示位置，从0开始 */
     uint8_t camera_status;       /* 是否发给摄像头显示，0不显示，1显示 */
     uint8_t camera_num[6];        /* 当前摄像头显示的编号，默认0-5 */
+	uint8_t camera_open_flag;     /* 摄像头打开标志，0关闭，1打开 */
 } CAMERA_MA;
 
 
@@ -294,6 +310,25 @@ typedef struct
 }R11_STATE;
 
 
+typedef struct
+{
+	uint8_t red[2];        /* 红色值 0是皮肤，1是头发 */
+	uint8_t green[2];      /* 绿色值 0是皮肤，1是头发*/
+	uint8_t blue[2];       /* 蓝色值 0是皮肤，1是头发*/
+	uint16_t rgb16[2];        /* rgb16值 0是皮肤，1是头发*/
+	uint8_t type;			/* 发质类型,0代表头皮分析 */
+	uint16_t percent;
+	uint16_t res_done_flag; /* 结果完成标志，0未完成，1完成 */
+
+	uint16_t skin_color;   /* 皮肤颜色值 */
+	uint16_t hair_color;   /* 发色值 */
+	uint16_t hair_level;   /* 头发颜色等级*/
+	uint16_t skin_level;  /* 皮肤颜色等级*/
+	uint16_t hair_dense;   /* 发量值 */
+
+
+}HAIR_S;
+
 typedef enum
 {
     CAMERA_INSERT_CHECK = 0,      /* 摄像头插入检测，0xb8指令 */
@@ -330,6 +365,7 @@ extern WIFI_PAGE_S wifi_page;
 extern CAMERA_PROCESS_STATE camera_process_state;
 extern NET_CONNECTED_STATE net_connected_state;
 extern R11_STATE r11_state;
+extern HAIR_S hair_analyze;
 
 
 /**
