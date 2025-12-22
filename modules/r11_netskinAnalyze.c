@@ -733,7 +733,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 	{
 		/** 摄像头画面还原 */
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
-		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraCLOSE_STATUS);
+		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraOPEN_STATUS);
 		write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 	}else if(dgus_value >= 0xA510 && dgus_value < 0xA516)
 	{
