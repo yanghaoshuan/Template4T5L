@@ -93,21 +93,34 @@
 
 #define R11_TASK_INTERVAL       100
 #define R11_SCAN_ADDRESS     	(uint32_t)0x0600
-#define R11_HAIR_ANALYZE_ADDR   (uint32_t)0x0601
+#define R11_ANALYZE_ADDR  		(uint32_t)0x0601
+#define R11_FACE_TYPE_ADDR		(uint32_t)0x0602
 #define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期R11_TASK_INTERVAL，50对应5s */
 #define netWIFI_STATUS_ADDR     0x18b4
 #define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 #define cameraNOW_NUM_ADDR      0x18b7
-#define HAIR_ANALYZE_RESULT_ADDR 0x3500
-#define HAIR_ANALYZE_HAIR_RGB_ADDR	 0x3500
-#define HAIR_ANALYZE_SKIN_RGB_ADDR   0x3501
-#define HAIR_ANALYZE_HAIR_DENSE_ADDR 0x3502
+#define analyzeRESULT_ADDR 		0x3500
+#define analyzeHAIR_RGB_ADDR	0x3500
+#define analyzeSKIN_RGB_ADDR    0x3501
+#define analyzeHAIR_DENSE_ADDR  0x3502
 
-#define HAIR_ANALYZE_PROCESS_ADDR  0x3504
-#define HAIR_ANALYZE_WAITING_ADDR    0x3506
-#define HAIR_ANALYZE_FAIL_ADDR   0x350a
-#define HAIR_ANALYZE_HAIR_LEVEL_ADDR 0x350b
-#define HAIR_ANALYZE_SKIN_LEVEL_ADDR 0x350c
+#define analyzePROCESS_ADDR     0x3504
+#define analyzeWAITING_ADDR     0x3506
+#define analyzeSKIN_AREA_PERCENT_ADDR 0x3507
+#define analyzeTYPE_TITLE_ADDR  0x3509
+#define analyzeFAIL_ADDR        0x350a
+#define analyzeHAIR_LEVEL_ADDR  0x350b
+#define analyzeSKIN_LEVEL_ADDR  0x350c
+
+/*在R11HairAnalyzeCalcResult函数中定义，此处注释用作提示，占用0x40个地址*/
+/*
+#define COLOR_RECT_ADDR   0x3510
+*/
+#define analyzeSKIN_SUGGESTION_ADDR 0x3550
+#define analyzeFILE_PATH_ADDR       0x3570
+
+#define analyzeHAIR_ANA_PAGE        50
+#define analyzeSKIN_ANA_PAGE        31
 
 #define MIN_HIGH  		160
 #define MIN_WIDTH  		120
@@ -135,7 +148,11 @@
 #define netCPUINFO_QUERY        0xc6
 #define netWEBSOCKET_SEND       0xa9
 
-#define cameraHAIR_ANALYZE      0xf6
+#define analyzeFILE_CREATE      0xe2
+#define analyzeHAIR_TYPE        0xe6
+#define analyzeSKIN_TYPE        0xe7
+#define analyzeHAIR_RESULT      0xf6
+#define analyzeSKIN_RESULT      0xf7
 
 
 /** 美容屏相关结构体定义区域 */
@@ -316,9 +333,6 @@ typedef struct
 	uint8_t green[2];      /* 绿色值 0是皮肤，1是头发*/
 	uint8_t blue[2];       /* 蓝色值 0是皮肤，1是头发*/
 	uint16_t rgb16[2];        /* rgb16值 0是皮肤，1是头发*/
-	uint8_t type;			/* 发质类型,0代表头皮分析 */
-	uint16_t percent;
-	uint16_t res_done_flag; /* 结果完成标志，0未完成，1完成 */
 
 	uint16_t skin_color;   /* 皮肤颜色值 */
 	uint16_t hair_color;   /* 发色值 */
@@ -328,6 +342,24 @@ typedef struct
 
 
 }HAIR_S;
+
+typedef struct
+{
+	uint16_t reserved;
+}SKIN_S;
+
+typedef struct
+{
+	HAIR_S hair_analyze;
+	SKIN_S skin_analyze;
+	uint8_t type;			/* 发质类型,0代表头皮分析 */
+	uint16_t percent;       /* 皮肤分析百分比 */
+	uint16_t res_done_flag; /* 结果完成标志，0未完成，1完成 */
+	uint16_t last_type_page; /* 上次类型页面，用于检测页面切换 */
+
+}R11_ANALYZE_S;
+
+
 
 typedef enum
 {
@@ -365,7 +397,7 @@ extern WIFI_PAGE_S wifi_page;
 extern CAMERA_PROCESS_STATE camera_process_state;
 extern NET_CONNECTED_STATE net_connected_state;
 extern R11_STATE r11_state;
-extern HAIR_S hair_analyze;
+extern R11_ANALYZE_S analyze;
 
 
 /**

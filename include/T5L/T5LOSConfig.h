@@ -128,6 +128,7 @@ typedef            long			int32_t;
 #if sysBEAUTY_MODE_ENABLED
 #define Uart_R11                     Uart5
 #define R11_WIFI_ENABLED              1
+#define R11_HAIR_ANALYZE_ENABLED      1          /**< 头皮检测分析功能使能标志 */
 #endif /* sysBEAUTY_MODE_ENABLED */
 
 #if sysADVERTISE_MODE_ENABLED
