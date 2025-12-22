@@ -1,12 +1,12 @@
 
 #/**
 # * @file r11_netskinAnalyze.c
-# * @brief R11ÍøÂçÆ¤·ô·ÖÎöÏà¹ØÊµÏÖÎÄ¼ş
-# * @details °üº¬ÉãÏñÍ·¡¢WiFi¡¢Ò³Ãæ¡¢Ö÷ÊÓÍ¼µÈ¹¦ÄÜÊµÏÖ£¬¸ºÔğR11ÃÀÈİÆÁµÄÖ÷Á÷³Ì¡¢²ÎÊı³õÊ¼»¯¡¢Ğ­Òé´¦ÀíµÈ¡£
+# * @brief R11ç½‘ç»œçš®è‚¤åˆ†æç›¸å…³å®ç°æ–‡ä»¶
+# * @details åŒ…å«æ‘„åƒå¤´ã€WiFiã€é¡µé¢ã€ä¸»è§†å›¾ç­‰åŠŸèƒ½å®ç°ï¼Œè´Ÿè´£R11ç¾å®¹å±çš„ä¸»æµç¨‹ã€å‚æ•°åˆå§‹åŒ–ã€åè®®å¤„ç†ç­‰ã€‚
 # */
 #include "r11_netskinAnalyze.h"
 #include <string.h>
-
+#include "suggestionsGB2312.h"
 
 #if sysBEAUTY_MODE_ENABLED
 CAMERA_MA camera_magnifier;
@@ -19,7 +19,7 @@ SCREEN_S screen_opt;
 WIFI_PAGE_S wifi_page;
 CAMERA_PROCESS_STATE camera_process_state = CAMERA_INSERT_CHECK;
 NET_CONNECTED_STATE net_connected_state = NET_WEBSOCKET_SEND;
-R11_STATE r11_state = {UINT16_PORT_MAX,0,0,0}; // ³õÊ¼»¯R11×´Ì¬
+R11_STATE r11_state = {UINT16_PORT_MAX,0,0,0}; // åˆå§‹åŒ–R11çŠ¶æ€
 R11_ANALYZE_S analyze;
 
 
@@ -27,7 +27,7 @@ void R11ConfigInitFormLib(void)
 {
     uint16_t read_param[30];
     FlashToDgus(flashMAIN_BLOCK_ORDER,PIXELS_SET_ADDR,PIXELS_SET_ADDR,0x48);
-    	/** 1.½øĞĞ·Ö±æÂÊµÄ³õÊ¼»¯£¬Õë¶Ô2k·Ö±æÂÊĞèÒªĞŞ¸ÄÖ÷Æµ */
+    	/** 1.è¿›è¡Œåˆ†è¾¨ç‡çš„åˆå§‹åŒ–ï¼Œé’ˆå¯¹2kåˆ†è¾¨ç‡éœ€è¦ä¿®æ”¹ä¸»é¢‘ */
 	read_dgus_vp(PIXELS_SET_ADDR,(uint8_t*)&read_param[0],6);
 	memcpy(&screen_opt, &read_param[0], 12);
 	if(screen_opt.screen_ratio == 0)  //19201080
@@ -40,7 +40,7 @@ void R11ConfigInitFormLib(void)
 		sysFOSC = 206438400;
 		sysFCLK = 206438400;
 	}
-	/** 2.½øĞĞÆÁÄ»ÉèÖÃµÄ³õÊ¼»¯£¬°üÀ¨·ÖÆµÏµÊı£¬ÏÔÊ¾ÖÊÁ¿£¬½ØÍ¼ÕÅÊı */
+	/** 2.è¿›è¡Œå±å¹•è®¾ç½®çš„åˆå§‹åŒ–ï¼ŒåŒ…æ‹¬åˆ†é¢‘ç³»æ•°ï¼Œæ˜¾ç¤ºè´¨é‡ï¼Œæˆªå›¾å¼ æ•° */
 	if(screen_opt.fclk_div <7||screen_opt.fclk_div>=12)
 	{
 		screen_opt.fclk_div = 12;
@@ -137,7 +137,7 @@ void R11ConfigInitFormLib(void)
 		camera_magnifier.camera_col_width = 480;
 	}
 
-	/* 3.Õë¶ÔÖ÷ÏÔÊ¾Î»ÖÃ½øĞĞ³õÊ¼»¯ */
+	/* 3.é’ˆå¯¹ä¸»æ˜¾ç¤ºä½ç½®è¿›è¡Œåˆå§‹åŒ– */
 	read_dgus_vp(VIDEO_HIGH_ADDR,(uint8_t*)&read_param[0],16);
 	memcpy(&mainview, &read_param[0], 32);
 
@@ -161,7 +161,7 @@ void R11ConfigInitFormLib(void)
 	Locate_arr[6] = mainview.video_x_point;
 	Locate_arr[7] = mainview.video_y_point;
 
-	/* 4.Õë¶ÔËõÂÔÍ¼½øĞĞ³õÊ¼»¯ */
+	/* 4.é’ˆå¯¹ç¼©ç•¥å›¾è¿›è¡Œåˆå§‹åŒ– */
 	read_dgus_vp(PIC_HIGH_ADDR,(uint8_t*)&read_param[0],14);
 	memcpy(&thumbnail, &read_param[0], 28);
 	camera_magnifier.camera_cap_high = thumbnail.high;
@@ -182,15 +182,15 @@ void R11ConfigInitFormLib(void)
 	Icon_Overlay_SP_Y[8] = thumbnail.pic5_y_point;
 	Icon_Overlay_SP_Y[9] = thumbnail.pic6_y_point;
 
-	/** 5.Õë¶ÔÒ³ÃæÇĞ»»½øĞĞ³õÊ¼»¯ */
+	/** 5.é’ˆå¯¹é¡µé¢åˆ‡æ¢è¿›è¡Œåˆå§‹åŒ– */
 	read_dgus_vp(MENU_SCREEN_ADDR,(uint8_t*)&read_param[0],7);
 	memcpy(&page_st, &read_param[0], 14);
-	/** 6.Õë¶ÔÏÔÊ¾±ØÒªÊı¾İµÄµØÖ·½øĞĞ³õÊ¼»¯ */
+	/** 6.é’ˆå¯¹æ˜¾ç¤ºå¿…è¦æ•°æ®çš„åœ°å€è¿›è¡Œåˆå§‹åŒ– */
 	read_dgus_vp(USER_TEL_ADDR,(uint8_t*)&read_param[0],11);
 	memcpy(&addr_st, &read_param[0], 22);
 
 	read_dgus_vp(CMD_82_RETURN_ADDR,(uint8_t*)&screen_opt.cmd_82_return_flag,1);
-	/** 7.Õë¶ÔwifiÏà¹Ø¹ı¶ÉÒ³½øĞĞ³õÊ¼»¯ */
+	/** 7.é’ˆå¯¹wifiç›¸å…³è¿‡æ¸¡é¡µè¿›è¡Œåˆå§‹åŒ– */
 	read_dgus_vp(WIFI_SCAN_PAGE_ADDR,(uint8_t*)&read_param[0],7);
 	memcpy(&wifi_page, &read_param[0], 14);
 
@@ -227,7 +227,7 @@ void R11PageInitChange(void)
 
 
 /*
- * @brief ÉãÏñÍ·´ò¿ªÏß³Ì¿ØÖÆ£¬×é×°²¢·¢ËÍÏà¹ØĞ­ÒéÖ¡¡£
+ * @brief æ‘„åƒå¤´æ‰“å¼€çº¿ç¨‹æ§åˆ¶ï¼Œç»„è£…å¹¶å‘é€ç›¸å…³åè®®å¸§ã€‚
  */
 static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,uint8_t camera_type)
 {
@@ -257,7 +257,7 @@ static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,ui
 
 
 /*
- * @brief ÉãÏñÍ··¢ËÍT5L¿ØÖÆÖ¸Áî¡£
+ * @brief æ‘„åƒå¤´å‘é€T5Læ§åˆ¶æŒ‡ä»¤ã€‚
  */
 static void R11CameraSendT5lCtrl(uint8_t camera_mode,uint8_t send_flag)
 {
@@ -295,7 +295,7 @@ static void R11CameraSendT5lCtrl(uint8_t camera_mode,uint8_t send_flag)
 
 
 /*
- * @brief ÉãÏñÍ·ÉÏ´«Í¼Æ¬£¨Ô¤Áô£©¡£
+ * @brief æ‘„åƒå¤´ä¸Šä¼ å›¾ç‰‡ï¼ˆé¢„ç•™ï¼‰ã€‚
  */
 static void R11CameraUploadPicture(void)
 {
@@ -305,7 +305,7 @@ static void R11CameraUploadPicture(void)
 
 
 /*
- * @brief ·Å´ó¾µ·Å´ó²Ù×÷£¬×é×°²¢·¢ËÍÏà¹ØĞ­ÒéÖ¡¡£
+ * @brief æ”¾å¤§é•œæ”¾å¤§æ“ä½œï¼Œç»„è£…å¹¶å‘é€ç›¸å…³åè®®å¸§ã€‚
  */
 static void R11MagnifierEnlarge(uint8_t enlarge_type,uint8_t* item_en_name,ENLARGE_P* source2)
 {
@@ -338,7 +338,7 @@ static void R11MagnifierEnlarge(uint8_t enlarge_type,uint8_t* item_en_name,ENLAR
 
 
 /*
- * @brief ÉãÏñÍ··Å´óÏà¹Ø°´¼ü´¦Àí¡£
+ * @brief æ‘„åƒå¤´æ”¾å¤§ç›¸å…³æŒ‰é”®å¤„ç†ã€‚
  */
 static void R11CameraEnlargeHandle(uint16_t dgus_value)
 {
@@ -477,7 +477,7 @@ static void R11CameraEnlargeHandle(uint16_t dgus_value)
 
 
 /*
- * @brief ·Å´ó¾µÏà¹Ø°´¼ü´¦Àí¡£
+ * @brief æ”¾å¤§é•œç›¸å…³æŒ‰é”®å¤„ç†ã€‚
  */
 static void MagnifierKeyHandle(uint16_t dgus_value)
 {
@@ -487,9 +487,9 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
     if(dgus_value == 0xA501)
     {
 		/**
-		 * @brief ´ò¿ªÉãÏñÍ·
-		 * @note Ê×ÏÈ·¢ËÍ0xb8Ö¸Áî¼ì²éÉãÏñÍ·ÊÇ·ñ²åÈë£¬Ö®ºóÊ¹ÓÃ0xb5¿ªÆôÉãÏñÍ·½ø³Ì£¬Ö®ºóÊ¹ÓÃ0xa0Ö¸Áî·¢ËÍ¸øt5l½øĞĞÏÔÊ¾
-		 * @note ÔÚÕâ¸ö¹ı³Ì²»»áÇåÁã±äÁ¿µØÖ·µÄÖµ£¬ÏÂÒ»¸öÖÜÆÚ»á¼ÌĞøÖ´ĞĞ£¬Ö±µ½ÉãÏñÍ·´ò¿ªÍê³É£¬Ö´ĞĞÖÜÆÚ½¨ÒéÎªÎªR11_TASK_INTERVAL
+		 * @brief æ‰“å¼€æ‘„åƒå¤´
+		 * @note é¦–å…ˆå‘é€0xb8æŒ‡ä»¤æ£€æŸ¥æ‘„åƒå¤´æ˜¯å¦æ’å…¥ï¼Œä¹‹åä½¿ç”¨0xb5å¼€å¯æ‘„åƒå¤´è¿›ç¨‹ï¼Œä¹‹åä½¿ç”¨0xa0æŒ‡ä»¤å‘é€ç»™t5lè¿›è¡Œæ˜¾ç¤º
+		 * @note åœ¨è¿™ä¸ªè¿‡ç¨‹ä¸ä¼šæ¸…é›¶å˜é‡åœ°å€çš„å€¼ï¼Œä¸‹ä¸€ä¸ªå‘¨æœŸä¼šç»§ç»­æ‰§è¡Œï¼Œç›´åˆ°æ‘„åƒå¤´æ‰“å¼€å®Œæˆï¼Œæ‰§è¡Œå‘¨æœŸå»ºè®®ä¸ºä¸ºR11_TASK_INTERVAL
 		 *  
 		 * */
 		if(camera_process_state == CAMERA_INSERT_CHECK)
@@ -557,7 +557,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		}
 	}else if(dgus_value == 0xA502)
 	{
-		/** ÉãÏñÍ·½ØÍ¼ */
+		/** æ‘„åƒå¤´æˆªå›¾ */
 		if(r11_state.pic_capture_flag == 1)
 		{
 			camera_magnifier.camera_num[r11_state.now_choose_pic] = 1;
@@ -584,7 +584,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 			r11_send_buf[8] = camera_magnifier.camera_cap_width >> 8;
 			r11_send_buf[9] = (uint8_t)camera_magnifier.camera_cap_width;
 			r11_send_buf[10] = ABBR_QUALITY;
-			/** 2025.08.26:Ôö¼ÓÖ¸¶¨Â·¾¶´´½¨´óÍ¼ */
+			/** 2025.08.26:å¢åŠ æŒ‡å®šè·¯å¾„åˆ›å»ºå¤§å›¾ */
 			read_dgus_vp(addr_st.folder_addr,(uint8_t*)&r11_send_buf[11],16);
 			FormatArrayToFullPath(&r11_send_buf[11], 32);
 			UartSendData(&Uart_R11,r11_send_buf,11+32);
@@ -595,7 +595,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		}
 	}else if(dgus_value == 0xA503)
 	{
-		/** ÉãÏñÍ·É¾³ı */
+		/** æ‘„åƒå¤´åˆ é™¤ */
 		if(camera_magnifier.camera_num[r11_state.now_choose_pic] == 1)   
 		{
 			write_dgus_vp(Icon_Overlay_SP_VP[4+r11_state.now_choose_pic],write_param,2);
@@ -615,7 +615,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		}
 	}else if(dgus_value == 0xA504)
 	{
-		/** ÉãÏñÍ·Ñ¡ÔñÉÏÒ»¸öÍ¼Æ¬ */
+		/** æ‘„åƒå¤´é€‰æ‹©ä¸Šä¸€ä¸ªå›¾ç‰‡ */
 		if(r11_state.now_choose_pic>0)
         {
             r11_state.now_choose_pic--;
@@ -624,7 +624,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
         write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uin16_port_zero,1);
 	}else if(dgus_value == 0xA505)  
     {
-		/** ÉãÏñÍ·Ñ¡ÔñÏÂÒ»¸öÍ¼Æ¬ */
+		/** æ‘„åƒå¤´é€‰æ‹©ä¸‹ä¸€ä¸ªå›¾ç‰‡ */
         if(r11_state.now_choose_pic<(screen_opt.thumbnail_num-1))
         {
             r11_state.now_choose_pic++;
@@ -633,7 +633,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
         write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uin16_port_zero,1);
     }else if(dgus_value == 0xA506)  
     {
-		/** ½øÈëÉãÏñÍ·ÏêÇéÒ³ */
+		/** è¿›å…¥æ‘„åƒå¤´è¯¦æƒ…é¡µ */
         R11ChangePictureLocate(mainview.detail_x_point,mainview.detail_y_point,mainview.detail_high,mainview.detail_weight,0x00);
 		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraOPEN_STATUS);
         if(page_st.detail_flag == 0x5a)
@@ -643,7 +643,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
         write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uin16_port_zero,1);
     }else if(dgus_value == 0xA507)   
     {
-		/** ·µ»ØÉãÏñÍ·Ö÷Ò³Ãæ */
+		/** è¿”å›æ‘„åƒå¤´ä¸»é¡µé¢ */
         R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x00);
 		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraOPEN_STATUS);
 		if(page_st.main_flag == 0x5a)
@@ -657,7 +657,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uin16_port_zero,1);
 	}else if(dgus_value == 0xA509)  
     {
-		/** ´ÓÉãÏñÍ··Å´óÒ³Ãæ·µ»Øµ½ÏêÇéÒ³ */
+		/** ä»æ‘„åƒå¤´æ”¾å¤§é¡µé¢è¿”å›åˆ°è¯¦æƒ…é¡µ */
 		R11ClearPicture(0);
 		R11ChangePictureLocate(mainview.detail_x_point,mainview.detail_y_point,mainview.detail_high,mainview.detail_weight,0x00);
 		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraOPEN_STATUS);
@@ -669,9 +669,9 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
     }else if(dgus_value == 0xA50A)
 	{
 		/** 
-		 * @brief ¹Ø±ÕÉãÏñÍ·
-		 * @note Ê×ÏÈ·¢ËÍ0xa0Ö¸Áî¹Ø±Õ·¢ËÍ¸øt5lÏÔÊ¾£¬ÔÙ·¢ËÍ0xb5Ö¸Áî¹Ø±ÕÉãÏñÍ·½ø³Ì
-		 * @note ÔÚÕâ¸ö¹ı³Ì²»»áÇåÁã±äÁ¿µØÖ·µÄÖµ£¬ÏÂÒ»¸öÖÜÆÚ»á¼ÌĞøÖ´ĞĞ£¬Ö±µ½ÉãÏñÍ·´ò¿ªÍê³É£¬Ö´ĞĞÖÜÆÚ½¨ÒéÎªÎªR11_TASK_INTERVAL
+		 * @brief å…³é—­æ‘„åƒå¤´
+		 * @note é¦–å…ˆå‘é€0xa0æŒ‡ä»¤å…³é—­å‘é€ç»™t5læ˜¾ç¤ºï¼Œå†å‘é€0xb5æŒ‡ä»¤å…³é—­æ‘„åƒå¤´è¿›ç¨‹
+		 * @note åœ¨è¿™ä¸ªè¿‡ç¨‹ä¸ä¼šæ¸…é›¶å˜é‡åœ°å€çš„å€¼ï¼Œä¸‹ä¸€ä¸ªå‘¨æœŸä¼šç»§ç»­æ‰§è¡Œï¼Œç›´åˆ°æ‘„åƒå¤´æ‰“å¼€å®Œæˆï¼Œæ‰§è¡Œå‘¨æœŸå»ºè®®ä¸ºä¸ºR11_TASK_INTERVAL
 		 */
 		if(screen_opt.camera_open_sta)
 		{
@@ -718,13 +718,13 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		}
     }else if(dgus_value == 0xA50B)
 	{
-		/** ´ÓÈÈ²å°ÎÒ³Ãæ·µ»Ø */
+		/** ä»çƒ­æ’æ‹”é¡µé¢è¿”å› */
 		r11_send_buf[0] = 0xA5;
 		r11_send_buf[1] = 0x01;
 		write_dgus_vp(R11_SCAN_ADDRESS, r11_send_buf, 1);
 	}else if(dgus_value == 0xA50E)
 	{
-		/** ÉãÏñÍ·»­Ãæ·Å´ó */
+		/** æ‘„åƒå¤´ç”»é¢æ”¾å¤§ */
 		read_dgus_vp(sysDGUS_SYSTEM_CONFIG, (uint8_t *)&rotate_angle, 1);
 		if((rotate_angle & 0x0003) == 0x00 || (rotate_angle & 0x0003) == 0x02)
 		{
@@ -737,13 +737,13 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 		write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 	}else if(dgus_value == 0xA50f)
 	{
-		/** ÉãÏñÍ·»­Ãæ»¹Ô­ */
+		/** æ‘„åƒå¤´ç”»é¢è¿˜åŸ */
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
 		R11CameraSendT5lCtrl(cameraMAGNIFIER_MODE,cameraOPEN_STATUS);
 		write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 	}else if(dgus_value >= 0xA510 && dgus_value < 0xA516)
 	{
-		/** Ñ¡ÔñÄÄÒ»¸öËõÂÔÍ¼½øĞĞ·Å´ó */
+		/** é€‰æ‹©å“ªä¸€ä¸ªç¼©ç•¥å›¾è¿›è¡Œæ”¾å¤§ */
 		r11_state.now_choose_pic = dgus_value-0xa510;
         write_dgus_vp(cameraNOW_NUM_ADDR,(uint8_t*)&r11_state.now_choose_pic,1);
         if(camera_magnifier.camera_num[r11_state.now_choose_pic] == 0)
@@ -764,7 +764,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
         write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 	}else if(dgus_value == 0xa520)
 	{
-		/** Ìø×ªµ½ÎÄ¼ş¼ĞÒ³Ãæ */
+		/** è·³è½¬åˆ°æ–‡ä»¶å¤¹é¡µé¢ */
 		if(page_st.folder_flag == 0x5a)
 		{
 			SwitchPageById((uint16_t)page_st.folder_page); 
@@ -775,19 +775,19 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 
 
 /*
- * @brief ÍøÂçÁ¬½ÓÁ÷³Ì´¦Àí¡£
+ * @brief ç½‘ç»œè¿æ¥æµç¨‹å¤„ç†ã€‚
  */
 void R11NetConnectProcess(void)
 {
 	uint8_t r11_send_buf[100];
 	uint16_t curr_data_len,curr_len;
 	/** 
-	 * 1.·¢ËÍ0xc6Ö¸Áî»ñÈ¡cpuinfoĞÅÏ¢
-	 * 2.·¢ËÍ0xa9Ö¸Áî½¨Á¢websocketÁ¬½Ó
-	 * 3.ÔÚÁªÍøµÄÇé¿öÏÂ
-	 * a)ºÍÔÆ¶ËÍ¸´«£ºcmd = removeUser
-	 * b)ºÍÔÆ¶ËÍ¸´«£ºcmd = getskinapi
-	 * c)·¢ËÍ0xaaÖ¸Áî½¨Á¢ÃÀÈİÆÁÁ¬½Ó
+	 * 1.å‘é€0xc6æŒ‡ä»¤è·å–cpuinfoä¿¡æ¯
+	 * 2.å‘é€0xa9æŒ‡ä»¤å»ºç«‹websocketè¿æ¥
+	 * 3.åœ¨è”ç½‘çš„æƒ…å†µä¸‹
+	 * a)å’Œäº‘ç«¯é€ä¼ ï¼šcmd = removeUser
+	 * b)å’Œäº‘ç«¯é€ä¼ ï¼šcmd = getskinapi
+	 * c)å‘é€0xaaæŒ‡ä»¤å»ºç«‹ç¾å®¹å±è¿æ¥
 	 * 
 	 */
 	if(net_connected_state == NET_CPUINFO_QUERY)
@@ -808,18 +808,18 @@ void R11NetConnectProcess(void)
 		r11_send_buf[3] = 0x07;
 		r11_send_buf[4] = netWEBSOCKET_SEND;
 		r11_send_buf[5] = 0x01;
-		/** websocketÁ´½Ó */
+		/** websocketé“¾æ¥ */
 		curr_data_len = CopyAsciiString(r11_send_buf,"ws://47.96.239.113:3008/device",8);
 		curr_len = strlen("ws://47.96.239.113:3008/device");
 		r11_send_buf[6] = curr_len>>8;
 		r11_send_buf[7] = (uint8_t)curr_len;
-		/** devicenumÁ´½Ó */
+		/** devicenumé“¾æ¥ */
 		curr_len = curr_data_len;
 		curr_data_len = CopyAsciiString(r11_send_buf,"100032_1_0_",curr_data_len+2);
 		curr_data_len = CopyAsciiString(r11_send_buf,Json_Wechat.cpuinfo,curr_data_len);
 		r11_send_buf[curr_len] = 0x00;
 		r11_send_buf[curr_len+1] = curr_data_len - curr_len;
-		/** t5lverÁ´½Ó */
+		/** t5lveré“¾æ¥ */
 		curr_len = curr_data_len;
 		curr_data_len = CopyAsciiString(r11_send_buf,"MEIRONG_1",curr_data_len+2);
 		r11_send_buf[curr_len] = 0x00;
@@ -900,7 +900,7 @@ void R11NetConnectProcess(void)
 
 
 /*
- * @brief É¨Ãè²¢´¦ÀíR11Ïà¹Ø¼üÖµÈÎÎñ¡£
+ * @brief æ‰«æå¹¶å¤„ç†R11ç›¸å…³é”®å€¼ä»»åŠ¡ã€‚
  */
 static void R11ValueScanTask(void)
 {
@@ -941,13 +941,13 @@ static void R11ValueScanTask(void)
 
 
 /*
- * @brief ³õÊ¼»¯R11±êÖ¾Î»¡£
+ * @brief åˆå§‹åŒ–R11æ ‡å¿—ä½ã€‚
  */
 static void R11FlagBitInit(void)
 {
-	/** 1.Õë¶Ôµ±Ç°Ò³Ãæµ÷ÕûÏÔÊ¾´óĞ¡ */
+	/** 1.é’ˆå¯¹å½“å‰é¡µé¢è°ƒæ•´æ˜¾ç¤ºå¤§å° */
     R11PageInitChange();
-    /** 2.Õë¶ÔÉãÏñÍ·ÏÔÊ¾²ÎÊı½øĞĞ³õÊ¼»¯ */
+    /** 2.é’ˆå¯¹æ‘„åƒå¤´æ˜¾ç¤ºå‚æ•°è¿›è¡Œåˆå§‹åŒ– */
     camera_magnifier.camera_type = 0;
     camera_magnifier.camera_way = 0;
     camera_magnifier.camera_show_high = mainview.main_high;
@@ -957,7 +957,7 @@ static void R11FlagBitInit(void)
     camera_magnifier.camera_local = 0;
     camera_magnifier.camera_status = 1;
 
-    /** 3.Õë¶ÔËõ·Å²ÎÊı½øĞĞ³õÊ¼»¯ */
+    /** 3.é’ˆå¯¹ç¼©æ”¾å‚æ•°è¿›è¡Œåˆå§‹åŒ– */
     enl_enlarge_mode.enlarge_x_acc = ACC_X;
     enl_enlarge_mode.enlarge_y_acc = ACC_Y;
     enl_enlarge_mode.enlarge_start_X = 0;
@@ -971,13 +971,13 @@ static void R11FlagBitInit(void)
     enl_enlarge_mode.enlarge_show_high = mainview.main_high;
     enl_enlarge_mode.enlarge_show_width = mainview.main_weight;
 
-	/** 4.²¿·Ö½á¹¹Ìå²ÎÊı³õÊ¼»¯ */
+	/** 4.éƒ¨åˆ†ç»“æ„ä½“å‚æ•°åˆå§‹åŒ– */
 	analyze.last_type_page = 0;
 }
 
 
 /*
- * @brief IP½á¹û´¦Àí£¬ÌáÈ¡IPºÍMAC²¢Éú³É¶şÎ¬Âë¡£
+ * @brief IPç»“æœå¤„ç†ï¼Œæå–IPå’ŒMACå¹¶ç”ŸæˆäºŒç»´ç ã€‚
  */
 static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 {
@@ -987,7 +987,7 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 	{
 		if ( frame[i] == '-' )
 		{
-			/**Ç°ÃæµÄÊÇip£¬ºóÃæµÄÊÇmacµØÖ·,ÓÃ-·Ö¸ô*/
+			/**å‰é¢çš„æ˜¯ipï¼Œåé¢çš„æ˜¯macåœ°å€,ç”¨-åˆ†éš”*/
 			memcpy ( Json_Wechat.send_ip,&frame[6],i-6 );
 			Json_Wechat.send_ip[i-6]=0x00;
 			Json_Wechat.send_ip[i-5]=0x00;
@@ -997,7 +997,7 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 			curr_data_len = CopyAsciiString(write_param,"http://",0);
 			curr_data_len = CopyAsciiString(write_param,Json_Wechat.send_ip,curr_data_len);
 			curr_data_len_bak = curr_data_len;
-			/** 250902 :Îª»­ÃæÍ¬²½Ìí¼Ó¶Ë¿ÚºÅ */
+			/** 250902 :ä¸ºç”»é¢åŒæ­¥æ·»åŠ ç«¯å£å· */
 			curr_data_len = CopyAsciiString(write_param,":8080\/#\/realTime2",curr_data_len);
 			write_dgus_vp ( addr_st.broadcast_qr_addr,write_param,(curr_data_len+1)/2 );
 
@@ -1011,18 +1011,18 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 
 
 /*
- * @brief ½âÎöJSONÖ¡²¢Ğ´ÈëÏà¹Ø²ÎÊı¡£
+ * @brief è§£æJSONå¸§å¹¶å†™å…¥ç›¸å…³å‚æ•°ã€‚
  */
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
-	/** ´Ë´¦ĞèÒªÈ¥µôÖ¡Í· */
+	/** æ­¤å¤„éœ€è¦å»æ‰å¸§å¤´ */
 	UartSendData(&Uart2,frame,len);
 	if(JSONSearchToArray(&frame[5],len-5,"cmd",sizeof("cmd") - 1,Json_Wechat.send_cmd) == JSONSuccess)
 	{
 		write_dgus_vp(0x5020,Json_Wechat.send_cmd,10);
 		if(strcmp((char *)Json_Wechat.send_cmd,"getskinapi") == 0)
 		{
-			/** ´¦ÀígetskinapiµÄÂß¼­ */
+			/** å¤„ç†getskinapiçš„é€»è¾‘ */
 			if(JSONSearchToArray(&frame[5],len-5,"weixinurl",sizeof("weixinurl") - 1,Json_Wechat.weixin_url) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.app_qr_addr,Json_Wechat.weixin_url,64);
@@ -1037,7 +1037,7 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 			}
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"removeUser") == 0)
 		{
-			/** ´¦ÀíremoveUserµÄÂß¼­ */
+			/** å¤„ç†removeUserçš„é€»è¾‘ */
 			if(JSONSearchToNumber(&frame[5],len-5,"code",sizeof("code") - 1,(uint16_t *)&Json_Wechat.remove_flag) == JSONSuccess)
 			{
 				if(Json_Wechat.remove_flag == 0 && net_connected_state == NET_REMOVEUSER_WAITING)
@@ -1048,7 +1048,7 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 			}
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"weixin") == 0)
 		{
-			/** ´¦ÀíweixinµÄÂß¼­ */
+			/** å¤„ç†weixinçš„é€»è¾‘ */
 			if(JSONSearchToArray(&frame[5],len-5,"tel",sizeof("tel") - 1,Json_Wechat.weixin_tel) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.user_tel_addr,Json_Wechat.weixin_tel,16);
@@ -1063,7 +1063,7 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 
 
 /*
- * @brief ÔÆÆ½Ì¨Í¼Æ¬Êı¾İ×ªÎªJPEG²¢Ğ´ÈëÏÔÊ¾»º³åÇø¡£
+ * @brief äº‘å¹³å°å›¾ç‰‡æ•°æ®è½¬ä¸ºJPEGå¹¶å†™å…¥æ˜¾ç¤ºç¼“å†²åŒºã€‚
  */
 static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 {
@@ -1073,7 +1073,7 @@ static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 	{
 		return;
 	}
-	/** ÔÆÆ½Ì¨¸üĞÂºó£¬´Ë´¦µÚÒ»¸ö°üºÍµÚ¶ş¸ö°ü¼ä¸ôÁË1s */
+	/** äº‘å¹³å°æ›´æ–°åï¼Œæ­¤å¤„ç¬¬ä¸€ä¸ªåŒ…å’Œç¬¬äºŒä¸ªåŒ…é—´éš”äº†1s */
 	write_param[0] = 0x0000;
 	write_param[1] = 0xFFFE;
 	write_dgus_vp(Icon_Overlay_SP_VP[10], ( uint8_t * ) &write_param[0],2);
@@ -1094,8 +1094,8 @@ static void R11CloudDataToJpeg(uint8_t *frame,uint16_t len)
 
 
 /*
- * @brief ÉÏµç³õÊ¼»¯£¬·¢ËÍÏà¹Ø²ÎÊıµ½R11¡£
- * @note ¸Ãº¯ÊıÓÃÀ´ÉèÖÃÏÔÊ¾ÖÊÁ¿£¬·ÖÆµÏµÊı£¬8Ïß»òÕß16Ïß¡£
+ * @brief ä¸Šç”µåˆå§‹åŒ–ï¼Œå‘é€ç›¸å…³å‚æ•°åˆ°R11ã€‚
+ * @note è¯¥å‡½æ•°ç”¨æ¥è®¾ç½®æ˜¾ç¤ºè´¨é‡ï¼Œåˆ†é¢‘ç³»æ•°ï¼Œ8çº¿æˆ–è€…16çº¿ã€‚
  */
 static void R11StartPowerInit(void)
 {
@@ -1131,7 +1131,7 @@ static void R11CameraInit()
 }
 
 /*
- * @brief R11ÖØÆô³õÊ¼»¯¡£
+ * @brief R11é‡å¯åˆå§‹åŒ–ã€‚
  */
 static void R11RestartInit(void)
 {
@@ -1185,8 +1185,8 @@ static void T5lUartSendAnalyzeResult(uint16_t addr,uint8_t len)
 
 static void R11HairAnalyzeCalcResult(void)
 {
-	#define HAIR_ANALYZE_LEVEL_ENABLED 1          /* ÊÇ·ñ²ÉÓÃÆ¤·ôÑÕÉ«·Ö¼¶Ä£Ê½ 0²ÉÓÃrgb24×ª16µÄÔ­Ê¼ÑÕÉ«£¬1²ÉÓÃÆ¤·ôºÍÍ··¢·Ö¼¶Ä£Ê½*/
-	/* RGB24×ªRGB16ºê¶¨Òå 565*/
+	#define HAIR_ANALYZE_LEVEL_ENABLED 1          /* æ˜¯å¦é‡‡ç”¨çš®è‚¤é¢œè‰²åˆ†çº§æ¨¡å¼ 0é‡‡ç”¨rgb24è½¬16çš„åŸå§‹é¢œè‰²ï¼Œ1é‡‡ç”¨çš®è‚¤å’Œå¤´å‘åˆ†çº§æ¨¡å¼*/
+	/* RGB24è½¬RGB16å®å®šä¹‰ 565*/
 	#define RGB24_2_RGB16(r,g,b)  ( ((r>>3)<<11) | ((g>>2)<<5) | (b>>3) )
 	uint16_t hair_level_sum,skin_level_sum,i;
 	#if (HAIR_ANALYZE_LEVEL_ENABLED == 0)
@@ -1227,7 +1227,7 @@ static void R11HairAnalyzeCalcResult(void)
 		analyze.hair_analyze.skin_level = 4;
 	}
 	write_dgus_vp(analyzeSKIN_LEVEL_ADDR,(uint8_t*)&analyze.hair_analyze.skin_level,1);
-	#else   /*HAIR_ANALYZE_LEVEL_ENABLED ÆôÓÃÆ¤·ôºÍÍ··¢ÑÕÉ«·Ö¼¶Ä£Ê½ */
+	#else   /*HAIR_ANALYZE_LEVEL_ENABLED å¯ç”¨çš®è‚¤å’Œå¤´å‘é¢œè‰²åˆ†çº§æ¨¡å¼ */
 	if(screen_opt.screen_ratio == 0)
 	{
 		//385,715,171,52
@@ -1312,23 +1312,6 @@ static void R11HairAnalyzeCalcResult(void)
 
 static void R11AnalyzeTask(void)
 {
-	/* ÕâÀïĞèÒªgb2312±àÂëµÄ·½Ê½ */
-	/* Ô¤ÉèµÄ·Ö¼¶½¨Òé*/
-	/* ·Û´Ì·Ö¼¶½¨Òé*/
-	char suggestion1[64]="Æ¤·ôÉÙÁ¿±Õ¿Ú»òºÚÍ·£¬ÎŞÑ×Ö¢£¬½¨ÒéÊ¹ÓÃÒ»¼¶»¤Àí";
-	char suggestion2[64]="Æ¤·ô½Ï¶àºìÖ×ÇğÕî£¬Å¼¼ûÅ§ğå£¬½¨ÒéÊ¹ÓÃ¶ş¼¶»¤Àí";
-	char suggestion3[64]="Æ¤·ôÃÜ¼¯ÄÒÖ×¡¢½á½Ú£¬°éÃ÷ÏÔÅ§ğå£¬½¨ÒéÊ¹ÓÃ¸ß¼¶»¤Àí";
-	
-	/* Ãô¸Ğ·Ö¼¶½¨Òé*/
-	char suggestion4[64]="Æ¤·ôÅ¼·¢·ººì»ò½ô±Á£¬½¨ÒéÊ¹ÓÃÒ»¼¶»¤Àí";
-	char suggestion5[64]="Æ¤·ôÆµ·±·ººì¡¢¸ÉÔïÍÑĞ¼£¬°éğşÑ÷»ò×ÆÈÈ£¬½¨ÒéÊ¹ÓÃ¶ş¼¶»¤Àí";
-	char suggestion6[64]="Æ¤·ô³ÖĞøºìÖ×¡¢´ÌÍ´£¬ÉõÖÁÆ¤Õî£¬½¨ÒéÊ¹ÓÃ¸ß¼¶»¤Àí";
-	
-	
-	/* ÓÍĞÔ·Ö¼¶½¨Òé*/
-	char suggestion7[64]="Æ¤·ôTÇøÅ¼¼ûÓÍ¹â£¬ÎŞÃ÷ÏÔğ¤Äå¸Ğ£¬½¨ÒéÊ¹ÓÃÒ»¼¶»¤Àí";
-	char suggestion8[64]="Æ¤·ôÈ«Á³·ºÓÍ¹â£¬ĞèÈÕ³£¿ØÓÍ»¤Àí£¬½¨ÒéÊ¹ÓÃ¶ş¼¶»¤Àí";
-	char suggestion9[64]="Æ¤·ôÓÍ¹âÏÔÖø°éÃ«¿×´Ö´ó£¬Ò×·¢ğî´¯£¬½¨ÒéÊ¹ÓÃ¸ß¼¶»¤Àí";
 
 
 	const uint16_t uint16_port_zero = 0;
@@ -1350,13 +1333,13 @@ static void R11AnalyzeTask(void)
 		}
 		if(camera_magnifier.camera_open_flag == 0)
 		{
-			/* ´ò¿ªÉãÏñÍ· */
+			/* æ‰“å¼€æ‘„åƒå¤´ */
 			write_param[0] = 0xA501;
 			write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&write_param[0],1);
 			camera_magnifier.camera_open_flag = 1;
 		}else if(camera_magnifier.camera_open_flag == 1)
 		{
-			/* ¹Ø±ÕÉãÏñÍ·*/
+			/* å…³é—­æ‘„åƒå¤´*/
 			write_param[0] = 0xA50A;
 			write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&write_param[0],1);
 			camera_magnifier.camera_open_flag = 0;
@@ -1364,7 +1347,7 @@ static void R11AnalyzeTask(void)
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
 	}else if(dgus_value == 0x0003)
 	{
-		/* Í·Æ¤¼ì²âÅÄÕÕ*/
+		/* å¤´çš®æ£€æµ‹æ‹ç…§*/
 		if(camera_magnifier.camera_open_flag == 0)
 		{
 			write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&uint16_port_zero,1);
@@ -1398,7 +1381,7 @@ static void R11AnalyzeTask(void)
 		start_analyze_flag = 0;
 	}else if(dgus_value == 0x0004)
 	{
-		/* Í·Æ¤¼ì²â·ÖÎö */
+		/* å¤´çš®æ£€æµ‹åˆ†æ */
 		if(start_cap_flag != 0)
 		{
 			write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
@@ -1422,16 +1405,16 @@ static void R11AnalyzeTask(void)
 				camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;
 			}else
 			{
-				/* ÖØĞÂ½ØÒ»ÕÅÍ¼*/
+				/* é‡æ–°æˆªä¸€å¼ å›¾*/
 				write_param[0] = 0x0003;
 				write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 			}
 		}
-		/* ²»ĞèÒª½øĞĞÑÓÊ±£¬Ã¿¸ô100msÔËĞĞÒ»´Î*/
+		/* ä¸éœ€è¦è¿›è¡Œå»¶æ—¶ï¼Œæ¯éš”100msè¿è¡Œä¸€æ¬¡*/
 		__NOP();
 		if(analyze_process == 90)
 		{
-			/* µÈ´ı·ÖÎöÍê³É*/
+			/* ç­‰å¾…åˆ†æå®Œæˆ*/
 			if(analyze.res_done_flag == 0)
 			{
 				return;
@@ -1450,7 +1433,7 @@ static void R11AnalyzeTask(void)
 		}
 		if(analyze.res_done_flag == 1 && analyze_process == 100)
 		{
-			/* ·ÖÎöÍê³É*/
+			/* åˆ†æå®Œæˆ*/
 			R11HairAnalyzeCalcResult();
 			write_dgus_vp(analyzePROCESS_ADDR,(uint8_t*)&uint16_port_zero,1);
 			analyze_process = 0;
@@ -1460,7 +1443,7 @@ static void R11AnalyzeTask(void)
 		}
 	}else if(dgus_value == 0x0005)
 	{
-		/* Ô­É«¹âÑÕÉ«Æ¤·ô·ÖÎö */
+		/* åŸè‰²å…‰é¢œè‰²çš®è‚¤åˆ†æ */
 		if(start_cap_flag != 0)
 		{
 			write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
@@ -1490,16 +1473,16 @@ static void R11AnalyzeTask(void)
 				camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;
 			}else
 			{
-				/* ÖØĞÂ½ØÒ»ÕÅÍ¼*/
+				/* é‡æ–°æˆªä¸€å¼ å›¾*/
 				write_param[0] = 0x0003;
 				write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 			}
 		}
-		/* ²»ĞèÒª½øĞĞÑÓÊ±£¬Ã¿¸ô100msÔËĞĞÒ»´Î*/
+		/* ä¸éœ€è¦è¿›è¡Œå»¶æ—¶ï¼Œæ¯éš”100msè¿è¡Œä¸€æ¬¡*/
 		__NOP();
 		if(analyze_process == 90)
 		{
-			/* µÈ´ı·ÖÎöÍê³É*/
+			/* ç­‰å¾…åˆ†æå®Œæˆ*/
 			if(analyze.res_done_flag == 0)
 			{
 				return;
@@ -1518,7 +1501,7 @@ static void R11AnalyzeTask(void)
 		}
 		if(analyze.res_done_flag == 1 && analyze_process == 100)
 		{
-			/* ·ÖÎöÍê³É*/
+			/* åˆ†æå®Œæˆ*/
 			analyze_process = 0;
 			start_cap_flag = 0;
 			start_analyze_flag = 0;
@@ -1542,7 +1525,7 @@ static void R11AnalyzeTask(void)
 		}
 	}else if(dgus_value == 0x0006)
 	{
-		/* Æ«°×¹âÑÕÉ«Æ¤·ô·ÖÎö */
+		/* åç™½å…‰é¢œè‰²çš®è‚¤åˆ†æ */
 		if(start_cap_flag != 0)
 		{
 			write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
@@ -1572,16 +1555,16 @@ static void R11AnalyzeTask(void)
 				camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;
 			}else
 			{
-				/* ÖØĞÂ½ØÒ»ÕÅÍ¼*/
+				/* é‡æ–°æˆªä¸€å¼ å›¾*/
 				write_param[0] = 0x0003;
 				write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 			}
 		}
-		/* ²»ĞèÒª½øĞĞÑÓÊ±£¬Ã¿¸ô100msÔËĞĞÒ»´Î*/
+		/* ä¸éœ€è¦è¿›è¡Œå»¶æ—¶ï¼Œæ¯éš”100msè¿è¡Œä¸€æ¬¡*/
 		__NOP();
 		if(analyze_process == 90)
 		{
-			/* µÈ´ı·ÖÎöÍê³É*/
+			/* ç­‰å¾…åˆ†æå®Œæˆ*/
 			if(analyze.res_done_flag == 0)
 			{
 				return;
@@ -1600,7 +1583,7 @@ static void R11AnalyzeTask(void)
 		}
 		if(analyze.res_done_flag == 1 && analyze_process == 100)
 		{
-			/* ·ÖÎöÍê³É*/
+			/* åˆ†æå®Œæˆ*/
 			analyze_process = 0;
 			start_cap_flag = 0;
 			start_analyze_flag = 0;
@@ -1624,7 +1607,7 @@ static void R11AnalyzeTask(void)
 		}
 	}else if(dgus_value == 0x0007)
 	{
-		/* À¶¹âÑÕÉ«Æ¤·ô·ÖÎö */
+		/* è“å…‰é¢œè‰²çš®è‚¤åˆ†æ */
 		if(start_cap_flag != 0)
 		{
 			write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
@@ -1654,16 +1637,16 @@ static void R11AnalyzeTask(void)
 				camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;
 			}else
 			{
-				/* ÖØĞÂ½ØÒ»ÕÅÍ¼*/
+				/* é‡æ–°æˆªä¸€å¼ å›¾*/
 				write_param[0] = 0x0003;
 				write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 			}
 		}
-		/* ²»ĞèÒª½øĞĞÑÓÊ±£¬Ã¿¸ô100msÔËĞĞÒ»´Î*/
+		/* ä¸éœ€è¦è¿›è¡Œå»¶æ—¶ï¼Œæ¯éš”100msè¿è¡Œä¸€æ¬¡*/
 		__NOP();
 		if(analyze_process == 90)
 		{
-			/* µÈ´ı·ÖÎöÍê³É*/
+			/* ç­‰å¾…åˆ†æå®Œæˆ*/
 			if(analyze.res_done_flag == 0)
 			{
 				return;
@@ -1714,7 +1697,7 @@ static void R11AnalyzeTask(void)
 		}
 		if(analyze.res_done_flag == 1 && analyze_process == 100)
 		{
-			/* ·ÖÎöÍê³É*/
+			/* åˆ†æå®Œæˆ*/
 			analyze_process = 0;
 			start_cap_flag = 0;
 			start_analyze_flag = 0;
@@ -1738,7 +1721,7 @@ static void R11AnalyzeTask(void)
 		}
 	}else if(dgus_value == 0x0010)
 	{
-		/* ¸ù¾İÊäÈëµÄÂ·¾¶´´½¨ÎÄ¼ş¼Ğ*/
+		/* æ ¹æ®è¾“å…¥çš„è·¯å¾„åˆ›å»ºæ–‡ä»¶å¤¹*/
 		r11_send_buf[0] = 0xaa;
 		r11_send_buf[1] = 0x55;
 		r11_send_buf[2] = 0x00;
@@ -1752,7 +1735,7 @@ static void R11AnalyzeTask(void)
 		r11_send_buf[curr_data_len++] = '/';
 		r11_send_buf[curr_data_len++] = 0x00;
 		curr_data_len = curr_data_len - 4;
-		r11_send_buf[6] = (uint8_t)(curr_data_len - 3);    /* ÎÄ¼ş¼ĞÂ·¾¶³¤¶È */
+		r11_send_buf[6] = (uint8_t)(curr_data_len - 3);    /* æ–‡ä»¶å¤¹è·¯å¾„é•¿åº¦ */
 		r11_send_buf[2] = (uint8_t)(curr_data_len>>8);
 		r11_send_buf[3] = (uint8_t)curr_data_len;
 		UartSendData(&Uart_R11,r11_send_buf,curr_data_len+4);
@@ -1763,17 +1746,17 @@ static void R11AnalyzeTask(void)
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
 	}else if(dgus_value == 0x0011)
 	{
-		/* Ñ¡ÔñÍ·Æ¤·ÖÎö*/
+		/* é€‰æ‹©å¤´çš®åˆ†æ*/
 		analyze.last_type_page = analyzeHAIR_ANA_PAGE;
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
 	}else if(dgus_value == 0x0012)
 	{
-		/* Ñ¡ÔñÆ¤·ô·ÖÎö*/
+		/* é€‰æ‹©çš®è‚¤åˆ†æ*/
 		analyze.last_type_page = analyzeSKIN_ANA_PAGE;
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&uint16_port_zero,1);
 	}else if(dgus_value == 0x0013)
 	{
-		/* Ò³Ãæ·µ»Ø*/
+		/* é¡µé¢è¿”å›*/
 		if(analyze.last_type_page != 0)
 		{
 			SwitchPageById(analyze.last_type_page);
@@ -1794,21 +1777,21 @@ static void R11FaceTypeChooseTask(void)
 	read_dgus_vp(R11_FACE_TYPE_ADDR, (uint8_t *)&dgus_value, 1);
 	if(dgus_value == 0x0001)
 	{
-		/* Ñ¡ÔñÍ·Æ¤·ÖÎöÄ£Ê½ */
+		/* é€‰æ‹©å¤´çš®åˆ†ææ¨¡å¼ */
 		analyze.last_type_page = 0;
 		analyze.type = analyzeHAIR_TYPE;
 		write_param[0] = 0x0001;
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t *)&write_param[0],1);
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
 		R11ClearPicture(1);
-		/* ĞŞ¸ÄËõÂÔÍ¼ÏÔÊ¾µÄ´óĞ¡£¬À©´óµ½64k´óĞ¡µÄÏÔÊ¾ */
+		/* ä¿®æ”¹ç¼©ç•¥å›¾æ˜¾ç¤ºçš„å¤§å°ï¼Œæ‰©å¤§åˆ°64kå¤§å°çš„æ˜¾ç¤º */
 		Icon_Overlay_SP_VP[4] = 0x37000;
 		Icon_Overlay_SP_VP[5] = 0x3b000;
 		Icon_Overlay_SP_VP[6] = 0x3f000;
 		write_dgus_vp(R11_FACE_TYPE_ADDR,(uint8_t *)&uint16_port_zero,1);
 	}else if(dgus_value > 0x0001 && dgus_value <= 0x0008)
 	{
-		/* Ñ¡Ôñ¸÷ÖÖÉ«¹âÆ¤·ô·ÖÎöÄ£Ê½ */
+		/* é€‰æ‹©å„ç§è‰²å…‰çš®è‚¤åˆ†ææ¨¡å¼ */
 		analyze.last_type_page = analyzeSKIN_ANA_PAGE;
 		write_dgus_vp(analyzeTYPE_TITLE_ADDR,(uint8_t *)&dgus_value,1);
 		analyze.type = analyzeSKIN_TYPE + (dgus_value - 0x0002);
@@ -1816,7 +1799,7 @@ static void R11FaceTypeChooseTask(void)
 		write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t *)&write_param[0],1);
 		R11ChangePictureLocate(mainview.main_x_point,mainview.main_y_point,mainview.main_high,mainview.main_weight,0x02);
 		R11ClearPicture(1);
-		/* ĞŞ¸ÄËõÂÔÍ¼ÏÔÊ¾µÄ´óĞ¡£¬À©´óµ½64k´óĞ¡µÄÏÔÊ¾ */
+		/* ä¿®æ”¹ç¼©ç•¥å›¾æ˜¾ç¤ºçš„å¤§å°ï¼Œæ‰©å¤§åˆ°64kå¤§å°çš„æ˜¾ç¤º */
 		Icon_Overlay_SP_VP[4] = 0x37000;
 		Icon_Overlay_SP_VP[5] = 0x39000;
 		Icon_Overlay_SP_VP[6] = 0x3b000;
@@ -1826,7 +1809,7 @@ static void R11FaceTypeChooseTask(void)
 		write_dgus_vp(R11_FACE_TYPE_ADDR,(uint8_t *)&uint16_port_zero,1);
 	}else if(dgus_value > 0x0010 && dgus_value <= 0x0013)   
 	{
-		/* Ñ¡Ôñ¶ÔÓ¦ÑÕÉ«µÄ¹âÔ´ */
+		/* é€‰æ‹©å¯¹åº”é¢œè‰²çš„å…‰æº */
 		R11ClearPicture(1);
 		write_dgus_vp(analyzeSKIN_SUGGESTION_ADDR,(uint8_t *)zero_arr,32);
 		write_dgus_vp(analyzeSKIN_AREA_PERCENT_ADDR,(uint8_t *)&uint16_port_zero,1);
@@ -1835,10 +1818,10 @@ static void R11FaceTypeChooseTask(void)
 }
 
 /*
- * @brief ´¦ÀíÃÀÈİĞ­ÒéÖ¡¡£
- * @param uart  ´®¿ÚÀàĞÍÖ¸Õë
- * @param frame Ğ­ÒéÖ¡Êı¾İ
- * @param len   Ğ­ÒéÖ¡³¤¶È
+ * @brief å¤„ç†ç¾å®¹åè®®å¸§ã€‚
+ * @param uart  ä¸²å£ç±»å‹æŒ‡é’ˆ
+ * @param frame åè®®å¸§æ•°æ®
+ * @param len   åè®®å¸§é•¿åº¦
  */
 void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
@@ -1852,7 +1835,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
         }
         if(frame[4] == 0x04 && frame[5] == 0x82 && uart == &Uart_R11)
         {
-            r11_state.restart_flag = 1;  /* ÉèÖÃÖØÆô±êÖ¾ */
+            r11_state.restart_flag = 1;  /* è®¾ç½®é‡å¯æ ‡å¿— */
         }
     }else if(frame[0] == 0xAA && frame[1] == 0x55)
     {
@@ -1879,7 +1862,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 			case cameraHOTPLUG_CHECK:
 				if(frame[5] == R11_RECV_OK && frame[7] <= 4)
 				{
-					/** ÉãÏñÍ·Ã»Êı¾İµÄÇé¿ö */
+					/** æ‘„åƒå¤´æ²¡æ•°æ®çš„æƒ…å†µ */
 					if(camera_process_state == CAMERA_PROCESS_END)
 					{
 						camera_process_state = CAMERA_INSERT_CHECK;
@@ -1893,7 +1876,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 					}
 				}else if(frame[5] == R11_RECV_OK && frame[7] == 5)
 				{
-					/** ÉãÏñÍ·ÓĞÊı¾İµÄÇé¿ö */
+					/** æ‘„åƒå¤´æœ‰æ•°æ®çš„æƒ…å†µ */
 					if(camera_process_state == CAMERA_INSERT_CHECK)
 					{
 						camera_process_state = CAMERA_PROCESS_END;
@@ -1962,7 +1945,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 					write_param[0] = 0x0003;
 					write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 					#else /* R11_HAIR_ANALYZE_ENABLED == 1 */
-					/** ½ØÍ¼Ò»´Î */
+					/** æˆªå›¾ä¸€æ¬¡ */
 					write_param[0] = 0xa502;
 					write_dgus_vp(R11_SCAN_ADDRESS,(uint8_t*)&write_param[0],1);
 					#endif /* R11_HAIR_ANALYZE_ENABLED == 0 */
@@ -2003,7 +1986,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				}
 				if(frame[8] != 2)
 				{
-					/** Ã»Á¬ÉÏÍøÂç */
+					/** æ²¡è¿ä¸Šç½‘ç»œ */
 					if(net_connected_state != NET_CONNECTED)
 					{
 						write_param[0] = 0x0001;
@@ -2012,7 +1995,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 					}
 				}else if(frame[8] == 2)
 				{
-					/** ÒÑ¾­Á¬½ÓÉÏÍøÂç */
+					/** å·²ç»è¿æ¥ä¸Šç½‘ç»œ */
 					if(net_connected_state < NET_CONNECTED)
 					{
 						write_param[0] = 0x0002;
@@ -2043,7 +2026,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 					write_dgus_vp(R11_ANALYZE_ADDR,(uint8_t*)&write_param[0],1);
 				}
 				break;
-			/* ·Ö³É6¸ö²»Í¬µÄ²¿Î»*/
+			/* åˆ†æˆ6ä¸ªä¸åŒçš„éƒ¨ä½*/
 			case analyzeSKIN_RESULT:
 			case analyzeSKIN_RESULT + 1:
 			case analyzeSKIN_RESULT + 2:
@@ -2058,7 +2041,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 		}
 	}else if(frame[0] == 0xAA && frame[1] == 0xCC)
 	{
-		/** ´¦ÀíAA CCÖ¡£¬ÔÆ¶ËÍ¸´«Ïà¹ØÄÚÈİ*/
+		/** å¤„ç†AA CCå¸§ï¼Œäº‘ç«¯é€ä¼ ç›¸å…³å†…å®¹*/
 		if(len < 6 || len < ((frame[2]<<8|frame[3])+4))
         {
             return;
@@ -2069,7 +2052,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				R11JsonToWeChatString(frame,len);
 				break;
 			case 0x01:
-				/** ´¦ÀíÍ¼Æ¬Êı¾İ¸ñÊ½ */
+				/** å¤„ç†å›¾ç‰‡æ•°æ®æ ¼å¼ */
 				if(frame[5] == 0x7b)
 				{
 					R11JsonToWeChatString(frame,len);
@@ -2086,16 +2069,16 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 
 
 /*
- * @brief R11Æ¤·ô·ÖÎöÖ÷ÈÎÎñ¡£
+ * @brief R11çš®è‚¤åˆ†æä¸»ä»»åŠ¡ã€‚
  */
 void R11NetskinAnalyzeTask(void)
 {
-    /** ÔÚÖØÆôÖ®ºó£¬R11RestartInitÖ»ÔËĞĞÒ»´Î£¬R11VideoPlayerProcess»áÒ»Ö±ÔËĞĞÖ±µ½Íê³É */
+    /** åœ¨é‡å¯ä¹‹åï¼ŒR11RestartInitåªè¿è¡Œä¸€æ¬¡ï¼ŒR11VideoPlayerProcessä¼šä¸€ç›´è¿è¡Œç›´åˆ°å®Œæˆ */
     if(r11_state.restart_flag == 1)
     {
         R11RestartInit();
 		video_init_process = VIDEO_PROCESS_UNINIT;
-        r11_state.restart_flag = 2;  /* ÖØÖÃÖØÆô±êÖ¾ */
+        r11_state.restart_flag = 2;  /* é‡ç½®é‡å¯æ ‡å¿— */
     }else if(r11_state.restart_flag == 2)
 	{
 		R11VideoPlayerProcess();
