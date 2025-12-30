@@ -87,6 +87,28 @@ static void R11PageInitChange()
 }
 
 
+/*
+ * @brief 上电初始化，发送相关参数到R11。
+ * @note 该函数用来设置显示质量，分频系数，8线或者16线。
+ */
+static void R11StartPowerInit(void)
+{
+	uint8_t r11_send_buf[10];
+	uint16_t quanity_set,fclk_div;
+	r11_send_buf[0] = 0xAA;
+	r11_send_buf[1] = 0x55;
+	r11_send_buf[2] = 0x00;
+	r11_send_buf[3] = 0x04; 
+	r11_send_buf[4] = 0xd0; 
+	read_dgus_vp(QUANITY_SET_ADDR,(uint8_t*)&quanity_set,1);
+	r11_send_buf[5]=(uint8_t)quanity_set;
+	read_dgus_vp(FCLK_DIV_ADDR,(uint8_t*)&fclk_div,1);
+	r11_send_buf[6]=(uint8_t)fclk_div;
+	r11_send_buf[7]=Bit8_16_Flag*8;
+	UartSendData(&Uart_R11,r11_send_buf,8);
+}
+
+
 static void R11RestartInit()
 {
 	uint16_t write_param = 1;
@@ -95,6 +117,7 @@ static void R11RestartInit()
 	delay_ms(100);
 	T5lSendUartDataToR11(cmdSET_WEBSOCKET,NULL);
 	write_dgus_vp(COMIC_STATUS_ADDR,(uint8_t *)&write_param,1);
+	R11StartPowerInit();
 }
 
 

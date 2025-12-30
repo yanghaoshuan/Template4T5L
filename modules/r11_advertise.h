@@ -10,7 +10,9 @@
 #if sysADVERTISE_MODE_ENABLED
 #define TERNARY_CODE_ADDR       0x0410
 #define WEBSOCKET_ADDR          0x0680
-#define PIXELS_SET_ADDR         0x0580      
+#define PIXELS_SET_ADDR         0x0580
+#define FCLK_DIV_ADDR           0x0581
+#define QUANITY_SET_ADDR        0x0582      
 
 
 #define VIDEO_HIGH_ADDR         0x0586
