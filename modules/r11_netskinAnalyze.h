@@ -96,9 +96,9 @@
 #define R11_ANALYZE_ADDR  		(uint32_t)0x0601
 #define R11_FACE_TYPE_ADDR		(uint32_t)0x0602
 #define cameraRETRY_MAX_COUNT   50    /** 延时时间，单位为美容屏任务执行的周期R11_TASK_INTERVAL，50对应5s */
-#define netWIFI_STATUS_ADDR     0x18b4
-#define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
-#define cameraNOW_NUM_ADDR      0x18b7
+#define netWIFI_STATUS_ADDR    	0x06D8
+#define COMIC_STATUS_ADDR       0x06D9     /** 统一的过渡动画使能标志，初始写1 */
+#define cameraNOW_NUM_ADDR      0x06DA
 #if R11_HAIR_ANALYZE_ENABLED
 #define analyzeRESULT_ADDR 		0x3500
 #define analyzeHAIR_RGB_ADDR	0x3500
@@ -120,8 +120,8 @@
 #define analyzeSKIN_SUGGESTION_ADDR 0x3550
 #define analyzeFILE_PATH_ADDR       0x3570
 
-#define analyzeHAIR_ANA_PAGE        50
-#define analyzeSKIN_ANA_PAGE        31
+#define analyzeHAIR_ANA_PAGE        220
+#define analyzeSKIN_ANA_PAGE        211
 #endif /* R11_HAIR_ANALYZE_ENABLED */
 
 #define MIN_HIGH  		160

@@ -418,7 +418,7 @@ void R11VideoPlayerProcess(void)
                 SwitchPageById((uint16_t)page_st.video_page); 
             }
 
-            R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x01);
+            R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
         }
         video_init_process = VIDEO_PROCESS_QUERY;
     }else if(video_init_process == VIDEO_PROCESS_QUERY)
@@ -556,7 +556,7 @@ void R11VideoValueHandle(uint16_t dgus_value)
             r11_player.store_type = SDCARD;
         }
 
-        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x02);
+        R11ChangePictureLocate(mainview.video_x_point,mainview.video_y_point,mainview.video_high,mainview.video_weight,0x00);
         r11_send_buf[0] = r11_player.store_type;
         r11_send_buf[1] = r11_player.Document_type = MP4;
         T5lSendUartDataToR11(cmdMP4_UPDATEFILE, r11_send_buf);

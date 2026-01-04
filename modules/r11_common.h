@@ -95,7 +95,13 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define AUTOPLAY_MODE_ADDR      	0x06D3
 #define R11_RESTART_FLAG_ADDR      	0x06D4
 #define BIG_SMALL_FLAG_ADDR      	0x06D5
-#define MP4_NOW_PLAY_NAME_ADDR	  	0x3400
+/**
+ * 在r11_netskinAnalyze.c中定义，此处用于区分，防止占用
+#define netWIFI_STATUS_ADDR     0x06D8
+#define COMIC_STATUS_ADDR       0x06D9
+#define cameraNOW_NUM_ADDR      0x06DA
+*/
+#define MP4_NOW_PLAY_NAME_ADDR	  	0x06E0
 
 /** 视频播放指令定义区域 */
 #define cmdMP4_UPDATEFILE         	0x61
