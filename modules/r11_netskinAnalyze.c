@@ -20,8 +20,9 @@ WIFI_PAGE_S wifi_page;
 CAMERA_PROCESS_STATE camera_process_state = CAMERA_INSERT_CHECK;
 NET_CONNECTED_STATE net_connected_state = NET_WEBSOCKET_SEND;
 R11_STATE r11_state = {UINT16_PORT_MAX,0,0,0}; // 初始化R11状态
+#if R11_HAIR_ANALYZE_ENABLED
 R11_ANALYZE_S analyze;
-
+#endif /* R11_HAIR_ANALYZE_ENABLED */
 
 void R11ConfigInitFormLib(void)
 {
@@ -543,6 +544,7 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 			}
 		}else if(camera_process_state == CAMERA_PROCESS_END)
 		{
+			#if R11_HAIR_ANALYZE_ENABLED
 			if(analyze.last_type_page != 0)
 			{
 				SwitchPageById(analyze.last_type_page);
@@ -553,6 +555,12 @@ static void MagnifierKeyHandle(uint16_t dgus_value)
 					SwitchPageById((uint16_t)page_st.main_page); 
 				}
 			}
+			#else 
+			if(page_st.main_flag == 0x5a)
+			{
+				SwitchPageById((uint16_t)page_st.main_page); 
+			}
+			#endif /* R11_HAIR_ANALYZE_ENABLED */
 			write_dgus_vp(R11_SCAN_ADDRESS, (uint8_t *)&uin16_port_zero, 1);
 		}
 	}else if(dgus_value == 0xA502)
@@ -972,7 +980,9 @@ static void R11FlagBitInit(void)
     enl_enlarge_mode.enlarge_show_width = mainview.main_weight;
 
 	/** 4.部分结构体参数初始化 */
+	#if R11_HAIR_ANALYZE_ENABLED
 	analyze.last_type_page = 0;
+	#endif /* R11_HAIR_ANALYZE_ENABLED */
 }
 
 
@@ -1143,6 +1153,7 @@ static void R11RestartInit(void)
 }
 
 
+#if R11_HAIR_ANALYZE_ENABLED
 static void R11ClearHairAnalyzeResult(void)
 {
 	uint16_t i,zero_value = 0,write_param[2]={0x5b5b,0x5b5b};
@@ -1817,6 +1828,9 @@ static void R11FaceTypeChooseTask(void)
 	}
 }
 
+#endif /* R11_HAIR_ANALYZE_ENABLED */
+
+
 /*
  * @brief 处理美容协议帧。
  * @param uart  串口类型指针
@@ -2005,6 +2019,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				}
 				break;
 			#endif /* R11_WIFI_ENABLED */
+			#if R11_HAIR_ANALYZE_ENABLED
 			case 0xe0:
 			case analyzeHAIR_RESULT:
 				if(frame[6] != 0 || frame[7] != 0)
@@ -2036,6 +2051,7 @@ void UartR11UserBeautyProtocol(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 				analyze.percent = (frame[9]<<8)|frame[10];
 				analyze.res_done_flag = 1;
 				break;
+			#endif /* R11_HAIR_ANALYZE_ENABLED */
 			default:
 				break;
 		}
@@ -2086,8 +2102,10 @@ void R11NetskinAnalyzeTask(void)
 		#if R11_WIFI_ENABLED
 		R11NetConnectProcess();
 		#endif /* R11_WIFI_ENABLED */
+		#if R11_HAIR_ANALYZE_ENABLED
 		R11AnalyzeTask();
 		R11FaceTypeChooseTask();
+		#endif /*R11_HAIR_ANALYZE_ENABLED */
 	}
 }
 

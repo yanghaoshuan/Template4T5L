@@ -99,6 +99,7 @@
 #define netWIFI_STATUS_ADDR     0x18b4
 #define COMIC_STATUS_ADDR       0x18b6     /** 统一的过渡动画使能标志，初始写1 */
 #define cameraNOW_NUM_ADDR      0x18b7
+#if R11_HAIR_ANALYZE_ENABLED
 #define analyzeRESULT_ADDR 		0x3500
 #define analyzeHAIR_RGB_ADDR	0x3500
 #define analyzeSKIN_RGB_ADDR    0x3501
@@ -121,6 +122,7 @@
 
 #define analyzeHAIR_ANA_PAGE        50
 #define analyzeSKIN_ANA_PAGE        31
+#endif /* R11_HAIR_ANALYZE_ENABLED */
 
 #define MIN_HIGH  		160
 #define MIN_WIDTH  		120
@@ -327,6 +329,7 @@ typedef struct
 }R11_STATE;
 
 
+#if R11_HAIR_ANALYZE_ENABLED
 typedef struct
 {
 	uint8_t red[2];        /* 红色值 0是皮肤，1是头发 */
@@ -358,7 +361,7 @@ typedef struct
 	uint16_t last_type_page; /* 上次类型页面，用于检测页面切换 */
 
 }R11_ANALYZE_S;
-
+#endif /* R11_HAIR_ANALYZE_ENABLED */
 
 
 typedef enum
@@ -397,8 +400,9 @@ extern WIFI_PAGE_S wifi_page;
 extern CAMERA_PROCESS_STATE camera_process_state;
 extern NET_CONNECTED_STATE net_connected_state;
 extern R11_STATE r11_state;
+#if R11_HAIR_ANALYZE_ENABLED
 extern R11_ANALYZE_S analyze;
-
+#endif /* R11_HAIR_ANALYZE_ENABLED */
 
 /**
  * @brief 从lib文件初始化配置参数。
