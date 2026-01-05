@@ -1750,7 +1750,10 @@ static void R11AnalyzeTask(void)
 		r11_send_buf[2] = (uint8_t)(curr_data_len>>8);
 		r11_send_buf[3] = (uint8_t)curr_data_len;
 		UartSendData(&Uart_R11,r11_send_buf,curr_data_len+4);
-		if(analyze.last_type_page != 0)
+		if(analyze.last_type_page != (uint16_t)page_st.main_page)
+		{
+			SwitchPageById(analyzePOINT_MENU_PAGE);
+		}else
 		{
 			SwitchPageById(analyze.last_type_page);
 		}

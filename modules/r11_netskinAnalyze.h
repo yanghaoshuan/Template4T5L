@@ -122,6 +122,7 @@
 
 #define analyzeHAIR_ANA_PAGE        220
 #define analyzeSKIN_ANA_PAGE        211
+#define analyzePOINT_MENU_PAGE      210
 #endif /* R11_HAIR_ANALYZE_ENABLED */
 
 #define MIN_HIGH  		160
