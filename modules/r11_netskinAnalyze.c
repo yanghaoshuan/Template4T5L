@@ -236,7 +236,7 @@ static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,ui
 	r11_send_buf[0] = 0xaa;
 	r11_send_buf[1] = 0x55;
 	r11_send_buf[2] = 0x00;
-	r11_send_buf[3] = 0x09;
+	r11_send_buf[3] = 0x0a;
 	r11_send_buf[4] = cameraOPEN_THREAD;
 	if(camera_mode == 0)
 	{
@@ -252,7 +252,8 @@ static void R11CameraOpenThreadCtrl(uint8_t camera_mode,uint8_t camera_status,ui
 		r11_send_buf[10] = (uint8_t)camera_magnifier.camera_col_high;
 		r11_send_buf[11] = camera_magnifier.camera_col_width>>8;
 		r11_send_buf[12] = (uint8_t)camera_magnifier.camera_col_width;
-		UartSendData(&Uart_R11,r11_send_buf,13);
+		r11_send_buf[13] = 30;
+		UartSendData(&Uart_R11,r11_send_buf,14);
 	}
 }
 
@@ -1414,7 +1415,7 @@ static void R11AnalyzeTask(void)
 				r11_send_buf[7] = camera_magnifier.camera_cap_width>>8;
 				r11_send_buf[8] = (uint8_t)camera_magnifier.camera_cap_width;
 				r11_send_buf[9] = THRESH_NUM;
-				r11_send_buf[10] = 0x01;
+				r11_send_buf[10] = 0x02;
 				UartSendData(&Uart_R11,r11_send_buf,11);
 				start_analyze_flag = 1;
 				analyze_process = 0;
