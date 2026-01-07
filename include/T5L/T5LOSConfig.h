@@ -121,13 +121,13 @@ typedef            long			int32_t;
 #endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
 
 #if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart5
+#define Uart_R11                     Uart3
 #define R11_WIFI_ENABLED              0
 #endif /* sysN5CAMERA_MODE_ENABLED */
 
 #if sysBEAUTY_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
+#define Uart_R11                     Uart3
+#define R11_WIFI_ENABLED              0
 #define R11_HAIR_ANALYZE_ENABLED      1          /**< 头皮检测分析功能使能标志 */
 #endif /* sysBEAUTY_MODE_ENABLED */
 
@@ -168,15 +168,17 @@ extern uint32_t sysFCLK;
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
-#define sysDGUS_AUTO_UPLOAD_ENABLED     1      /**< 自动上传使能标志 */
-#if sysDGUS_AUTO_UPLOAD_ENABLED
+
+#define uartTA_PROTOCOL_ENABLED          0
+#define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
+#if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
-#endif /* sysDGUS_AUTO_UPLOAD_ENABLED */
+#endif /* sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED */
 
 #define sysDEFAULT_ZERO              (uint8_t )0
 
-#define sysDGUS_CHART_ENABLED              1        /**< 图表功能使能标志 */
+#define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
 #define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
 
@@ -236,8 +238,6 @@ extern uint32_t sysFCLK;
  */
 #define uartMODBUS_PROTOCOL_ENABLED      1
 
-#define uartTA_PROTOCOL_ENABLED          0
-
 #define uartUART_82CMD_RETURN            0       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
 /* UART2配置参数 */
@@ -277,11 +277,11 @@ extern uint32_t sysFCLK;
 #endif  /* uartUART2_ENABLED */
 
 /* UART3配置参数，配置同uart2 */
-#define uartUART3_ENABLED               0
+#define uartUART3_ENABLED               1
 
 #if uartUART3_ENABLED
     #define uartUART3_TXBUF_SIZE         256
-    #define uartUART3_RXBUF_SIZE         256
+    #define uartUART3_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
     #define uartUART3_TIMEOUT_ENABLED    uartUART3_ENABLED
     #if uartUART3_TIMEOUT_ENABLED
         #define uartUART3_TIMEOUTSET     5
@@ -309,11 +309,11 @@ extern uint32_t sysFCLK;
 #endif  /* uartUART4_ENABLED */
 
 /* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               1
+#define uartUART5_ENABLED               0
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         4500
+    #define uartUART5_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
     #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED

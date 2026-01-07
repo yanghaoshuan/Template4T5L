@@ -1407,10 +1407,15 @@ static void R11AnalyzeTask(void)
 				r11_send_buf[0] = 0xAA;
 				r11_send_buf[1] = 0x55;
 				r11_send_buf[2] = 0x00;
-				r11_send_buf[3] = 0x02;
+				r11_send_buf[3] = 0x07;
 				r11_send_buf[4] = analyzeHAIR_RESULT;
-				r11_send_buf[5] = 0x01;
-				UartSendData(&Uart_R11,r11_send_buf,6);
+				r11_send_buf[5] = camera_magnifier.camera_cap_high>>8;
+				r11_send_buf[6] = (uint8_t)camera_magnifier.camera_cap_high;
+				r11_send_buf[7] = camera_magnifier.camera_cap_width>>8;
+				r11_send_buf[8] = (uint8_t)camera_magnifier.camera_cap_width;
+				r11_send_buf[9] = THRESH_NUM;
+				r11_send_buf[10] = 0x01;
+				UartSendData(&Uart_R11,r11_send_buf,11);
 				start_analyze_flag = 1;
 				analyze_process = 0;
 				camera_magnifier.camera_num[r11_state.now_choose_pic] = 0;

@@ -99,7 +99,7 @@ static void R11N5CameraModeSet()
 
 static void R11RestartInit()
 {
-    R11N5CameraModeSet();
+//    R11N5CameraModeSet();
 }
 
 
@@ -244,10 +244,12 @@ static void R11ValueScanTask(void)
 
 void R11N5CameraTask(void)
 {
+    uint16_t write_param = 20;
     if(r11_state.restart_flag == 1)
     {
         R11RestartInit();
         T5lJpegInit();
+        write_dgus_vp(sysWAE_PLAY_ADDR, (uint8_t *)&write_param, 1);
         r11_state.restart_flag = 2;  /* 重置重启标志 */
     }else if(r11_state.restart_flag == 2)
 	{

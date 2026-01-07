@@ -663,6 +663,9 @@ void UartReadFrame(UART_TYPE *uart)
                 #if sysBEAUTY_MODE_ENABLED
                 UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);
                 #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysN5CAMERA_MODE_ENABLED
+                UartR11UserN5CameraProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysN5CAMERA_MODE_ENABLED */
                 i -= one_frame_len;
             }else if(frame[total_frame_len - i] == 0xaa && frame[total_frame_len - i + 1] == 0x55)
             {
