@@ -68,7 +68,7 @@ void R11ConfigInitFormLib(void)
 	}else if(screen_opt.thumbnail_num == 4)
 	{
 		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x07000;
-		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1f000;
+		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1d000;
 		Icon_Overlay_SP_VP[4] = 0x37000;
 		Icon_Overlay_SP_VP[5] = 0x39000;
 		Icon_Overlay_SP_VP[6] = 0x3b000;
@@ -1327,7 +1327,7 @@ static void R11AnalyzeTask(void)
 
 
 	const uint16_t uint16_port_zero = 0;
-	static uint16_t analyze_process = 0,start_cap_flag = 0,start_analyze_flag = 0;
+	static uint16_t analyze_process = 0,start_cap_flag = 0,start_analyze_flag = 0,cap_retry_count = 8;
     uint16_t dgus_value,curr_data_len;
 	uint8_t r11_send_buf[100],file_name_arr[64];
 	uint16_t write_param[10];
@@ -1367,6 +1367,7 @@ static void R11AnalyzeTask(void)
 		}
 		if(r11_state.pic_capture_flag == 1)
 		{
+			cap_retry_count = 8;
 			r11_state.now_choose_pic = 0;
 			camera_magnifier.camera_num[r11_state.now_choose_pic] = 1;
 			write_dgus_vp(cameraNOW_NUM_ADDR,(uint8_t*)&r11_state.now_choose_pic,1);
@@ -1375,22 +1376,27 @@ static void R11AnalyzeTask(void)
 			r11_state.pic_capture_flag = 0;
 			return;
 		}
-		r11_send_buf[0] = 0xAA;
-		r11_send_buf[1] = 0x55;
-		r11_send_buf[2] = 0x00;
-		r11_send_buf[3] = 0x07;
-		r11_send_buf[4] = analyze.type;
-		r11_send_buf[5] = r11_state.now_choose_pic;
-		r11_send_buf[6] = camera_magnifier.camera_cap_high>>8;
-		r11_send_buf[7] = (uint8_t)camera_magnifier.camera_cap_high;
-		r11_send_buf[8] = camera_magnifier.camera_cap_width>>8;
-		r11_send_buf[9] = (uint8_t)camera_magnifier.camera_cap_width;
-		r11_send_buf[10] = ABBR_QUALITY;
-		UartSendData(&Uart_R11,r11_send_buf,11);
-		write_dgus_vp(analyzeFAIL_ADDR,(uint8_t*)&uint16_port_zero,1);
-		analyze_process = 0;
-		start_cap_flag = 0;
-		start_analyze_flag = 0;
+		cap_retry_count++;
+		if(cap_retry_count >= 8)
+		{
+			cap_retry_count = 0;
+			r11_send_buf[0] = 0xAA;
+			r11_send_buf[1] = 0x55;
+			r11_send_buf[2] = 0x00;
+			r11_send_buf[3] = 0x07;
+			r11_send_buf[4] = analyze.type;
+			r11_send_buf[5] = r11_state.now_choose_pic;
+			r11_send_buf[6] = camera_magnifier.camera_cap_high>>8;
+			r11_send_buf[7] = (uint8_t)camera_magnifier.camera_cap_high;
+			r11_send_buf[8] = camera_magnifier.camera_cap_width>>8;
+			r11_send_buf[9] = (uint8_t)camera_magnifier.camera_cap_width;
+			r11_send_buf[10] = ABBR_QUALITY;
+			UartSendData(&Uart_R11,r11_send_buf,11);
+			write_dgus_vp(analyzeFAIL_ADDR,(uint8_t*)&uint16_port_zero,1);
+			analyze_process = 0;
+			start_cap_flag = 0;
+			start_analyze_flag = 0;
+		}
 	}else if(dgus_value == 0x0004)
 	{
 		/* 头皮检测分析 */
@@ -1415,7 +1421,7 @@ static void R11AnalyzeTask(void)
 				r11_send_buf[7] = camera_magnifier.camera_cap_width>>8;
 				r11_send_buf[8] = (uint8_t)camera_magnifier.camera_cap_width;
 				r11_send_buf[9] = THRESH_NUM;
-				r11_send_buf[10] = 0x02;
+				r11_send_buf[10] = 0x01;
 				UartSendData(&Uart_R11,r11_send_buf,11);
 				start_analyze_flag = 1;
 				analyze_process = 0;
