@@ -78,8 +78,10 @@ VIDEO_INIT_PROCESS video_init_process = VIDEO_PROCESS_UNINIT;
 uint8_t wifi_now_offset = 0;
 
 /** @note 适用于全屏播放的分辨率参数，由于最高只能显示1280*720，所以在1920*1080的分辨率上面进行特殊处理 */
-uint16_t pixels_arr_h[5]={1280,1024,800,800,1024};
-uint16_t pixels_arr_l[5]={720,600,600,480,768};
+// uint16_t pixels_arr_h[5]={1280,1024,800,800,1024};
+// uint16_t pixels_arr_l[5]={720,600,600,480,768};
+uint16_t pixels_arr_h[5]={1920,1024,800,800,1024};
+uint16_t pixels_arr_l[5]={1080,600,600,480,768};
 
 uint16_t pixels_arr_h2[5]={1920,1024,800,800,1024};
 uint16_t pixels_arr_l2[5]={1080,600,600,480,768};

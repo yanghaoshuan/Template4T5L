@@ -45,7 +45,7 @@ void main(void)
   RtcInit();
   SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
-  SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+  // SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
   SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 

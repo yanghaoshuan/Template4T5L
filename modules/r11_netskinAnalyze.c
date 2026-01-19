@@ -59,16 +59,16 @@ void R11ConfigInitFormLib(void)
 	}
 	if(screen_opt.thumbnail_num <= 3)
 	{
-		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x07000;
-		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1d000;
+		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x05000;
+		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1e000;
 		Icon_Overlay_SP_VP[4] = 0x33000;
 		Icon_Overlay_SP_VP[5] = 0x37000;
 		Icon_Overlay_SP_VP[6] = 0x3b000;
 		Icon_Overlay_SP_VP[7] = Icon_Overlay_SP_VP[8] = Icon_Overlay_SP_VP[9] = Icon_Overlay_SP_VP[10] = 0x3f000;
 	}else if(screen_opt.thumbnail_num == 4)
 	{
-		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x07000;
-		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1d000;
+		Icon_Overlay_SP_VP[0] = Icon_Overlay_SP_VP[2] = 0x05000;
+		Icon_Overlay_SP_VP[1] = Icon_Overlay_SP_VP[3] = 0x1e000;
 		Icon_Overlay_SP_VP[4] = 0x37000;
 		Icon_Overlay_SP_VP[5] = 0x39000;
 		Icon_Overlay_SP_VP[6] = 0x3b000;
@@ -1304,10 +1304,10 @@ static void R11HairAnalyzeCalcResult(void)
 		write_dgus_vp(COLOR_RECT_ADDR,color_rect_arr,13);
 	}
 	#endif /*HAIR_ANALYZE_LEVEL_ENABLED */
-	if(analyze.percent > 400)
+	if(analyze.percent > 300)
 	{
 		analyze.hair_analyze.hair_dense = 3;
-	}else if(analyze.percent > 1000 && analyze.percent <= 400)
+	}else if(analyze.percent > 100 && analyze.percent <= 300)
 	{
 		analyze.hair_analyze.hair_dense = 2;
 	}else
