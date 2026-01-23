@@ -690,6 +690,17 @@ void UartReadFrame(UART_TYPE *uart)
                 UartR11UserAdvertiseProtocol(uart, &frame[total_frame_len - i], one_frame_len);
                 #endif /* sysADVERTISE_MODE_ENABLED */
                 i -= one_frame_len;
+            }else if(frame[total_frame_len - i] == 0xaa && frame[total_frame_len - i + 1] == 0xCC)
+            {
+                one_frame_len = (frame[total_frame_len - i + 2] << 8 | frame[total_frame_len - i + 3]) + 4;
+                if(i < one_frame_len)
+                {
+                    break;
+                }
+                #if sysBEAUTY_MODE_ENABLED
+                UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                i -= one_frame_len;
             }
             #if uartMODBUS_PROTOCOL_ENABLED
             else if(frame[total_frame_len - i] == modbusSLAVE_ADDRESS)

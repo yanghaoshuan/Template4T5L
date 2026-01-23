@@ -1027,10 +1027,8 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
 	/** 此处需要去掉帧头 */
-	UartSendData(&Uart2,frame,len);
 	if(JSONSearchToArray(&frame[5],len-5,"cmd",sizeof("cmd") - 1,Json_Wechat.send_cmd) == JSONSuccess)
 	{
-		write_dgus_vp(0x5020,Json_Wechat.send_cmd,10);
 		if(strcmp((char *)Json_Wechat.send_cmd,"getskinapi") == 0)
 		{
 			/** 处理getskinapi的逻辑 */
