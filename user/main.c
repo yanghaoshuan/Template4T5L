@@ -49,7 +49,10 @@ void main(void)
 	RtcInit();
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
-	// SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+	SysTaskAdd(1, COUNT_TASK_INTERVAL, DgusValueScanTask);
+
+  #define sysTP_SCAN_INTERVAL 100
+  SysTaskAdd(3, sysTP_SCAN_INTERVAL, KaoshiTouchScanTask);
 
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 

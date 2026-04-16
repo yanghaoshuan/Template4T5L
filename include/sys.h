@@ -137,13 +137,15 @@ static uint8_t SysTaskCount = 0;
  * @brief 计数任务执行间隔定义
  * @details 定义计数任务的执行周期，单位为毫秒
  */
-#define COUNT_TASK_INTERVAL 1000
+#define COUNT_TASK_INTERVAL 100
 
 /**
  * @brief 计数任务函数
  * @details 执行计数操作并更新DGUS显示的任务函数
  */
 void CountTask(void);
+
+void KaoshiTouchScanTask(void);
 
 /**
  * @brief 添加系统任务

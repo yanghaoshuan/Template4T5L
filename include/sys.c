@@ -555,33 +555,239 @@ void DgusPageScanTask(void)
 void DgusValueScanTask(void)
 {
   #define UINT16_PORT_ZERO     (uint16_t)0
-  #define DGUS_SCAN_ADDRESS     (uint32_t)0x1000
+  #define DGUS_SCAN_ADDRESS     (uint32_t)0x1100
+  #define MENU_START_ADDR        0x1205      
   const uint16_t uint16_port_zero = 0;
-  uint16_t dgus_value;
-  
+  uint16_t dgus_value,i,temp_val,zero_arr[5] = {0},write_param;
+  uint16_t x_point,icon_id;
   #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
   DgusAutoUpload();
   #endif /* sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED*/
 
   read_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&dgus_value, 1);
-  if(dgus_value == 0x0001)
+  if(dgus_value >= 0x0001 && dgus_value <= 0x0005)
   {
-    SwitchPageById(1);
+    temp_val = 1;
+    for(i=1;i<6;i++)
+    {
+        if(i==dgus_value)
+        {
+            write_dgus_vp(MENU_START_ADDR+i-1, (uint8_t *)&temp_val, 1);
+        }else
+        {
+            write_dgus_vp(MENU_START_ADDR+i-1, (uint8_t *)&uint16_port_zero, 1);
+        }
+    }
+    if(dgus_value == 0x0004)
+    {
+        //重置
+        write_dgus_vp(0x1200,(uint8_t *)&zero_arr[0], 5);
+    }
+
     write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if(dgus_value == 0x0002)
+  }else if(dgus_value >= 0x0010 && dgus_value <= 0x0020)
   {
-    SysTaskRemove(1);
-    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if(dgus_value == 0x0003)
-  {
-    SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
-    write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
-  }else if(dgus_value == 0x0004)
-  {
-    SwitchPageById(0);
+    write_param = dgus_value - 0x0010;
+    read_dgus_vp(0x1300,(uint8_t *)&x_point,1);
+    icon_id = write_param * 3;
+    write_dgus_vp(0x1400+0x03,(uint8_t *)&icon_id,1);
+    write_dgus_vp(0x1220,(uint8_t *)&write_param, 1);
     write_dgus_vp(DGUS_SCAN_ADDRESS, (uint8_t *)&uint16_port_zero, 1);
   }
-  
+}
+
+/**
+ * 每0.1s扫描一次，如果在按压中，判断x坐标和y坐标的移动情况
+ * 1.如果x坐标在（195，385）之间，y坐标在（75，480）之间，y坐标增加10，0x1200就增加1，y坐标减少10，0x1200就减少1
+ */
+
+static void TouchHandleXPoint(uint16_t *touch_value,uint16_t *last_touch_value,
+    uint16_t x_min, uint16_t x_max, uint16_t y_min, uint16_t y_max,
+    uint16_t acc_num,uint16_t icon_addr,uint16_t icon_max)
+{
+    uint16_t temp_val,inc_num,i;
+    if(touch_value[1] > x_min && touch_value[1] < x_max && touch_value[2] > y_min && touch_value[2] < y_max)
+        {
+            read_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+            if(last_touch_value[2]>touch_value[2] +acc_num) 
+            {
+                inc_num = (last_touch_value[2] - touch_value[2])/acc_num;
+                if(temp_val + inc_num > icon_max)
+                {
+                    inc_num = icon_max - temp_val;
+                }
+                for(i=0;i<inc_num;i++)
+                {
+                    temp_val++;
+                    write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                    delay_ms(10);
+
+                }
+                last_touch_value[2] = touch_value[2];
+            }else if(touch_value[2] > last_touch_value[2] +acc_num)
+            {
+                inc_num = (touch_value[2] - last_touch_value[2])/acc_num;
+                read_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                if(temp_val < inc_num)
+                {
+                    inc_num = temp_val;
+                }
+                for(i=0;i<inc_num;i++)
+                {
+                    temp_val--;
+                    write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                    delay_ms(10);
+                }
+                last_touch_value[2] = touch_value[2];
+            }else{
+                last_touch_value[2] = touch_value[2];
+                last_touch_value[1] = touch_value[1];
+            }
+            }else
+        {
+            last_touch_value[1] = touch_value[1];
+            last_touch_value[2] = touch_value[2];
+        }
+}
+
+
+
+static TouchReserve(uint16_t icon_addr,uint16_t *first_return_value)
+{
+    //如果当前状态没有归位，则归位成靠近归为数组的状态
+    uint16_t temp_val,inc_num,i;
+    read_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+    if(temp_val>first_return_value[0] && temp_val<first_return_value[1])
+    {
+        if(temp_val - first_return_value[0] < first_return_value[1] - temp_val)
+        {
+            inc_num = temp_val - first_return_value[0];
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val--;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }else
+        {
+            inc_num = first_return_value[1] - temp_val;
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val++;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }
+    }else if(temp_val>first_return_value[1] && temp_val<first_return_value[2])
+    {
+        if(temp_val - first_return_value[1] < first_return_value[2] - temp_val)
+        {
+            inc_num = temp_val - first_return_value[1];
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val--;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }else
+        {
+            inc_num = first_return_value[2] - temp_val;
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val++;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }
+    }else if(temp_val>first_return_value[2] && temp_val<first_return_value[3])
+    {                    
+        if(temp_val - first_return_value[2] < first_return_value[3] - temp_val)
+        {                        
+            inc_num = temp_val - first_return_value[2];
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val--;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }else
+        {
+            inc_num = first_return_value[3] - temp_val;
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val++;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }
+    }else if(temp_val>first_return_value[3] && temp_val<first_return_value[4])
+    {                    
+        if(temp_val - first_return_value[3] < first_return_value[4] - temp_val)
+        {                        
+            inc_num = temp_val - first_return_value[3];
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val--;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }else
+        {
+            inc_num = first_return_value[4] - temp_val;
+            for(i=0;i<inc_num;i++)
+            {
+                temp_val++;
+                write_dgus_vp(icon_addr, (uint8_t *)&temp_val, 1);
+                delay_ms(10);
+
+            }
+        }
+    }
+
+}
+
+
+
+
+void KaoshiTouchScanTask(void)
+{
+    static uint16_t last_touch_value1[4] = {0},last_touch_value2[4] = {0},last_touch_value3[4] = {0},last_touch_value4[4] = {0};
+    uint16_t touch_value[4],temp_val,inc_num,i;
+    uint16_t first_return_value[5]={0,8,17,27,36};
+    uint16_t second_return_value[5]={0,10,19,100,100};
+    uint16_t third_return_value[5]={0,10,100,100,100};
+    uint16_t fourth_return_value[5]={0,9,18,27,100};
+    read_dgus_vp(sysDGUS_TP_STATUS, (uint8_t *)&touch_value[0], 4);
+    if(touch_value[0] == 0x5a03) //在按压中，检查x坐标和y坐标的变化
+    {
+        TouchHandleXPoint(&touch_value[0],&last_touch_value1[0],199,360, 75, 480,3,0x1200,36);
+        TouchHandleXPoint(&touch_value[0],&last_touch_value2[0],383,465, 75, 510,3,0x1201,19);
+        TouchHandleXPoint(&touch_value[0],&last_touch_value3[0],682,800, 75, 480,3,0x1202,10);
+        TouchHandleXPoint(&touch_value[0],&last_touch_value4[0],803,940, 75, 480,3,0x1203,27);
+    }else{
+        last_touch_value1[1] = last_touch_value2[1] = touch_value[1];
+        if(touch_value[1] > 195 && touch_value[1] < 385)
+        {
+            TouchReserve(0x1200, &first_return_value[0]);
+        }else if(touch_value[1] > 383 && touch_value[1] < 465)
+        {
+            TouchReserve(0x1201, &second_return_value[0]);
+        }else if(touch_value[1] > 682 && touch_value[1] < 800)
+        {
+            TouchReserve(0x1202, &third_return_value[0]);
+        }else if(touch_value[1] > 803 && touch_value[1] < 940)
+        {           
+             TouchReserve(0x1203, &fourth_return_value[0]);
+        }
+        last_touch_value1[2] = last_touch_value2[2] = touch_value[2];
+    }
 }
 
 
