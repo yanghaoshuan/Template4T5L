@@ -1417,6 +1417,36 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                             else
                                             {
 
+                                                //在这里查询一次，如果GUI在忙就等待1ms再次查询
+                                                ADR_H = 0x00;
+												ADR_M = 0x00 >> 9;
+												ADR_L = 0x14 >> 1;
+												ADR_INC = 0x00;
+												
+												RAMMODE = 0xAF;
+												while ( !APP_ACK );
+												APP_EN = 1;
+												while ( APP_EN );
+                                                RAMMODE = 0x00;
+                                                // if(DATA3 == 0x00 && DATA2 == 0x01)
+                                                // {
+                                                //     //GUI忙，丢掉这一包
+                                                //     Rx3_Len++;
+                                                //     data_write_f = 0x10;
+                                                //     EX0 = 0;
+                                                //     EX1 = 0;
+                                                // }else
+                                                // {
+
+                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                {
+                                                    delay_ms(1);
+                                                    RAMMODE = 0xAF;
+												    while ( !APP_ACK );
+												    APP_EN = 1;
+												    while ( APP_EN );
+                                                    RAMMODE = 0x00;
+                                                }
 												ADR_H = JpegLaber_DGUSII_VP >> 17;
 												ADR_M = JpegLaber_DGUSII_VP >> 9;
 												ADR_L = JpegLaber_DGUSII_VP >> 1;
@@ -1501,6 +1531,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 data_write_f = 0;
                                                 EX1_Start();
                                             }
+                                            // }
                                         }
                                         //break;
                                     }
@@ -1529,90 +1560,111 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                             else
                                             {
 
-												ADR_H = JpegLaber_DGUSII_VP >> 17;
-												ADR_M = JpegLaber_DGUSII_VP >> 9;
-												ADR_L = JpegLaber_DGUSII_VP >> 1;
+                                                //在这里查询一次，如果GUI在忙就等待1ms再次查询
+                                                ADR_H = 0x00;
+												ADR_M = 0x00 >> 9;
+												ADR_L = 0x14 >> 1;
 												ADR_INC = 0x00;
 												
 												RAMMODE = 0xAF;
 												while ( !APP_ACK );
 												APP_EN = 1;
 												while ( APP_EN );
-												RAMMODE = 0x8F;
-												DATA1 = DATA2;
-												DATA3 = 0x5A;
-												DATA2 = 0xA5;
-												//DATA1 = 0xFF;
-												DATA0 = 0xFE;
-												APP_EN = 1;
-												while ( APP_EN );
-												RAMMODE = 0x00;
+                                                RAMMODE = 0x00;
+                                                // if(DATA3 == 0x00 && DATA2 == 0x01)
+                                                // {
+                                                //     //GUI忙，丢掉这一包
+                                                //     Rx3_Len++;
+                                                //     data_write_f = 0x10;
+                                                //     EX0 = 0;
+                                                //     EX1 = 0;
+                                                // }else
+                                                // {
 
-                                                
-                                                while (DATA1 == 0x00 && DATA0 == 0x01)
+                                                while(DATA3 == 0x00 && DATA2 == 0x01)
                                                 {
                                                     delay_ms(1);
                                                     RAMMODE = 0xAF;
-                                                    while (!APP_ACK)
-                                                        ;
-                                                    APP_EN = 1;
-                                                    while (APP_EN)
-                                                        ;
+												    while ( !APP_ACK );
+												    APP_EN = 1;
+												    while ( APP_EN );
                                                     RAMMODE = 0x00;
                                                 }
+                                                    ADR_H = JpegLaber_DGUSII_VP >> 17;
+                                                    ADR_M = JpegLaber_DGUSII_VP >> 9;
+                                                    ADR_L = JpegLaber_DGUSII_VP >> 1;
+                                                    ADR_INC = 0x00;
+                                                    
+                                                    RAMMODE = 0xAF;
+                                                    while ( !APP_ACK );
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    RAMMODE = 0x8F;
+                                                    DATA1 = DATA2;
+                                                    DATA3 = 0x5A;
+                                                    DATA2 = 0xA5;
+                                                    //DATA1 = 0xFF;
+                                                    DATA0 = 0xFE;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    RAMMODE = 0x00;
 
-                                                ADR_H = Icon_Overlay_SP[Index] >> 17;
-                                                ADR_M = Icon_Overlay_SP[Index] >> 9;
-                                                ADR_L = Icon_Overlay_SP[Index] >> 1;
-                                                ADR_INC = 0x01;
-                                                RAMMODE = 0x8F;
-                                                while ( !APP_ACK );
-                                                DATA3 = JpegLaber_DGUSII_VP >> 8;
-                                                DATA2 = JpegLaber_DGUSII_VP >> 0;
-                                                DATA1 = Icon_Overlay_SP_X[Index] >> 8;
-                                                DATA0 = Icon_Overlay_SP_X[Index] >> 0;
-                                                APP_EN = 1;
-                                                while ( APP_EN );
-                                                DATA3 = Icon_Overlay_SP_Y[Index] >> 8;
-                                                DATA2 = Icon_Overlay_SP_Y[Index] >> 0;
-                                                DATA1 = Icon_Overlay_SP_L[Index] >> 8;
-                                                DATA0 = Icon_Overlay_SP_L[Index] >> 0;
-                                                APP_EN = 1;
-                                                while ( APP_EN );
-                                                DATA3 = Icon_Overlay_SP_H[Index] >> 8;
-                                                DATA2 = Icon_Overlay_SP_H[Index] >> 0;
-                                                DATA1 = Icon_Overlay_SP_Mode >> 8;
-                                                DATA0 = Icon_Overlay_SP_Mode >> 0;
-                                                APP_EN = 1;
-                                                while ( APP_EN );
-                                                DATA3 = 0x00;
-                                                DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 );
-                                                DATA1 = 00;
-                                                DATA0 = 00;
-                                                APP_EN = 1;
-                                                while ( APP_EN );
-                                                RAMMODE = 0x00;
+                                                    
+                                                
+
+                                                    ADR_H = Icon_Overlay_SP[Index] >> 17;
+                                                    ADR_M = Icon_Overlay_SP[Index] >> 9;
+                                                    ADR_L = Icon_Overlay_SP[Index] >> 1;
+                                                    ADR_INC = 0x01;
+                                                    RAMMODE = 0x8F;
+                                                    while ( !APP_ACK );
+                                                    DATA3 = JpegLaber_DGUSII_VP >> 8;
+                                                    DATA2 = JpegLaber_DGUSII_VP >> 0;
+                                                    DATA1 = Icon_Overlay_SP_X[Index] >> 8;
+                                                    DATA0 = Icon_Overlay_SP_X[Index] >> 0;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    DATA3 = Icon_Overlay_SP_Y[Index] >> 8;
+                                                    DATA2 = Icon_Overlay_SP_Y[Index] >> 0;
+                                                    DATA1 = Icon_Overlay_SP_L[Index] >> 8;
+                                                    DATA0 = Icon_Overlay_SP_L[Index] >> 0;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    DATA3 = Icon_Overlay_SP_H[Index] >> 8;
+                                                    DATA2 = Icon_Overlay_SP_H[Index] >> 0;
+                                                    DATA1 = Icon_Overlay_SP_Mode >> 8;
+                                                    DATA0 = Icon_Overlay_SP_Mode >> 0;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    DATA3 = 0x00;
+                                                    DATA2 = 0x80 | ( JpegLaber_DGUSII_VP >> 16 );
+                                                    DATA1 = 00;
+                                                    DATA0 = 00;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    RAMMODE = 0x00;
 
 
 
 
 
-                                                if ( Icon_Num == 1 ||Icon_Num == 2 )
-                                                {
-                                                    Pic_Count[ ( Icon_Num-1 ) /2]++;
-                                                }
-                                                #if sysBEAUTY_MODE_ENABLED
-                                                else
-                                                {
-													if(Icon_Num == r11_state.now_choose_pic+5)
-													{
-														r11_state.pic_capture_flag = 1;
-													}
-                                                    Pic_Count[ ( Icon_Num-1 )]++;
-                                                }
-                                                #endif /* sysBEAUTY_MODE_ENABLED */
-                                                data_write_f = 0;
-                                                EX1_Start();
+                                                    if ( Icon_Num == 1 ||Icon_Num == 2 )
+                                                    {
+                                                        Pic_Count[ ( Icon_Num-1 ) /2]++;
+                                                    }
+                                                    #if sysBEAUTY_MODE_ENABLED
+                                                    else
+                                                    {
+                                                        if(Icon_Num == r11_state.now_choose_pic+5)
+                                                        {
+                                                            r11_state.pic_capture_flag = 1;
+                                                        }
+                                                        Pic_Count[ ( Icon_Num-1 )]++;
+                                                    }
+                                                    #endif /* sysBEAUTY_MODE_ENABLED */
+                                                    data_write_f = 0;
+                                                    EX1_Start();
+                                                // }
                                             }
                                         }
                                     }
