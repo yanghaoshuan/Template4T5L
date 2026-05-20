@@ -98,6 +98,8 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define R11_RESTART_FLAG_ADDR      	0x06D4
 #define BIG_SMALL_FLAG_ADDR      	0x06D5
 
+#define NP4_NOW_NUM_ADDR            0x06D7
+
 
 #define MP4_FILENAME_SP_LIST1       0x3E00
 #define MP4_FILENAME_SP_LIST2       0x3E20
@@ -121,6 +123,7 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define cmdMP4_REPLAY              	0x66
 #define cmdMP4_STOP					0x67
 #define cmdMP4_AUX_SET              0x6b
+#define cmdMP4_PLAY_BY_NUM          0x74
 #define cmdMP4_IMG_SET              0x76    /* 0x76为小图播放，0x77为大图播放*/
 #define cmdMP4_ROTATE_ANGLE         0x79
 #define cmdCHECK_STATUS_NET         0x85
@@ -160,6 +163,8 @@ extern VIDEO_INIT_PROCESS video_init_process;
 #define keyMP4_CLEAR_PAGE           0x00ff
 #define keyMP4_NEXTFILE            	0x0001
 #define keyMP4_PREVFILE            	0x0002
+
+#define keyMP4_PLAY_BY_NUM          0x0A00
 
 /** wifi连接键值定义区域 */
 #define keyWIFI_LIST1              	0xaf01

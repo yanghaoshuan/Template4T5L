@@ -183,6 +183,13 @@ void T5lSendUartDataToR11( uint8_t cmd, uint8_t *buf)
             r11_buf[3] = 0x02;
             r11_buf[5] = buf[0];
             break;
+        case cmdMP4_PLAY_BY_NUM:
+            r11_buf[2] = 0x00;
+            r11_buf[3] = 0x04;
+            r11_buf[5] = buf[0];
+            r11_buf[6] = buf[1];
+            r11_buf[7] = buf[2];
+            break;
         case cmdMP4_PREVFILE:
         case cmdMP4_NEXTFILE: 
         case cmdMP4_PAUSE: 
@@ -529,8 +536,24 @@ void R11VideoPlayerProcess(void)
 
 void R11VideoValueHandle(uint16_t dgus_value)
 {
+    #define MAX_MP4_NUMBER        256
     uint8_t r11_send_buf[6],i;
-    if(dgus_value == keyMP4_REPLAY)
+
+    if(dgus_value >= keyMP4_PLAY_BY_NUM && dgus_value < keyMP4_PLAY_BY_NUM + MAX_MP4_NUMBER)
+    {
+        if(r11_player.total_serial > 0)
+        {
+            r11_player.serial = dgus_value - keyMP4_PLAY_BY_NUM;
+            if(r11_player.serial < r11_player.total_serial)
+            {
+                write_dgus_vp(NP4_NOW_NUM_ADDR,(uint8_t*)&r11_player.serial,1);
+                r11_send_buf[0] = MP4;
+                r11_send_buf[1] = 0x00;
+                r11_send_buf[2] = r11_player.serial;
+                T5lSendUartDataToR11(cmdMP4_PLAY_BY_NUM, r11_send_buf);
+            }
+        }
+    }else if(dgus_value == keyMP4_REPLAY)
     {
         r11_send_buf[0] = 0x00;
         T5lSendUartDataToR11(cmdMP4_REPLAY, r11_send_buf);
