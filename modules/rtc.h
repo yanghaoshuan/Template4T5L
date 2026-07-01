@@ -42,7 +42,7 @@
  * @return 无
  * @post 如果检测到有效的时间设置命令，RTC时间将被更新
  * @note 函数会检查0x009C地址的命令标志
- * @note 自动计算星期值并进行BCD转换
+ * @note 自动计算星期值，RtcSetTime内部完成RTC芯片格式转换
  * @note 处理完成后会清除命令标志
  */
 void RtcWriteTime(void);
@@ -67,7 +67,7 @@ void RtcInit(void);
  * @pre 时间数据必须在有效范围内
  * @post RTC芯片的时间寄存器已更新
  * @note 函数会根据芯片类型执行不同的写入序列
- * @note 时间格式为BCD码，函数内部会进行转换
+ * @note 传入普通十进制时间值，函数内部转换为RTC芯片寄存器格式
  * @note 星期值会根据日期自动计算
  * @warning 设置错误的时间可能导致RTC功能异常
  */

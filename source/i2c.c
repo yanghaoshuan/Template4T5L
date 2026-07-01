@@ -51,6 +51,8 @@ static void I2cStop(void)
 	i2cSCL_PIN = 1;
 	i2cDelay(i2cDELAY_TICK);
 	i2cSDA_PIN = 1;
+	i2cDelay(i2cDELAY_TICK);
+	i2cSDA_LOW;
 }
 
 /**
@@ -204,6 +206,7 @@ void I2cWriteSingleByte(uint8_t register_address, uint8_t register_data)
     I2cSendByte(register_address);
     I2cRecvAck();
     I2cSendByte(register_data);
+    I2cRecvAck();
     I2cStop();
 }
 
