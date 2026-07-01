@@ -821,11 +821,14 @@ void SysWriteSingleChart(uint8_t chart_id,uint8_t point_num,uint8_t *data_buf)
  */
 void T5LCpuInit(void)
 {
+#define COMIC_STATUS_ADDR       0x06D9
+    uint16_t write_param = 1;
     KernelInit();
     GpioInit();
     InterruptInit();
     UartInit();
 	TimerInit();
+    write_dgus_vp(COMIC_STATUS_ADDR,(uint8_t *)&write_param,1);
 }
 
 
