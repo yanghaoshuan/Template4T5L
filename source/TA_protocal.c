@@ -314,9 +314,10 @@ static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
     data_addr = 0x5000UL + offset;
     write_words = (data_len - 9U) >> 1;
 
-    write_dgus_vp(data_addr, zero_arr, TA_STRING_CLEAR_WORDS);
+    
     if(write_words > 0U)
     {
+        write_dgus_vp(data_addr, zero_arr, write_words);
         write_dgus_vp(data_addr, &frame[8], write_words);
     }
 }
