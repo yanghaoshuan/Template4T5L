@@ -369,25 +369,25 @@ extern uint32_t sysFCLK;
      * @brief I2C GPIO端口定义
      * @details 指定I2C通信使用的GPIO端口
      */
-    #define i2cGPIO_SFR_PORT            P3
+    #define i2cGPIO_SFR_PORT            P1
     
     /**
      * @brief I2C GPIO端口模式寄存器定义
      * @details 指定I2C GPIO端口的模式控制寄存器
      */
-    #define i2cGPIO_SFR_PORTMDOUT       P3MDOUT
+    #define i2cGPIO_SFR_PORTMDOUT       P1MDOUT
     
     /**
      * @brief I2C SDA数据线引脚号
      * @details SDA(Serial Data)数据线使用的GPIO引脚号
      */
-    #define i2cSDA_GPIO_PIN             3
+    #define i2cSDA_GPIO_PIN             2
     
     /**
      * @brief I2C SCL时钟线引脚号
      * @details SCL(Serial Clock)时钟线使用的GPIO引脚号
      */
-    #define i2cSCL_GPIO_PIN             2
+    #define i2cSCL_GPIO_PIN             1
     
     /**
      * @brief I2C时序延时节拍数
