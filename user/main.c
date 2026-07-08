@@ -51,7 +51,7 @@ void main(void)
 
 	SysTaskAdd(1, COUNT_TASK_INTERVAL, DgusValueScanTask);
 
-  #define sysTP_SCAN_INTERVAL 100
+  #define sysTP_SCAN_INTERVAL 20
   SysTaskAdd(3, sysTP_SCAN_INTERVAL, KaoshiTouchScanTask);
 
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);

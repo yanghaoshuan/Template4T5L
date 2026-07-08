@@ -596,8 +596,421 @@ void DgusValueScanTask(void)
   }
 }
 
+
+#define FAULT_LIST_BASE_ADDR          ((uint32_t)0x2000)
+#define FAULT_LIST_COL_NUM            4
+#define FAULT_LIST_VISIBLE_ROWS       8
+#define FAULT_LIST_DISPLAY_ROWS       (FAULT_LIST_VISIBLE_ROWS + 1)
+#define FAULT_LIST_TOTAL_ROWS         1000
+#define FAULT_LIST_CELL_WORDS         0x10
+#define FAULT_LIST_CELL_BYTES         (FAULT_LIST_CELL_WORDS * 2)
+#define FAULT_LIST_ROW_WORDS          (FAULT_LIST_CELL_WORDS * FAULT_LIST_COL_NUM)
+#define FAULT_LIST_MAX_TOP_INDEX      (FAULT_LIST_TOTAL_ROWS - FAULT_LIST_VISIBLE_ROWS)
+#define FAULT_LIST_DRAG_STEP_PIXEL    24
+#define FAULT_LIST_TOUCH_X_MIN        0
+#define FAULT_LIST_TOUCH_X_MAX        1024
+#define FAULT_LIST_TOUCH_Y_MIN        0
+#define FAULT_LIST_TOUCH_Y_MAX        600
+
+/* arr[0]为标题，arr[1..8]为当前显示页；1000条mock数据按索引生成，避免常驻大数组。 */
+static uint8_t xdata arr[FAULT_LIST_DISPLAY_ROWS][FAULT_LIST_COL_NUM][FAULT_LIST_CELL_BYTES];
+static uint16_t fault_list_top_index = 0;
+static uint8_t fault_list_inited = FALSE;
+static uint8_t fault_list_touch_active = FALSE;
+static uint16_t fault_list_last_y = 0;
+
+
+static void FaultListCellClear(uint8_t xdata *cell)
+{
+    memset(cell, 0x00, FAULT_LIST_CELL_BYTES);
+}
+
+
+static uint8_t FaultListAppendByte(uint8_t xdata *cell, uint8_t pos, uint8_t value)
+{
+    if(pos < FAULT_LIST_CELL_BYTES)
+    {
+        cell[pos++] = value;
+    }
+    return pos;
+}
+
+
+static uint8_t FaultListAppend2Digits(uint8_t xdata *cell, uint8_t pos, uint8_t value)
+{
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + value / 10));
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + value % 10));
+    return pos;
+}
+
+
+static uint8_t FaultListAppend4Digits(uint8_t xdata *cell, uint8_t pos, uint16_t value)
+{
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + (value / 1000) % 10));
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + (value / 100) % 10));
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + (value / 10) % 10));
+    pos = FaultListAppendByte(cell, pos, (uint8_t)('0' + value % 10));
+    return pos;
+}
+
+
+static uint8_t FaultListAppendValue(uint8_t xdata *cell, uint8_t pos, uint16_t value)
+{
+    uint8_t copy_buf[5];
+    uint8_t i = 0;
+
+    do
+    {
+        copy_buf[i++] = (uint8_t)('0' + value % 10);
+        value /= 10;
+    } while((value > 0) && (i < sizeof(copy_buf)));
+
+    while(i > 0)
+    {
+        pos = FaultListAppendByte(cell, pos, copy_buf[--i]);
+    }
+    return pos;
+}
+
+
+static uint8_t FaultListAppendFaultPrefix(uint8_t xdata *cell, uint8_t pos)
+{
+    pos = FaultListAppendByte(cell, pos, 'F');
+    pos = FaultListAppendByte(cell, pos, 'A');
+    pos = FaultListAppendByte(cell, pos, 'U');
+    pos = FaultListAppendByte(cell, pos, 'L');
+    pos = FaultListAppendByte(cell, pos, 'T');
+    pos = FaultListAppendByte(cell, pos, '-');
+    return pos;
+}
+
+
+static uint8_t FaultListAppendParamPrefix(uint8_t xdata *cell, uint8_t pos)
+{
+    pos = FaultListAppendByte(cell, pos, 'P');
+    pos = FaultListAppendByte(cell, pos, 'A');
+    pos = FaultListAppendByte(cell, pos, 'R');
+    pos = FaultListAppendByte(cell, pos, 'A');
+    pos = FaultListAppendByte(cell, pos, '=');
+    return pos;
+}
+
+
+static uint8_t FaultListAppendGbkAdmin(uint8_t xdata *cell, uint8_t pos)
+{
+    pos = FaultListAppendByte(cell, pos, 0xB9);
+    pos = FaultListAppendByte(cell, pos, 0xDC);
+    pos = FaultListAppendByte(cell, pos, 0xC0);
+    pos = FaultListAppendByte(cell, pos, 0xED);
+    pos = FaultListAppendByte(cell, pos, 0xD4);
+    pos = FaultListAppendByte(cell, pos, 0xB1);
+    return pos;
+}
+
+
+static uint8_t FaultListAppendGbkUser(uint8_t xdata *cell, uint8_t pos)
+{
+    pos = FaultListAppendByte(cell, pos, 0xD3);
+    pos = FaultListAppendByte(cell, pos, 0xC3);
+    pos = FaultListAppendByte(cell, pos, 0xBB);
+    pos = FaultListAppendByte(cell, pos, 0xA7);
+    return pos;
+}
+
+
+static void FaultListFillTitleCell(uint8_t col)
+{
+    FaultListCellClear(arr[0][col]);
+    switch(col)
+    {
+        case 0:
+            arr[0][col][0] = 0xCA;
+            arr[0][col][1] = 0xB1;
+            arr[0][col][2] = 0xBC;
+            arr[0][col][3] = 0xE4;
+            break;
+        case 1:
+            arr[0][col][0] = 0xB9;
+            arr[0][col][1] = 0xCA;
+            arr[0][col][2] = 0xD5;
+            arr[0][col][3] = 0xCF;
+            arr[0][col][4] = 0xC4;
+            arr[0][col][5] = 0xDA;
+            arr[0][col][6] = 0xC8;
+            arr[0][col][7] = 0xDD;
+            break;
+        case 2:
+            arr[0][col][0] = 0xCA;
+            arr[0][col][1] = 0xFD;
+            arr[0][col][2] = 0xBE;
+            arr[0][col][3] = 0xDD;
+            arr[0][col][4] = 0xB2;
+            arr[0][col][5] = 0xCE;
+            arr[0][col][6] = 0xCA;
+            arr[0][col][7] = 0xFD;
+            break;
+        case 3:
+            arr[0][col][0] = 0xB2;
+            arr[0][col][1] = 0xD9;
+            arr[0][col][2] = 0xD7;
+            arr[0][col][3] = 0xF7;
+            arr[0][col][4] = 0xD5;
+            arr[0][col][5] = 0xDF;
+            break;
+        default:
+            break;
+    }
+}
+
+
+static void FaultListBuildTime(uint8_t xdata *cell, uint16_t data_index)
+{
+    uint8_t pos = 0;
+    uint8_t year = 26;
+    uint8_t month = 7;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
+    uint16_t mock_index;
+    uint16_t day_offset;
+
+    if(data_index == 0)
+    {
+        mock_index = 0;
+    }
+    else
+    {
+        mock_index = data_index - 1;
+    }
+    day_offset = mock_index / 144;
+    month = (uint8_t)(7 + day_offset / 28);
+    if(month > 12)
+    {
+        month = (uint8_t)(((month - 1) % 12) + 1);
+    }
+    day = (uint8_t)(8 + day_offset % 28);
+    if(day > 28)
+    {
+        day -= 28;
+    }
+    hour = (uint8_t)((mock_index / 6) % 24);
+    minute = (uint8_t)((mock_index * 10) % 60);
+    second = (uint8_t)((mock_index * 7) % 60);
+
+    FaultListCellClear(cell);
+    pos = FaultListAppend2Digits(cell, pos, year);
+    pos = FaultListAppendByte(cell, pos, '-');
+    pos = FaultListAppend2Digits(cell, pos, month);
+    pos = FaultListAppendByte(cell, pos, '-');
+    pos = FaultListAppend2Digits(cell, pos, day);
+    pos = FaultListAppendByte(cell, pos, ' ');
+    pos = FaultListAppend2Digits(cell, pos, hour);
+    pos = FaultListAppendByte(cell, pos, ':');
+    pos = FaultListAppend2Digits(cell, pos, minute);
+    pos = FaultListAppendByte(cell, pos, ':');
+    FaultListAppend2Digits(cell, pos, second);
+}
+
+
+static void FaultListBuildFault(uint8_t xdata *cell, uint16_t data_index)
+{
+    uint8_t pos = 0;
+
+    FaultListCellClear(cell);
+    pos = FaultListAppendFaultPrefix(cell, pos);
+    FaultListAppend4Digits(cell, pos, data_index);
+}
+
+
+static void FaultListBuildParam(uint8_t xdata *cell, uint16_t data_index)
+{
+    uint8_t pos = 0;
+
+    FaultListCellClear(cell);
+    pos = FaultListAppendParamPrefix(cell, pos);
+    FaultListAppend4Digits(cell, pos, (uint16_t)(data_index * 3));
+}
+
+
+static void FaultListBuildOperator(uint8_t xdata *cell, uint16_t data_index)
+{
+    uint8_t pos = 0;
+    uint8_t operator_index;
+
+    FaultListCellClear(cell);
+    operator_index = (uint8_t)(data_index % 11);
+    if(operator_index == 0)
+    {
+        FaultListAppendGbkAdmin(cell, pos);
+    }
+    else
+    {
+        pos = FaultListAppendGbkUser(cell, pos);
+        FaultListAppendValue(cell, pos, operator_index);
+    }
+}
+
+
+static void FaultListBuildMockRow(uint8_t arr_row, uint16_t data_index)
+{
+    FaultListBuildTime(arr[arr_row][0], data_index);
+    FaultListBuildFault(arr[arr_row][1], data_index);
+    FaultListBuildParam(arr[arr_row][2], data_index);
+    FaultListBuildOperator(arr[arr_row][3], data_index);
+}
+
+
+static void FaultListRefresh(void)
+{
+    uint8_t col;
+    uint8_t row;
+    uint32_t row_addr;
+
+    for(col = 0; col < FAULT_LIST_COL_NUM; col++)
+    {
+        FaultListFillTitleCell(col);
+    }
+
+    for(row = 1; row < FAULT_LIST_DISPLAY_ROWS; row++)
+    {
+        FaultListBuildMockRow(row, (uint16_t)(fault_list_top_index + row));
+    }
+
+    for(row = 0; row < FAULT_LIST_DISPLAY_ROWS; row++)
+    {
+        row_addr = FAULT_LIST_BASE_ADDR + (uint32_t)row * FAULT_LIST_ROW_WORDS;
+        write_dgus_vp(row_addr, &arr[row][0][0], FAULT_LIST_ROW_WORDS);
+    }
+}
+
+
+static void FaultListSetTopIndex(uint16_t top_index)
+{
+    if(top_index > FAULT_LIST_MAX_TOP_INDEX)
+    {
+        top_index = FAULT_LIST_MAX_TOP_INDEX;
+    }
+
+    if((fault_list_inited == FALSE) || (fault_list_top_index != top_index))
+    {
+        fault_list_top_index = top_index;
+        FaultListRefresh();
+        fault_list_inited = TRUE;
+    }
+}
+
+
+static void FaultListMoveRows(uint8_t move_next, uint16_t row_count)
+{
+    uint16_t new_top_index;
+
+    if(row_count == 0)
+    {
+        return;
+    }
+
+    new_top_index = fault_list_top_index;
+    if(move_next != FALSE)
+    {
+        if((FAULT_LIST_MAX_TOP_INDEX - new_top_index) < row_count)
+        {
+            new_top_index = FAULT_LIST_MAX_TOP_INDEX;
+        }
+        else
+        {
+            new_top_index += row_count;
+        }
+    }
+    else
+    {
+        if(new_top_index < row_count)
+        {
+            new_top_index = 0;
+        }
+        else
+        {
+            new_top_index -= row_count;
+        }
+    }
+    FaultListSetTopIndex(new_top_index);
+}
+
+
+static uint8_t FaultListTouchInArea(uint16_t *touch_value)
+{
+    if((touch_value[1] >= FAULT_LIST_TOUCH_X_MIN) &&
+       (touch_value[1] <= FAULT_LIST_TOUCH_X_MAX) &&
+       (touch_value[2] >= FAULT_LIST_TOUCH_Y_MIN) &&
+       (touch_value[2] <= FAULT_LIST_TOUCH_Y_MAX))
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
+static uint8_t FaultListTouchScan(uint16_t *touch_value)
+{
+    uint16_t diff;
+    uint16_t row_count;
+
+    if((touch_value[0] != 0x5a01) && (touch_value[0] != 0x5a02) && (touch_value[0] != 0x5a03))
+    {
+        fault_list_touch_active = FALSE;
+        return FALSE;
+    }
+
+    if(FaultListTouchInArea(touch_value) == FALSE)
+    {
+        fault_list_touch_active = FALSE;
+        return FALSE;
+    }
+
+    if(touch_value[0] == 0x5a02)
+    {
+        fault_list_touch_active = FALSE;
+        return TRUE;
+    }
+
+    if((touch_value[0] == 0x5a01) || (fault_list_touch_active == FALSE))
+    {
+        fault_list_touch_active = TRUE;
+        fault_list_last_y = touch_value[2];
+        return TRUE;
+    }
+
+    if(fault_list_last_y > (touch_value[2] + FAULT_LIST_DRAG_STEP_PIXEL))
+    {
+        diff = fault_list_last_y - touch_value[2];
+        row_count = diff / FAULT_LIST_DRAG_STEP_PIXEL;
+        FaultListMoveRows(TRUE, row_count);
+        fault_list_last_y -= row_count * FAULT_LIST_DRAG_STEP_PIXEL;
+    }
+    else if(touch_value[2] > (fault_list_last_y + FAULT_LIST_DRAG_STEP_PIXEL))
+    {
+        diff = touch_value[2] - fault_list_last_y;
+        row_count = diff / FAULT_LIST_DRAG_STEP_PIXEL;
+        FaultListMoveRows(FALSE, row_count);
+        fault_list_last_y += row_count * FAULT_LIST_DRAG_STEP_PIXEL;
+    }
+    else
+    {
+        __NOP();
+    }
+
+    return TRUE;
+}
+
+
+static void FaultListInit(void)
+{
+    FaultListSetTopIndex(fault_list_top_index);
+}
+
+
 /**
- * 每0.1s扫描一次，如果在按压中，判断x坐标和y坐标的移动情况
+ * 每20ms扫描一次，如果在按压中，判断x坐标和y坐标的移动情况
  * 1.如果x坐标在（195，385）之间，y坐标在（75，480）之间，y坐标增加10，0x1200就增加1，y坐标减少10，0x1200就减少1
  */
 
@@ -652,7 +1065,7 @@ static void TouchHandleXPoint(uint16_t *touch_value,uint16_t *last_touch_value,
 
 
 
-static TouchReserve(uint16_t icon_addr,uint16_t *first_return_value)
+static void TouchReserve(uint16_t icon_addr,uint16_t *first_return_value)
 {
     //如果当前状态没有归位，则归位成靠近归为数组的状态
     uint16_t temp_val,inc_num,i;
@@ -764,7 +1177,12 @@ void KaoshiTouchScanTask(void)
     uint16_t second_return_value[5]={0,10,19,100,100};
     uint16_t third_return_value[5]={0,10,100,100,100};
     uint16_t fourth_return_value[5]={0,9,18,27,100};
+    FaultListInit();
     read_dgus_vp(sysDGUS_TP_STATUS, (uint8_t *)&touch_value[0], 4);
+    if(FaultListTouchScan(&touch_value[0]) != FALSE)
+    {
+        return;
+    }
     if(touch_value[0] == 0x5a03) //在按压中，检查x坐标和y坐标的变化
     {
         TouchHandleXPoint(&touch_value[0],&last_touch_value1[0],199,360, 75, 480,3,0x1200,36);
