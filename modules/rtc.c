@@ -189,8 +189,8 @@ void RtcReadTime(void)
 #elif defined(rtcSD_2058)
 static void RtcSd2058SetBcdTime(uint8_t *prtc_set)
 {
-    uint8_t write_param[7];
-    uint8_t read_param[2];
+    uint8_t data write_param[7];
+    uint8_t data read_param[2];
 
     I2cReadMultipleBytes(0x0f, read_param, 2);
     read_param[1] |= 0x80;
@@ -214,8 +214,8 @@ static void RtcSd2058SetBcdTime(uint8_t *prtc_set)
 
 void RtcSetTime(uint8_t *prtc_set)
 {
-    uint8_t write_param[7];
-    uint8_t week;
+    uint8_t data write_param[7];
+    uint8_t data week;
 
     week = RtcCalcWeek(prtc_set);
     write_param[0] = rtcHEX_2_BCD(prtc_set[0]);
@@ -231,7 +231,7 @@ void RtcSetTime(uint8_t *prtc_set)
 
 void RtcInit(void)
 {
-    uint8_t read_param[2];
+    uint8_t data read_param[2];
     GPIO_BYTE_SET_OUT(i2cGPIO_SFR_PORTMDOUT, (1 << i2cSDA_GPIO_PIN) | (1 << i2cSCL_GPIO_PIN));
 
     I2cReadMultipleBytes(0x0f, read_param, 2);
@@ -242,19 +242,36 @@ void RtcInit(void)
         read_param[0] &= ~0x01;
         if(read_param[1] & 0x80)
             I2cWriteSingleByte(0x10, read_param[1] & ~0x80);
-        read_param[1] |= 0x80;
-        read_param[0] |= 0x84;
-        I2cWriteSingleByte(0x10, read_param[1]);
+        read_param[1] &= (~0x80);
+        read_param[0] &= (~0x84);
         I2cWriteSingleByte(0x0f, read_param[0]);
+        I2cWriteSingleByte(0x10, read_param[1]);
     } 
 }
 
 
 void RtcReadTime(void)
 {
-    uint8_t read_param[8],write_param[8];
+    uint8_t read_param[7], write_param[8];
+    uint8_t i;
+
     I2cReadMultipleBytes(0x00, read_param, 7);
-    RtcGetTime(read_param, write_param);
+
+    for(i = 0U; i < 7U; i++)
+    {
+        write_param[6U - i] = read_param[i];
+    }
+
+    write_param[4] &= 0x7FU;
+    for(i = 0U; i < 3U; i++)
+    {
+        write_param[i] = rtcBCD_2_HEX(write_param[i]);
+    }
+    for(i = 4U; i < 7U; i++)
+    {
+        write_param[i] = rtcBCD_2_HEX(write_param[i]);
+    }
+    write_param[7] = 0U;
     write_dgus_vp(0x0010, write_param, 4);
 }
 
