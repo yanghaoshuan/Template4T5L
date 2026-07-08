@@ -232,7 +232,6 @@ void RtcSetTime(uint8_t *prtc_set)
 void RtcInit(void)
 {
     uint8_t read_param[2];
-    uint8_t write_param[7] = {0U, 1U, 1U, 0U, 0U, 0U, 0U};
     GPIO_BYTE_SET_OUT(i2cGPIO_SFR_PORTMDOUT, (1 << i2cSDA_GPIO_PIN) | (1 << i2cSCL_GPIO_PIN));
 
     I2cReadMultipleBytes(0x0f, read_param, 2);
@@ -247,7 +246,6 @@ void RtcInit(void)
         read_param[0] |= 0x84;
         I2cWriteSingleByte(0x10, read_param[1]);
         I2cWriteSingleByte(0x0f, read_param[0]);
-        RtcSetTime(write_param);
     } 
 }
 

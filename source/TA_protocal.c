@@ -223,43 +223,6 @@ static uint8_t TAGetNumberAddr(uint8_t addr_type, uint16_t offset, uint32_t *add
 
 
 /**
- * @brief 十六进制数转BCD码
- * @param value 待转换数值
- * @return BCD编码结果
- */
-static uint8_t TAHexToBcd(uint8_t value)
-{
-    return (uint8_t)(((value / 10U) << 4) | (value % 10U));
-}
-
-
-/**
- * @brief 根据年月日计算星期
- * @param year 年份后两位
- * @param month 月
- * @param day 日
- * @return 星期值，格式与RTC驱动保持一致
- */
-static uint8_t TACalcWeek(uint8_t year, uint8_t month, uint8_t day)
-{
-    uint16_t full_year;
-    uint8_t week;
-
-    full_year = (uint16_t)year + 2000U;
-    if(month < 3U)
-    {
-        month += 12U;
-        full_year--;
-    }
-
-    week = (uint8_t)((day + ((13U * (month + 1U)) / 5U) + full_year +
-                     (full_year / 4U) - (full_year / 100U) +
-                     (full_year / 400U)) % 7U);
-    return (uint8_t)(week + 1U);
-}
-
-
-/**
  * @brief 处理0x82数值区写入命令
  * @param frame 完整TA帧
  * @param data_len C51逻辑数据长度
@@ -539,13 +502,13 @@ static void TAHandleRtcWrite(uint8_t *frame, uint16_t data_len)
         return;
     }
 
-    rtc_arr[0] = TAHexToBcd(frame[4]);
-    rtc_arr[1] = TAHexToBcd(frame[5]);
-    rtc_arr[2] = TAHexToBcd(frame[6]);
-    rtc_arr[3] = TAHexToBcd(TACalcWeek(frame[4], frame[5], frame[6]));
-    rtc_arr[4] = TAHexToBcd(frame[7]);
-    rtc_arr[5] = TAHexToBcd(frame[8]);
-    rtc_arr[6] = TAHexToBcd(frame[9]);
+    rtc_arr[0] = frame[4];
+    rtc_arr[1] = frame[5];
+    rtc_arr[2] = frame[6];
+    rtc_arr[3] = 0U;
+    rtc_arr[4] = frame[7];
+    rtc_arr[5] = frame[8];
+    rtc_arr[6] = frame[9];
     RtcSetTime(rtc_arr);
 }
 
