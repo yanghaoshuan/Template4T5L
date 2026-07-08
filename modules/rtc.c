@@ -99,20 +99,17 @@ static uint8_t RtcDecodeWeek(uint8_t week)
  */
 static void RtcGetTime(uint8_t *prtc_get,uint8_t *prtc_out)
 {
-    uint8_t i;
-    for(i = 0; i < 3; i++)
-    {
-        prtc_out[i] = rtcBCD_2_HEX(prtc_get[6-i]);
-    }
+    prtc_out[0] = rtcBCD_2_HEX(prtc_get[6]);
+    prtc_out[1] = rtcBCD_2_HEX(prtc_get[5] & 0x1FU);
+    prtc_out[2] = rtcBCD_2_HEX(prtc_get[4] & 0x3FU);
     prtc_out[3] = RtcDecodeWeek(prtc_get[3]);
     if(prtc_out[3] == rtcWEEK_INVALID)
     {
         prtc_out[3] = RtcCalcWeek(prtc_out);
     }
-    for(i = 4; i < 7; i++)
-    {
-        prtc_out[i] = rtcBCD_2_HEX(prtc_get[6-i]);
-    }
+    prtc_out[4] = rtcBCD_2_HEX(prtc_get[2] & 0x3FU);
+    prtc_out[5] = rtcBCD_2_HEX(prtc_get[1] & 0x7FU);
+    prtc_out[6] = rtcBCD_2_HEX(prtc_get[0] & 0x7FU);
     prtc_out[7] = 0;
 }
 
@@ -204,7 +201,7 @@ void RtcSetTime(uint8_t *prtc_set)
     I2cWriteSingleByte(0x0f, read_param[0]);
     write_param[0] = rtcHEX_2_BCD(prtc_set[6]);
     write_param[1] = rtcHEX_2_BCD(prtc_set[5]);
-    write_param[2] = 0x80;
+    write_param[2] = (uint8_t)(0x80U | rtcHEX_2_BCD(prtc_set[4]));
     write_param[3] = RtcEncodeWeek(week);
     write_param[4] = rtcHEX_2_BCD(prtc_set[2]);
     write_param[5] = rtcHEX_2_BCD(prtc_set[1]);
@@ -235,6 +232,7 @@ void RtcInit(void)
         read_param[0] |= 0x84;
         I2cWriteSingleByte(0x10, read_param[1]);
         I2cWriteSingleByte(0x0f, read_param[0]);
+        RtcSetTime(write_param);
     } 
 }
 
