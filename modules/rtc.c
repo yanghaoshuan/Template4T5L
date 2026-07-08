@@ -187,37 +187,52 @@ void RtcReadTime(void)
 
 /* SD-2058 RTC芯片驱动实现 */
 #elif defined(rtcSD_2058)
-void RtcSetTime(uint8_t *prtc_set)
+static void RtcSd2058SetBcdTime(uint8_t *prtc_set)
 {
     uint8_t write_param[7];
     uint8_t read_param[2];
+
+    I2cReadMultipleBytes(0x0f, read_param, 2);
+    read_param[1] |= 0x80;
+    I2cWriteSingleByte(0x10, read_param[1]);
+    read_param[0] |= 0x84;
+    I2cWriteSingleByte(0x0f, read_param[0]);
+    write_param[0] = prtc_set[6];
+    write_param[1] = prtc_set[5];
+    write_param[2] = (uint8_t)(prtc_set[4] | 0x80U);
+    write_param[3] = prtc_set[3] % 7U;
+    write_param[4] = prtc_set[2];
+    write_param[5] = prtc_set[1];
+    write_param[6] = prtc_set[0];
+    I2cWriteMultipleBytes(0x00, write_param, 7);
+    read_param[0] &= (uint8_t)(~0x84U);
+    read_param[1] &= (uint8_t)(~0x80U);
+    I2cWriteSingleByte(0x10, read_param[1]);
+    I2cWriteSingleByte(0x0f, read_param[0]);
+}
+
+
+void RtcSetTime(uint8_t *prtc_set)
+{
+    uint8_t write_param[7];
     uint8_t week;
 
     week = RtcCalcWeek(prtc_set);
-    I2cReadMultipleBytes(0x0f, read_param, 2);
-    read_param[0] |= 0x84;
-    read_param[1] |= 0x80;
-    I2cWriteSingleByte(0x10, read_param[1]);
-    I2cWriteSingleByte(0x0f, read_param[0]);
-    write_param[0] = rtcHEX_2_BCD(prtc_set[6]);
-    write_param[1] = rtcHEX_2_BCD(prtc_set[5]);
-    write_param[2] = (uint8_t)(0x80U | rtcHEX_2_BCD(prtc_set[4]));
-    write_param[3] = RtcEncodeWeek(week);
-    write_param[4] = rtcHEX_2_BCD(prtc_set[2]);
-    write_param[5] = rtcHEX_2_BCD(prtc_set[1]);
-    write_param[6] = rtcHEX_2_BCD(prtc_set[0]);
-    I2cWriteMultipleBytes(0x00, write_param, 7);
-    read_param[0] &= ~0x84;
-    read_param[1] &= ~0x80;
-    I2cWriteSingleByte(0x10, read_param[1]);
-    I2cWriteSingleByte(0x0f, read_param[0]);
+    write_param[0] = rtcHEX_2_BCD(prtc_set[0]);
+    write_param[1] = rtcHEX_2_BCD(prtc_set[1]);
+    write_param[2] = rtcHEX_2_BCD(prtc_set[2]);
+    write_param[3] = week;
+    write_param[4] = rtcHEX_2_BCD(prtc_set[4]);
+    write_param[5] = rtcHEX_2_BCD(prtc_set[5]);
+    write_param[6] = rtcHEX_2_BCD(prtc_set[6]);
+    RtcSd2058SetBcdTime(write_param);
 }
 
 
 void RtcInit(void)
 {
     uint8_t read_param[2];
-    uint8_t write_param[7] = {20U, 1U, 1U, 0U, 0U, 0U, 0U};
+    uint8_t write_param[7] = {0U, 1U, 1U, 0U, 0U, 0U, 0U};
     GPIO_BYTE_SET_OUT(i2cGPIO_SFR_PORTMDOUT, (1 << i2cSDA_GPIO_PIN) | (1 << i2cSCL_GPIO_PIN));
 
     I2cReadMultipleBytes(0x0f, read_param, 2);
