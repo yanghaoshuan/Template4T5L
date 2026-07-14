@@ -21,13 +21,14 @@ typedef struct UartxDefine
     uint16_t TxHead;                                            /**< 发送缓冲区头指针 */
     uint16_t TxTail;                                            /**< 发送缓冲区尾指针 */
 
-    uint16_t RxHead;                                            /**< 接收缓冲区头指针 */
-    uint16_t RxTail;                                            /**< 接收缓冲区尾指针 */
+    volatile uint16_t RxHead;                                   /**< 接收缓冲区头指针 */
+    volatile uint16_t RxTail;                                   /**< 接收缓冲区尾指针 */
+    volatile uint16_t RxOverflowCount;                          /**< 接收缓冲区满时丢弃的新字节数 */
 
-    uint8_t RxTimeout;                                          /**< 接收超时计数器 */
+    volatile uint8_t RxTimeout;                                 /**< 接收超时计数器 */
 
-    uint8_t RxFlag:2;                                           /**< 接收状态标志位(2位) */
-    uint8_t TxBusy:1;                                           /**< 发送忙碌标志位(1位) */
+    volatile uint8_t RxFlag;                                   /**< 接收状态标志 */
+    volatile uint8_t TxBusy;                                   /**< 发送忙碌标志 */
 }UART_TYPE;
 
 /* UART接收状态定义 */
