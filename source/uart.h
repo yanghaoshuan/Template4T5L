@@ -172,7 +172,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
  /** fixme:在超时时间内连续发送多帧只会处理一帧，并且crc校验值可能会出错 */
 void UartReadFrame(UART_TYPE *uart);
 
-#define UART_TASK_INTERVAL      2
+#define UART_TASK_INTERVAL      1
 void UartProtocalHandleTask(void);
 
 #endif /* __UART_H__ */

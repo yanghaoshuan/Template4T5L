@@ -756,21 +756,6 @@ void UartReadFrame(UART_TYPE *uart)
                 UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
                 #endif /* sysADVERTISE_MODE_ENABLED */
                 i -= one_frame_len;
-            }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0xCC)
-            {
-                if(i < 4U)
-                {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                i -= one_frame_len;
             }
             #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
             else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
@@ -878,7 +863,7 @@ void UartReadFrame(UART_TYPE *uart)
 void UartProtocalHandleTask(void)
 {
     UartReadFrame(&Uart2);
-    UartReadFrame(&Uart4);
+    // UartReadFrame(&Uart4);
     #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     UartReadFrame(&Uart_R11);
     #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */

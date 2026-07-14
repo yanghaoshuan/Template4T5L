@@ -255,13 +255,13 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     2000
+#define uartUART_COMMON_FRAME_SIZE     6000
 
 /**
  * @brief Modbus协议支持使能标志
  * @details 1: 启用Modbus协议支持, 0: 禁用Modbus协议支持
  */
-#define uartMODBUS_PROTOCOL_ENABLED      1
+#define uartMODBUS_PROTOCOL_ENABLED      0
 
 #define uartUART_82CMD_RETURN            0       /*UART2命令返回使能标志 0:禁用 1启用 */   
 
@@ -277,7 +277,7 @@ extern uint32_t sysFCLK;
      * @brief UART2发送和接收缓冲区大小
      */
     #define uartUART2_TXBUF_SIZE         256
-    #define uartUART2_RXBUF_SIZE         256
+    #define uartUART2_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
     
     /**
      * @brief UART2超时功能使能标志
@@ -293,7 +293,7 @@ extern uint32_t sysFCLK;
         #define uartUART2_TIMEOUTSET     5
     #endif /* uartUART2_TIMEOUT_ENABLED */
     
-    #define uartUART2_BAUDRATE              115200     /* UART2波特率设置 9600-460800 */
+    #define uartUART2_BAUDRATE              19200     /* UART2波特率设置 9600-460800 */
     #define uartUART2_485_ENABLED            0         /* UART2 RS485模式使能标志 0:禁用 1启用 */
     
     #if uartUART2_485_ENABLED
@@ -315,7 +315,7 @@ extern uint32_t sysFCLK;
 #endif /* uartUART3_ENABLED */
 
 /* UART4配置参数，配置同uart2 */
-#define uartUART4_ENABLED               1
+#define uartUART4_ENABLED               0
 
 #if uartUART4_ENABLED
     #define uartUART4_TXBUF_SIZE         256
@@ -334,7 +334,7 @@ extern uint32_t sysFCLK;
 #endif  /* uartUART4_ENABLED */
 
 /* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               1
+#define uartUART5_ENABLED               0
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
