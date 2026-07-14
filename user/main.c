@@ -62,7 +62,7 @@ void main(void)
 	SysTaskAdd(4, otaTASK_INTERVAL, OtaTask);
 	#endif /* otaOTA_ENABLED */
 
-	// SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
+	SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 

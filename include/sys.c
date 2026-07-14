@@ -129,9 +129,7 @@ void SysTaskRun(void)
 
 void CountTask(void)
 {
-    static uint16_t j=0;
-    j++;
-    write_dgus_vp(0x5000, (uint8_t *)&j, 1);
+    write_dgus_vp(0x0600, (uint8_t *)&Uart2.RxOverflowCount, 1);
 }
 
 
