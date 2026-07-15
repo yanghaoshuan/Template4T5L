@@ -255,7 +255,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     6000
+#define uartUART_COMMON_FRAME_SIZE     4000
 
 /**
  * @brief Modbus协议支持使能标志
@@ -276,7 +276,7 @@ extern uint32_t sysFCLK;
     /**
      * @brief UART2发送和接收缓冲区大小
      */
-    #define uartUART2_TXBUF_SIZE         256
+    #define uartUART2_TXBUF_SIZE         1000
     #define uartUART2_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
     
     /**
