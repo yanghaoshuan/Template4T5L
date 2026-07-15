@@ -822,10 +822,24 @@ void UartReadFrame(UART_TYPE *uart)
 {
     uint8_t frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
+    uint8_t rx_overflow;
+    uint16_t i,rx_head_bak,rx_tail_bak,one_frame_len,total_frame_len,frame_offset;
     #if uartTA_PROTOCOL_ENABLED
     uint16_t ta_raw_len,ta_frame_len,ta_tail_offset;
     #endif /* uartTA_PROTOCOL_ENABLED */
     if(uart->RxFlag == UART_NON_REC)
+    if((uart == NULL) || (uart->RxFlag == UART_NON_REC))
+        return;
+
+    /**
+     * 超时状态、接收头指针和溢出状态必须作为同一个快照读取。
+     * 否则新字节可能在“超时判断”和“头指针备份”之间到达，
+     * 从而把尚未超时的新批次提前交给协议层。
+     */
+    SysEnterCritical();
+    if((uart->RxFlag == UART_NON_REC) || (uart->RxTimeout != 0U))
+    {
+        SysExitCritical();
         return;
     if(uart->RxTimeout == 0)
     {
@@ -876,6 +890,85 @@ void UartReadFrame(UART_TYPE *uart)
             {
                 break;
             }
+    }
+    rx_head_bak = uart->RxHead;
+    rx_tail_bak = uart->RxTail;
+    rx_overflow = uart->RxOverflow;
+    uart->RxOverflow = 0U;
+    uart->RxFlag = UART_NON_REC;
+    if(rx_overflow != 0U)
+    {
+        /* 本批次已有字节丢失，整批丢弃，避免把残帧误判为有效命令。 */
+        uart->RxTail = rx_head_bak;
+    }
+    SysExitCritical();
+
+    if(rx_overflow != 0U)
+    {
+        return;
+    }
+
+    i=0;
+    while(rx_head_bak != rx_tail_bak)
+    {
+        /* 每次仅在复制一个字节时短暂关中断，同时原子发布新的RxTail。 */
+        SysEnterCritical();
+        #if uartUART2_ENABLED
+        if(uart == &Uart2)
+        {
+            frame[i++] = Uart2RxBuffer[rx_tail_bak++];
+            if(rx_tail_bak > uartUART2_RXBUF_SIZE)
+            {
+                rx_tail_bak = 0U;
+            }
+        }
+        #endif /* uartUART2_ENABLED */
+
+        #if uartUART3_ENABLED
+        if(uart == &Uart3)
+        {
+            frame[i++] = Uart3RxBuffer[rx_tail_bak++];
+            if(rx_tail_bak > uartUART3_RXBUF_SIZE)
+            {
+                rx_tail_bak = 0U;
+            }
+        }
+        #endif /* uartUART3_ENABLED */
+
+        #if uartUART4_ENABLED
+        if(uart == &Uart4)
+        {
+            frame[i++] = Uart4RxBuffer[rx_tail_bak++];
+            if(rx_tail_bak > uartUART4_RXBUF_SIZE)
+            {
+                rx_tail_bak = 0U;
+            }
+        }
+        #endif /* uartUART4_ENABLED */
+
+        #if uartUART5_ENABLED
+        if(uart == &Uart5)
+        {
+            frame[i++] = Uart5RxBuffer[rx_tail_bak++];
+            if(rx_tail_bak > uartUART5_RXBUF_SIZE)
+            {
+                rx_tail_bak = 0U;
+            }
+        }
+        #endif /* uartUART5_ENABLED */
+
+        uart->RxTail = rx_tail_bak;
+        SysExitCritical();
+    }
+
+    total_frame_len = i;
+    while(i > 0)
+    {
+        frame_offset = total_frame_len - i;
+        if(i < 2U)
+        {
+            break;
+        }
 
             if(frame[frame_offset] == 0x5a && frame[frame_offset + 1] == 0xa5)
             {
@@ -931,6 +1024,63 @@ void UartReadFrame(UART_TYPE *uart)
                  * @note OTA协议帧只允许从Uart_R11进入，避免普通串口误处理AB CD数据。
                  */
                 if(i < 4U)
+        if(frame[frame_offset] == 0x5a && frame[frame_offset + 1] == 0xa5)
+        {
+            if(i < 3U)
+            {
+                break;
+            }
+            one_frame_len = frame[frame_offset + 2] + 3;
+            if(i < one_frame_len)
+            {
+                i--;
+                continue;
+            }
+            UartStandardDwin8283Protocal(uart, &frame[frame_offset], one_frame_len);
+                #if sysBEAUTY_MODE_ENABLED
+            UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysN5CAMERA_MODE_ENABLED
+            UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* sysN5CAMERA_MODE_ENABLED */
+            i -= one_frame_len;
+        }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
+        {
+            if(i < 4U)
+            {
+                i--;
+                continue;
+            }
+            one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
+            if(i < one_frame_len)
+            {
+                i--;
+                continue;
+            }
+                #if R11_WIFI_ENABLED
+            UartR11UserWifiProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* R11_WIFI_ENABLED */
+                #if sysBEAUTY_MODE_ENABLED
+            UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+            UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* sysBEAUTY_MODE_ENABLED */
+                #if sysN5CAMERA_MODE_ENABLED
+            UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+            UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* sysN5CAMERA_MODE_ENABLED */
+                #if sysADVERTISE_MODE_ENABLED
+            UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+            UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
+                #endif /* sysADVERTISE_MODE_ENABLED */
+            i -= one_frame_len;
+        }
+            #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
+            else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
+            {
+                /**
+                 * @note OTA协议帧只允许从Uart_R11进入，避免普通串口误处理AB CD数据。
+                 */
+                if(i < 4U)
                 {
                     break;
                 }
@@ -938,6 +1088,23 @@ void UartReadFrame(UART_TYPE *uart)
                 if(i < one_frame_len)
                 {
                     break;
+                }
+                if(uart == &Uart_R11)
+                {
+                    OtaReceive(&frame[frame_offset], one_frame_len);
+                }
+                i -= one_frame_len;
+            }
+            #endif /* otaOTA_ENABLED && R11 mode */
+            #if uartMODBUS_PROTOCOL_ENABLED
+            else if(frame[frame_offset] == modbusSLAVE_ADDRESS)
+            {
+                if(i < 3U)
+                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
+                if(i < one_frame_len)
+                {
+                    i--;
+                    continue;
                 }
                 if(uart == &Uart_R11)
                 {
@@ -969,6 +1136,25 @@ void UartReadFrame(UART_TYPE *uart)
                 if(i < 7U)
                 {
                     break;
+                }
+                one_frame_len = frame[frame_offset + 2] + 5;
+                if(i < one_frame_len)
+                {
+                    i--;
+                    continue;
+                }
+                UartStandardModbusRTUProtocal(uart, &frame[frame_offset], one_frame_len);
+                i -= one_frame_len;
+            }
+            #endif /* uartMODBUS_PROTOCOL_ENABLED */
+            #if uartTA_PROTOCOL_ENABLED
+            else if(frame[frame_offset] == 0xAA)
+            {
+                /* C51 TA协议：AA lenH lenL cmd payload CC 33 C3 3C */
+                if(i < 7U)
+                {
+                    i--;
+                    continue;
                 }
 
                 ta_raw_len = ((uint16_t)frame[frame_offset + 1] << 8) | frame[frame_offset + 2];
@@ -1016,6 +1202,11 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
+                if(i < ta_frame_len)
+                {
+                    i--;
+                    continue;
+                }
 
                 ta_tail_offset = ta_frame_len - 4U;
                 /* 帧尾不匹配时只丢弃当前0xAA，继续扫描后续潜在帧头。 */
@@ -1043,6 +1234,31 @@ void UartReadFrame(UART_TYPE *uart)
                 }
             }
         }
+                ta_tail_offset = ta_frame_len - 4U;
+                /* 帧尾不匹配时只丢弃当前0xAA，继续扫描后续潜在帧头。 */
+                if((frame[frame_offset + ta_tail_offset] == 0xCCU) &&
+                   (frame[frame_offset + ta_tail_offset + 1U] == 0x33U) &&
+                   (frame[frame_offset + ta_tail_offset + 2U] == 0xC3U) &&
+                   (frame[frame_offset + ta_tail_offset + 3U] == 0x3CU))
+                {
+                    UartStandardTAProtocol(uart, &frame[frame_offset], ta_frame_len);
+                    i -= ta_frame_len;
+                }
+                else
+                {
+                    i--;
+                }
+            }
+            #endif /* uartTA_PROTOCOL_ENABLED */
+            else
+            {
+                if(i>0)
+                {
+                    i--;
+                }else{
+                    break;
+                }
+            }
     }
 }
 

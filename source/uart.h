@@ -169,6 +169,8 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
  * @note 使用超时机制判断帧结束
  * @warning 函数会修改UART的接收状态标志
  * @warning 未完成的数据帧将被丢弃 
+ * @warning 超时后仍不完整的数据帧将被丢弃
+ * @note 仅在接收超时后提取一批数据，再按帧头和长度逐条处理
  */
 
  /** fixme:在超时时间内连续发送多帧只会处理一帧，并且crc校验值可能会出错 */
