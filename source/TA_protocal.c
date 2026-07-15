@@ -258,12 +258,10 @@ static void TAHandleWriteNumber(uint8_t *frame, uint16_t data_len)
  * @brief 处理0x42字符串区写入命令
  * @param frame 完整TA帧
  * @param data_len C51逻辑数据长度
- * @note 字符串负载为偶数字节时补2个0x00，为奇数字节时补3个0x00。
+ * @note 仅写入协议负载中已有的完整VP字，不再额外补0xFF。
  */
 static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
 {
-    uint8_t i;
-    uint8_t padding_len;
     uint16_t offset;
     uint16_t payload_len;
     uint16_t write_words;
@@ -278,22 +276,11 @@ static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
     offset >>= 1;
     data_addr = 0x5000UL + offset;
     payload_len = data_len - 9U;
-    if((payload_len & 0x0001U) == 0U)
+    write_words = payload_len >> 1;
+    if(write_words > 0U)
     {
-        padding_len = 2U;
+        write_dgus_vp(data_addr, &frame[8], write_words);
     }
-    else
-    {
-        padding_len = 3U;
-    }
-
-    /* 帧尾提供4字节可用空间，补零后总写入长度始终为偶数。 */
-    for(i = 0U; i < padding_len; i++)
-    {
-        frame[8U + payload_len + i] = 0xFFU;
-    }
-    write_words = (payload_len + padding_len) >> 1;
-    write_dgus_vp(data_addr, &frame[8], write_words);
 }
 
 
