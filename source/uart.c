@@ -45,17 +45,30 @@ uint32_t sysFCLK;
 #include "r11_advertise.h"
 #endif /* sysADVERTISE_MODE_ENABLED */
 
+#if uartUART2_ENABLED && (uartUART2_RXBUF_SIZE > uartUART_COMMON_FRAME_SIZE)
+#error "UART2 RX buffer must not exceed the protocol batch buffer"
+#endif
+#if uartUART3_ENABLED && (uartUART3_RXBUF_SIZE > uartUART_COMMON_FRAME_SIZE)
+#error "UART3 RX buffer must not exceed the protocol batch buffer"
+#endif
+#if uartUART4_ENABLED && (uartUART4_RXBUF_SIZE > uartUART_COMMON_FRAME_SIZE)
+#error "UART4 RX buffer must not exceed the protocol batch buffer"
+#endif
+#if uartUART5_ENABLED && (uartUART5_RXBUF_SIZE > uartUART_COMMON_FRAME_SIZE)
+#error "UART5 RX buffer must not exceed the protocol batch buffer"
+#endif
+
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
 uint8_t Uart2TxBuffer[uartUART2_TXBUF_SIZE+1];
-uint8_t Uart2RxBuffer[uartUART2_RXBUF_SIZE+1];
+volatile uint8_t Uart2RxBuffer[uartUART2_RXBUF_SIZE+1];
 void Uart2Init(const uint32_t bdt)
 {
     uint32_t baud;
     memset((uint8_t *)&Uart2, 0, sizeof(UART_TYPE));
     memset((uint8_t *)Uart2TxBuffer, 0, uartUART2_TXBUF_SIZE);
-    memset((uint8_t *)Uart2RxBuffer, 0, uartUART2_RXBUF_SIZE);
+    memset((uint8_t *)Uart2RxBuffer, 0, sizeof(Uart2RxBuffer));
 
     MUX_SEL |= 0x40;
     P0MDOUT &= 0xCF;
@@ -106,8 +119,28 @@ void Uart2TxRxIsr()   interrupt 4
 {
     if ( RI0 == 1 )
     {
-        Uart2RxBuffer[Uart2.RxHead++] = SBUF0;
-        Uart2.RxHead %= uartUART2_RXBUF_SIZE;
+        uint8_t rx_data;
+        uint16_t rx_head_next;
+
+        rx_data = SBUF0;
+        rx_head_next = Uart2.RxHead + 1U;
+        if(rx_head_next > uartUART2_RXBUF_SIZE)
+        {
+            rx_head_next = 0U;
+        }
+        if(rx_head_next != Uart2.RxTail)
+        {
+            Uart2RxBuffer[Uart2.RxHead] = rx_data;
+            Uart2.RxHead = rx_head_next;
+        }
+        else
+        {
+            if(Uart2.RxOverflow == 0U)
+            {
+                Uart2.RxOverflowCount++;
+            }
+            Uart2.RxOverflow = 1U;
+        }
         Uart2.RxFlag = UART_RECING;
         #if uartUART2_TIMEOUT_ENABLED
         Uart2.RxTimeout = uartUART2_TIMEOUTSET;
@@ -139,13 +172,13 @@ void Uart2TxRxIsr()   interrupt 4
 #if uartUART3_ENABLED
 UART_TYPE Uart3;
 uint8_t Uart3TxBuffer[uartUART3_TXBUF_SIZE+1];
-uint8_t Uart3RxBuffer[uartUART3_RXBUF_SIZE+1];
+volatile uint8_t Uart3RxBuffer[uartUART3_RXBUF_SIZE+1];
 void Uart3Init(const uint32_t bdt)
 {
     uint32_t baud;
     memset((uint8_t *)&Uart3, 0, sizeof(UART_TYPE));
     memset((uint8_t *)Uart3TxBuffer, 0, uartUART3_TXBUF_SIZE);
-    memset((uint8_t *)Uart3RxBuffer, 0, uartUART3_RXBUF_SIZE);
+    memset((uint8_t *)Uart3RxBuffer, 0, sizeof(Uart3RxBuffer));
 
     MUX_SEL |= 0x20;
     P0MDOUT &=~0x80;
@@ -170,8 +203,28 @@ void Uart3TxRxIsr()   interrupt 16
 {
     if ( (SCON1&0x01) == 0x01 )
     {
-        Uart3RxBuffer[Uart3.RxHead++] = SBUF1;
-        Uart3.RxHead %= uartUART3_RXBUF_SIZE;
+        uint8_t rx_data;
+        uint16_t rx_head_next;
+
+        rx_data = SBUF1;
+        rx_head_next = Uart3.RxHead + 1U;
+        if(rx_head_next > uartUART3_RXBUF_SIZE)
+        {
+            rx_head_next = 0U;
+        }
+        if(rx_head_next != Uart3.RxTail)
+        {
+            Uart3RxBuffer[Uart3.RxHead] = rx_data;
+            Uart3.RxHead = rx_head_next;
+        }
+        else
+        {
+            if(Uart3.RxOverflow == 0U)
+            {
+                Uart3.RxOverflowCount++;
+            }
+            Uart3.RxOverflow = 1U;
+        }
         Uart3.RxFlag = UART_RECING;
         #if uartUART3_TIMEOUT_ENABLED
         Uart3.RxTimeout = uartUART3_TIMEOUTSET;
@@ -200,13 +253,13 @@ void Uart3TxRxIsr()   interrupt 16
 #if uartUART4_ENABLED
 UART_TYPE Uart4;
 uint8_t Uart4TxBuffer[uartUART4_TXBUF_SIZE+1];
-uint8_t Uart4RxBuffer[uartUART4_RXBUF_SIZE+1];
+volatile uint8_t Uart4RxBuffer[uartUART4_RXBUF_SIZE+1];
 void Uart4Init(const uint32_t bdt)
 {
     uint32_t baud;
     memset((uint8_t *)&Uart4, 0, sizeof(UART_TYPE));
     memset((uint8_t *)Uart4TxBuffer, 0, uartUART4_TXBUF_SIZE);
-    memset((uint8_t *)Uart4RxBuffer, 0, uartUART4_RXBUF_SIZE);
+    memset((uint8_t *)Uart4RxBuffer, 0, sizeof(Uart4RxBuffer));
 
     P0MDOUT |= 0x01;
     #if uartUART4_485_ENABLED
@@ -253,8 +306,28 @@ void Uart4RxIsr()   interrupt 11
 {
     if((SCON2R&0x01) == 0x01)
     {
-        Uart4RxBuffer[Uart4.RxHead++] = SBUF2_RX;
-        Uart4.RxHead %= uartUART4_RXBUF_SIZE;
+        uint8_t rx_data;
+        uint16_t rx_head_next;
+
+        rx_data = SBUF2_RX;
+        rx_head_next = Uart4.RxHead + 1U;
+        if(rx_head_next > uartUART4_RXBUF_SIZE)
+        {
+            rx_head_next = 0U;
+        }
+        if(rx_head_next != Uart4.RxTail)
+        {
+            Uart4RxBuffer[Uart4.RxHead] = rx_data;
+            Uart4.RxHead = rx_head_next;
+        }
+        else
+        {
+            if(Uart4.RxOverflow == 0U)
+            {
+                Uart4.RxOverflowCount++;
+            }
+            Uart4.RxOverflow = 1U;
+        }
         Uart4.RxFlag = UART_RECING;
         #if uartUART4_TIMEOUT_ENABLED
         Uart4.RxTimeout = uartUART4_TIMEOUTSET;
@@ -296,13 +369,13 @@ void Uart4TxIsr()   interrupt 10
 #if uartUART5_ENABLED
 UART_TYPE Uart5;
 uint8_t Uart5TxBuffer[uartUART5_TXBUF_SIZE+1];
-uint8_t Uart5RxBuffer[uartUART5_RXBUF_SIZE+1];
+volatile uint8_t Uart5RxBuffer[uartUART5_RXBUF_SIZE+1];
 void Uart5Init(const uint32_t bdt)
 {
     uint32_t baud;
     memset((uint8_t *)&Uart5, 0, sizeof(UART_TYPE));
     memset((uint8_t *)Uart5TxBuffer, 0, uartUART5_TXBUF_SIZE);
-    memset((uint8_t *)Uart5RxBuffer, 0, uartUART5_RXBUF_SIZE);
+    memset((uint8_t *)Uart5RxBuffer, 0, sizeof(Uart5RxBuffer));
 
     #if uartUART5_485_ENABLED
     P0MDOUT |= 0x02;
@@ -349,8 +422,28 @@ void Uart5RxIsr()   interrupt 13
 {
     if((SCON3R&0x01) == 0x01)
     {
-        Uart5RxBuffer[Uart5.RxHead++] = SBUF3_RX;
-        Uart5.RxHead %= uartUART5_RXBUF_SIZE;
+        uint8_t rx_data;
+        uint16_t rx_head_next;
+
+        rx_data = SBUF3_RX;
+        rx_head_next = Uart5.RxHead + 1U;
+        if(rx_head_next > uartUART5_RXBUF_SIZE)
+        {
+            rx_head_next = 0U;
+        }
+        if(rx_head_next != Uart5.RxTail)
+        {
+            Uart5RxBuffer[Uart5.RxHead] = rx_data;
+            Uart5.RxHead = rx_head_next;
+        }
+        else
+        {
+            if(Uart5.RxOverflow == 0U)
+            {
+                Uart5.RxOverflowCount++;
+            }
+            Uart5.RxOverflow = 1U;
+        }
         Uart5.RxFlag = UART_RECING;
         #if uartUART5_TIMEOUT_ENABLED
         Uart5.RxTimeout = uartUART5_TIMEOUTSET;
@@ -409,100 +502,172 @@ void UartInit(void)
 }
 
 
+static uint8_t UartIsValidInstance(UART_TYPE *uart)
+{
+    #if uartUART2_ENABLED
+    if(uart == &Uart2)
+    {
+        return 1U;
+    }
+    #endif /* uartUART2_ENABLED */
+
+    #if uartUART3_ENABLED
+    if(uart == &Uart3)
+    {
+        return 1U;
+    }
+    #endif /* uartUART3_ENABLED */
+
+    #if uartUART4_ENABLED
+    if(uart == &Uart4)
+    {
+        return 1U;
+    }
+    #endif /* uartUART4_ENABLED */
+
+    #if uartUART5_ENABLED
+    if(uart == &Uart5)
+    {
+        return 1U;
+    }
+    #endif /* uartUART5_ENABLED */
+
+    return 0U;
+}
+
+
+/**
+ * @brief 尝试向指定UART发送环形缓冲区加入一个字节
+ * @return 1=入队成功，0=缓冲区暂时已满
+ * @note 头尾指针是16位共享变量，入队和启动发送必须在同一短临界区完成。
+ */
+static uint8_t UartTryQueueTxByte(UART_TYPE *uart, uint8_t data_byte)
+{
+    uint8_t queued;
+    uint16_t tx_head_next;
+
+    queued = 0U;
+    SysEnterCritical();
+
+    #if uartUART2_ENABLED
+    if(uart == &Uart2)
+    {
+        tx_head_next = uart->TxHead + 1U;
+        if(tx_head_next >= uartUART2_TXBUF_SIZE)
+        {
+            tx_head_next = 0U;
+        }
+        if(tx_head_next != uart->TxTail)
+        {
+            Uart2TxBuffer[uart->TxHead] = data_byte;
+            uart->TxHead = tx_head_next;
+            queued = 1U;
+        }
+        if((uart->TxBusy == 0U) && (uart->TxHead != uart->TxTail))
+        {
+            uart->TxBusy = 1U;
+            #if uartUART2_485_ENABLED
+            TR4 = 1;
+            #endif /* uartUART2_485_ENABLED */
+            TI0 = 1;
+        }
+    }
+    #endif /* uartUART2_ENABLED */
+
+    #if uartUART3_ENABLED
+    if(uart == &Uart3)
+    {
+        tx_head_next = uart->TxHead + 1U;
+        if(tx_head_next >= uartUART3_TXBUF_SIZE)
+        {
+            tx_head_next = 0U;
+        }
+        if(tx_head_next != uart->TxTail)
+        {
+            Uart3TxBuffer[uart->TxHead] = data_byte;
+            uart->TxHead = tx_head_next;
+            queued = 1U;
+        }
+        if((uart->TxBusy == 0U) && (uart->TxHead != uart->TxTail))
+        {
+            uart->TxBusy = 1U;
+            SCON1 |= 0x02;
+        }
+    }
+    #endif /* uartUART3_ENABLED */
+
+    #if uartUART4_ENABLED
+    if(uart == &Uart4)
+    {
+        tx_head_next = uart->TxHead + 1U;
+        if(tx_head_next >= uartUART4_TXBUF_SIZE)
+        {
+            tx_head_next = 0U;
+        }
+        if(tx_head_next != uart->TxTail)
+        {
+            Uart4TxBuffer[uart->TxHead] = data_byte;
+            uart->TxHead = tx_head_next;
+            queued = 1U;
+        }
+        if((uart->TxBusy == 0U) && (uart->TxHead != uart->TxTail))
+        {
+            uart->TxBusy = 1U;
+            #if uartUART4_485_ENABLED
+            TR4 = 1;
+            #endif /* uartUART4_485_ENABLED */
+            SCON2T |= 0x01;
+        }
+    }
+    #endif /* uartUART4_ENABLED */
+
+    #if uartUART5_ENABLED
+    if(uart == &Uart5)
+    {
+        tx_head_next = uart->TxHead + 1U;
+        if(tx_head_next >= uartUART5_TXBUF_SIZE)
+        {
+            tx_head_next = 0U;
+        }
+        if(tx_head_next != uart->TxTail)
+        {
+            Uart5TxBuffer[uart->TxHead] = data_byte;
+            uart->TxHead = tx_head_next;
+            queued = 1U;
+        }
+        if((uart->TxBusy == 0U) && (uart->TxHead != uart->TxTail))
+        {
+            uart->TxBusy = 1U;
+            #if uartUART5_485_ENABLED
+            TR5 = 1;
+            #endif /* uartUART5_485_ENABLED */
+            SCON3T |= 0x01;
+        }
+    }
+    #endif /* uartUART5_ENABLED */
+
+    SysExitCritical();
+    return queued;
+}
+
+
 void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 {
     uint16_t i;
 
-    for(i=0; i<len; i++)
+    if((uart == NULL) || (buf == NULL) || (len == 0U) ||
+       (UartIsValidInstance(uart) == 0U))
     {
-        #if uartUART2_ENABLED
-            if(uart == &Uart2)
-            {
-                Uart2TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART2_TXBUF_SIZE;
-            }
-        #endif
-
-        #if uartUART3_ENABLED
-            if(uart == &Uart3)
-            {
-                Uart3TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART3_TXBUF_SIZE;
-            }
-        #endif
-
-        #if uartUART4_ENABLED
-            if(uart == &Uart4)
-            {
-                Uart4TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART4_TXBUF_SIZE;
-            }
-        #endif
-
-        #if uartUART5_ENABLED
-            if(uart == &Uart5)
-            {
-                Uart5TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART5_TXBUF_SIZE;
-            }
-        #endif
-        
+        return;
     }
 
-    if(uart->TxBusy == 0)
+    for(i=0; i<len; i++)
     {
-        uart->TxBusy = 1;
-        #if uartUART2_ENABLED
+        while(UartTryQueueTxByte(uart, *buf) == 0U)
         {
-            if(uart == &Uart2)
-            {
-                #if uartUART2_485_ENABLED
-                {
-                    TR4 = 1; 
-                }
-                #endif
-                TI0 = 1;  
-            }
+            /* 保持中断开启，由发送ISR腾出缓冲区空间。 */
         }
-        #endif
-
-        #if uartUART3_ENABLED
-        {
-            if(uart == &Uart3)
-            {
-                SCON1 |= 0x02;  
-            }
-        }
-        #endif
-
-        #if uartUART4_ENABLED
-        {
-            if(uart == &Uart4)
-            {
-                #if uartUART4_485_ENABLED
-                {
-                    TR4 = 1; 
-                }
-                #endif
-                SCON2T |= 0x01; 
-            }
-        }
-        #endif
-
-        #if uartUART5_ENABLED
-        {
-            if(uart == &Uart5)
-            {
-                #if uartUART5_485_ENABLED
-                {
-                    TR5 = 1; 
-                }
-                #endif
-                SCON3T |= 0x01; 
-            }
-        }
-        #endif
-
+        buf++;
     }
 }
 
@@ -569,7 +734,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
  * @brief 标准Dwin8283协议处理函数
  * @details 处理接收到的Dwin8283协议帧，支持读写DGUS变量指针操作
  * @param[in] uart UART通信接口指针
- * @param[in,out] frame 协议帧数据缓冲区指针，会被修改用于响应
+ * @param[in] frame 协议帧数据缓冲区指针
  * @param[in] len 帧数据长度
  * @return 无
  * @note 支持0x82写命令和0x83读命令
@@ -579,6 +744,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     uint16_t i=0,CrcFlag = 0,CrcResult = 0;
+    uint8_t frame_data_len;
     uint8_t send_return_frame[256];
     if(frame[0] == 0x5a && frame[1] == 0xa5 && frame[3] == 0x82)
     {
@@ -590,15 +756,16 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         {
             return; 
         }
+        frame_data_len = frame[2];
         if(CrcFlag != 0)
         {
-            frame[2] -= 2;
+            frame_data_len -= 2U;
         }
-        if(frame[2] < 3U)
+        if(frame_data_len < 3U)
         {
             return;
         }
-        write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
+        write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame_data_len - 3U) >> 1);
         #if uartUART_82CMD_RETURN
         i=0;
         send_return_frame[i++] = 0x5a;
@@ -804,6 +971,26 @@ void UartReadFrame(UART_TYPE *uart)
                     break;
                 }
 
+                ta_raw_len = ((uint16_t)frame[frame_offset + 1] << 8) | frame[frame_offset + 2];
+                if(frame[frame_offset + 3] == 0x42U)
+                {
+                    /* 0x42写字符串命令沿用C51工程的len+5总长度规则。 */
+                    if(ta_raw_len > (uint16_t)(uartUART_COMMON_FRAME_SIZE - 5U))
+                    {
+                        i--;
+                        continue;
+                    }
+                    ta_frame_len = ta_raw_len + 5U;
+                }
+                else
+                {
+                    if(ta_raw_len > (uint16_t)(uartUART_COMMON_FRAME_SIZE - 3U))
+                    {
+                        i--;
+                        continue;
+                    }
+                    ta_frame_len = ta_raw_len + 3U;
+                }
                 ta_raw_len = ((uint16_t)frame[frame_offset + 1] << 8) | frame[frame_offset + 2];
                 if(frame[frame_offset + 3] == 0x42U)
                 {

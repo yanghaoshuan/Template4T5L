@@ -18,16 +18,18 @@
  */
 typedef struct UartxDefine
 {
-    uint16_t TxHead;                                            /**< 发送缓冲区头指针 */
-    uint16_t TxTail;                                            /**< 发送缓冲区尾指针 */
+    volatile uint16_t TxHead;                                   /**< 发送缓冲区头指针 */
+    volatile uint16_t TxTail;                                   /**< 发送缓冲区尾指针 */
 
-    uint16_t RxHead;                                            /**< 接收缓冲区头指针 */
-    uint16_t RxTail;                                            /**< 接收缓冲区尾指针 */
+    volatile uint16_t RxHead;                                   /**< 接收缓冲区头指针 */
+    volatile uint16_t RxTail;                                   /**< 接收缓冲区尾指针 */
 
-    uint8_t RxTimeout;                                          /**< 接收超时计数器 */
+    volatile uint16_t RxOverflowCount;                          /**< 接收缓冲区溢出批次数 */
+    volatile uint8_t RxTimeout;                                 /**< 接收超时计数器 */
+    volatile uint8_t RxOverflow;                                /**< 当前接收批次溢出标志 */
 
-    uint8_t RxFlag:2;                                           /**< 接收状态标志位(2位) */
-    uint8_t TxBusy:1;                                           /**< 发送忙碌标志位(1位) */
+    volatile uint8_t RxFlag;                                    /**< 接收状态标志 */
+    volatile uint8_t TxBusy;                                    /**< 发送忙碌标志 */
 }UART_TYPE;
 
 /* UART接收状态定义 */
@@ -129,10 +131,9 @@ void UartInit(void);
  * @param[in] buf 待发送数据缓冲区指针，不能为NULL
  * @param[in] len 待发送数据长度，单位为字节 (1-65535)
  * @return 无
- * @pre len必须大于0且不超过发送缓冲区剩余空间
- * @note 函数使用中断方式发送数据，非阻塞调用
+ * @pre 本函数应在中断开启的任务上下文中调用
+ * @note 函数使用中断方式发送数据；仅在发送缓冲区已满时等待可用空间
  * @note 支持RS485自动方向控制（如果启用）
- * @warning 调用者必须确保缓冲区有足够空间
  * @warning 发送过程中不要修改源数据缓冲区
  */
 void UartSendData(UART_TYPE *uart, uint8_t *buf,uint16_t len);
@@ -164,6 +165,7 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
  * @post 接收到的数据帧已被处理和解析
  * @note 函数支持多种协议自动识别和处理
  * @note 支持Dwin8283协议和Modbus RTU协议
+ * @note 使用超时机制判断帧结束
  * @note 使用超时机制判断帧结束
  * @warning 函数会修改UART的接收状态标志
  * @warning 未完成的数据帧将被丢弃 
