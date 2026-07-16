@@ -24,6 +24,12 @@
 #define TA_STRING_CLEAR_BYTES      0x100U
 #define TA_AUTO_UPLOAD_ADDR        sysDGUS_AUTO_UPLOAD_VP_ADDR
 #define TA_DATA_WRITE_SETTLE_MS    5U
+#define TA_TOGGLE_KEY_START_ADDR   0x1037U
+#define TA_TOGGLE_KEY_END_ADDR     0x103DU
+#define TA_TOGGLE_KEY_COUNT        (TA_TOGGLE_KEY_END_ADDR - TA_TOGGLE_KEY_START_ADDR + 1U)
+
+/* 0x1037-0x103D按键的独立上传状态，按键每上传一次0值就翻转一次。 */
+static uint8_t ta_toggle_key_state[TA_TOGGLE_KEY_COUNT] = {0U};
 
 /**
  * @brief 获取指定UART的发送缓冲区大小
@@ -118,6 +124,36 @@ static void TASetTail(uint8_t *buf, uint16_t tail_index)
     buf[tail_index + 1U] = TA_FRAME_TAIL1;
     buf[tail_index + 2U] = TA_FRAME_TAIL2;
     buf[tail_index + 3U] = TA_FRAME_TAIL3;
+}
+
+
+/**
+ * @brief 将指定VP的0值按键上传转换为交替的0/1状态
+ * @param vp_addr 本次自动上传的起始VP地址
+ * @param data 本次上传的数据区
+ * @param data_bytes 数据区字节数
+ * @note 仅处理0x1037-0x103D且数据为0x0000的单字按键，不修改DGUS中的原值。
+ */
+static void TAApplyToggleKeyUpload(uint16_t vp_addr, uint8_t *data, uint16_t data_bytes)
+{
+    uint16_t key_index;
+
+    if((data == NULL) || (data_bytes < 2U) ||
+       (vp_addr < TA_TOGGLE_KEY_START_ADDR) || (vp_addr > TA_TOGGLE_KEY_END_ADDR))
+    {
+        return;
+    }
+
+    if((data[0] != 0U) || (data[1] != 0U))
+    {
+        return;
+    }
+
+    key_index = vp_addr - TA_TOGGLE_KEY_START_ADDR;
+    ta_toggle_key_state[key_index] = (ta_toggle_key_state[key_index] == 0U) ? 1U : 0U;
+    data[0] = 0U;
+    data[1] = ta_toggle_key_state[key_index];
+    write_dgus_vp(vp_addr, data, 1U);
 }
 
 
@@ -753,6 +789,7 @@ void TAProtocolUpload(UART_TYPE *uart)
         send_auto[6] = (uint8_t)(protocol_offset >> 8);
         send_auto[7] = (uint8_t)protocol_offset;
         read_dgus_vp(auto_vp, &send_auto[8], (uint8_t)((nlen + 1U) >> 1));
+        TAApplyToggleKeyUpload(auto_vp, &send_auto[8], data_bytes);
         TASetTail(send_auto, 8U + data_bytes);
         TASendData(uart, send_auto, total_len);
     }
