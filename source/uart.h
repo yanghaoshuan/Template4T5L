@@ -165,15 +165,12 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag);
  * @post 接收到的数据帧已被处理和解析
  * @note 函数支持多种协议自动识别和处理
  * @note 支持Dwin8283协议和Modbus RTU协议
- * @note 使用超时机制判断帧结束
- * @note 使用超时机制判断帧结束
+ * @note 最后一个字节到达后，仅在接收超时计数归零时提取整批数据
+ * @note 协议处理期间到达的新字节继续缓存在环形缓冲区中，留待下一批处理
  * @warning 函数会修改UART的接收状态标志
- * @warning 未完成的数据帧将被丢弃 
  * @warning 超时后仍不完整的数据帧将被丢弃
- * @note 仅在接收超时后提取一批数据，再按帧头和长度逐条处理
+ * @note 一个批次内的多帧数据按帧头和长度逐条处理
  */
-
- /** fixme:在超时时间内连续发送多帧只会处理一帧，并且crc校验值可能会出错 */
 void UartReadFrame(UART_TYPE *uart);
 
 #define UART_TASK_INTERVAL      1

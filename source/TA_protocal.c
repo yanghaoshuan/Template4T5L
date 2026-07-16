@@ -23,6 +23,7 @@
 #define TA_STRING_CLEAR_WORDS      0x80U
 #define TA_STRING_CLEAR_BYTES      0x100U
 #define TA_AUTO_UPLOAD_ADDR        sysDGUS_AUTO_UPLOAD_VP_ADDR
+#define TA_DATA_WRITE_SETTLE_MS    5U
 
 /**
  * @brief 获取指定UART的发送缓冲区大小
@@ -251,6 +252,7 @@ static void TAHandleWriteNumber(uint8_t *frame, uint16_t data_len)
     }
 
     write_dgus_vp(data_addr, &frame[9], write_words);
+    // delay_ms(TA_DATA_WRITE_SETTLE_MS);
 }
 
 
@@ -280,6 +282,7 @@ static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
     if(write_words > 0U)
     {
         write_dgus_vp(data_addr, &frame[8], write_words);
+        // delay_ms(TA_DATA_WRITE_SETTLE_MS);
     }
 }
 

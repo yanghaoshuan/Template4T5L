@@ -64,7 +64,7 @@ void main(void)
 
 	// SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
-	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
+	SysTaskAdd(1, UART_TASK_INTERVAL, UartProtocalHandleTask);
 
 	#if _4G_AIR780E_ENABLED
 	SysTaskAdd(6, AIR780E_TASK_INTERVAL, Air780E_Task);

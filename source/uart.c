@@ -58,6 +58,8 @@ uint32_t sysFCLK;
 #error "UART5 RX buffer must not exceed the protocol batch buffer"
 #endif
 
+#define UART_RX_BATCH_LENGTH_VP_ADDR    0x0600UL
+
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
@@ -911,6 +913,19 @@ void UartReadFrame(UART_TYPE *uart)
     }
 
     total_frame_len = i;
+    #if uartUART2_ENABLED
+    if(uart == &Uart2)
+    {
+        /* 记录本次静默超时后摘取的原始批次总字节数。 */
+        write_dgus_vp(UART_RX_BATCH_LENGTH_VP_ADDR,
+                      (uint8_t *)&total_frame_len, 1U);
+    }
+    #endif /* uartUART2_ENABLED */
+
+    /**
+     * 协议处理和DGUS写入期间UART接收中断保持开启。
+     * 此期间到达的新字节保留在环形缓冲区中，待下一次静默超时后处理。
+     */
     while(i > 0)
     {
         frame_offset = total_frame_len - i;
@@ -939,7 +954,9 @@ void UartReadFrame(UART_TYPE *uart)
             UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
                 #endif /* sysN5CAMERA_MODE_ENABLED */
             i -= one_frame_len;
-        }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
+        }
+        #if 0
+        else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
         {
             if(i < 4U)
             {
@@ -969,6 +986,7 @@ void UartReadFrame(UART_TYPE *uart)
                 #endif /* sysADVERTISE_MODE_ENABLED */
             i -= one_frame_len;
         }
+            #endif
             #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
             else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
             {
