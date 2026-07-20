@@ -263,8 +263,8 @@ static void InterruptInit(void)
     IP1 = 0x39;/* 0b0110 1001 */
 	IP0 = 0x25;/* 0b0010 0101 */
     #else
-    IP1 = sysDEFAULT_ZERO;    
-	IP0 = sysDEFAULT_ZERO;
+    IP1 = 0x39;    
+	IP0 = 0x25;
     #endif
 }
 

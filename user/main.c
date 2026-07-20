@@ -40,6 +40,7 @@
 void main(void)
 {
 
+	char lcd_ver[10]="V1.0.30\0\0\0";
 	#if flashDUAL_BACKUP_ENABLED
 	T5lNorFlashInit();
 	#endif /* flashDUAL_BACKUP_ENABLED */
@@ -53,6 +54,7 @@ void main(void)
 	RtcInit();
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
+	write_dgus_vp(0x7180, (uint8_t *)lcd_ver, 5);
 	#if otaOTA_ENABLED
 	/**
 	 * @note OTA初始化依赖DGUS变量空间和Uart_R11，需在T5LCpuInit之后执行。
