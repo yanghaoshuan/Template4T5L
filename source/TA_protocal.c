@@ -27,6 +27,13 @@
 #define TA_TOGGLE_KEY_START_ADDR   0x1037U
 #define TA_TOGGLE_KEY_END_ADDR     0x103DU
 #define TA_TOGGLE_KEY_COUNT        (TA_TOGGLE_KEY_END_ADDR - TA_TOGGLE_KEY_START_ADDR + 1U)
+#define TA_LIMITED_STRING_ADDR     0x5340UL
+#define TA_LIMITED_STRING_STRIDE   0x01C0UL
+#define TA_LIMITED_STRING_COUNT    6U
+#define TA_LIMITED_STRING_BYTES    20U
+#define TA_ASCII_NUMBER_ADDR       0x3120U
+#define TA_ASCII_NUMBER_MAX        9999U
+#define TA_ASCII_NUMBER_DATA_BYTES 4U
 
 /* 0x1037-0x103D按键的独立上传状态，按键每上传一次0值就翻转一次。 */
 static uint8_t ta_toggle_key_state[TA_TOGGLE_KEY_COUNT] = {0U};
@@ -134,26 +141,125 @@ static void TASetTail(uint8_t *buf, uint16_t tail_index)
  * @param data_bytes 数据区字节数
  * @note 仅处理0x1037-0x103D且数据为0x0000的单字按键，不修改DGUS中的原值。
  */
-static void TAApplyToggleKeyUpload(uint16_t vp_addr, uint8_t *data, uint16_t data_bytes)
+static void TAApplyToggleKeyUpload(uint16_t vp_addr, uint8_t *_data, uint16_t data_bytes)
 {
     uint16_t key_index;
 
-    if((data == NULL) || (data_bytes < 2U) ||
+    if((_data == NULL) || (data_bytes < 2U) ||
        (vp_addr < TA_TOGGLE_KEY_START_ADDR) || (vp_addr > TA_TOGGLE_KEY_END_ADDR))
     {
         return;
     }
 
-    if((data[0] != 0U) || (data[1] != 0U))
+    if(((_data[0] != 0U) || (_data[1] != 0U)))
     {
         return;
     }
 
     key_index = vp_addr - TA_TOGGLE_KEY_START_ADDR;
     ta_toggle_key_state[key_index] = (ta_toggle_key_state[key_index] == 0U) ? 1U : 0U;
-    data[0] = 0U;
-    data[1] = ta_toggle_key_state[key_index];
-    write_dgus_vp(vp_addr, data, 1U);
+    _data[0] = 0U;
+    _data[1] = ta_toggle_key_state[key_index];
+    write_dgus_vp(vp_addr, _data, 1U);
+}
+
+
+/**
+ * @brief 判断字符串VP是否需要应用20字节限制和0xFF结束符
+ * @param data_addr DGUS字符串VP地址
+ * @return 1=特殊地址，0=普通地址
+ * @note 特殊地址为0x5340、0x5500、0x56C0、0x5880、0x5A40。
+ */
+static uint8_t TAIsLimitedStringAddr(uint32_t data_addr)
+{
+    uint8_t i;
+
+    for(i = 0U; i < TA_LIMITED_STRING_COUNT; i++)
+    {
+        if(data_addr == (TA_LIMITED_STRING_ADDR + ((uint32_t)i * TA_LIMITED_STRING_STRIDE)))
+        {
+            return 1U;
+        }
+    }
+
+    return 0U;
+}
+
+
+/**
+ * @brief 写入最多20字节字符串并紧跟3个0xFF结束符
+ * @param data_addr DGUS字符串VP地址
+ * @param data 字符串数据
+ * @param data_bytes 收到的字符串字节数
+ * @note DGUS按双字节VP写入；偶数字节字符串需保留第三个0xFF后的相邻字节。
+ */
+static void TAWriteLimitedString(uint32_t data_addr, uint8_t *data, uint16_t data_bytes)
+{
+    uint8_t end_word[2];
+    uint16_t kept_bytes;
+    uint16_t full_words;
+
+    if(data == NULL)
+    {
+        return;
+    }
+
+    kept_bytes = data_bytes;
+    if(kept_bytes > TA_LIMITED_STRING_BYTES)
+    {
+        kept_bytes = TA_LIMITED_STRING_BYTES;
+    }
+
+    full_words = kept_bytes >> 1;
+    if(full_words > 0U)
+    {
+        write_dgus_vp(data_addr, data, full_words);
+    }
+
+    if((kept_bytes & 0x01U) != 0U)
+    {
+        /* 最后一个数据字节与第一个0xFF共用一个VP字。 */
+        end_word[0] = data[kept_bytes - 1U];
+        end_word[1] = 0xFFU;
+        write_dgus_vp(data_addr + full_words, end_word, 1U);
+
+        end_word[0] = 0xFFU;
+        end_word[1] = 0xFFU;
+        write_dgus_vp(data_addr + full_words + 1U, end_word, 1U);
+    }
+    else
+    {
+        /* 前两个0xFF写满一个VP字。 */
+        end_word[0] = 0xFFU;
+        end_word[1] = 0xFFU;
+        write_dgus_vp(data_addr + full_words, end_word, 1U);
+
+        /* 第三个0xFF只占下一个VP字的高字节，保留其低字节。 */
+        read_dgus_vp(data_addr + full_words + 1U, end_word, 1U);
+        end_word[0] = 0xFFU;
+        write_dgus_vp(data_addr + full_words + 1U, end_word, 1U);
+    }
+}
+
+
+/**
+ * @brief 将0-9999转换为带前导零的4位ASCII
+ * @param value 待转换数值
+ * @param ascii 输出4字节ASCII数据
+ * @return 1=转换成功，0=参数或数值无效
+ */
+static uint8_t TAFormatFixedAsciiNumber(uint16_t value, uint8_t *ascii)
+{
+    if((ascii == NULL) || (value > TA_ASCII_NUMBER_MAX))
+    {
+        return 0U;
+    }
+
+    ascii[0] = (uint8_t)('0' + ((value / 1000U) % 10U));
+    ascii[1] = (uint8_t)('0' + ((value / 100U) % 10U));
+    ascii[2] = (uint8_t)('0' + ((value / 10U) % 10U));
+    ascii[3] = (uint8_t)('0' + (value % 10U));
+    return 1U;
 }
 
 
@@ -296,7 +402,7 @@ static void TAHandleWriteNumber(uint8_t *frame, uint16_t data_len)
  * @brief 处理0x42字符串区写入命令
  * @param frame 完整TA帧
  * @param data_len C51逻辑数据长度
- * @note 仅写入协议负载中已有的完整VP字，不再额外补0xFF。
+ * @note 特殊地址最多写20字节并追加3个0xFF，其他地址仅写入完整VP字。
  */
 static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
 {
@@ -314,6 +420,13 @@ static void TAHandleWriteString(uint8_t *frame, uint16_t data_len)
     offset >>= 1;
     data_addr = 0x5000UL + offset;
     payload_len = data_len - 9U;
+
+    if(TAIsLimitedStringAddr(data_addr) != 0U)
+    {
+        TAWriteLimitedString(data_addr, &frame[8], payload_len);
+        return;
+    }
+
     write_words = payload_len >> 1;
     if(write_words > 0U)
     {
@@ -723,6 +836,7 @@ void TAProtocolUpload(UART_TYPE *uart)
     uint16_t data_bytes;
     uint16_t total_len;
     uint16_t protocol_offset;
+    uint16_t number_value;
     uint16_t i;
 
     memset(auto_load_arr, 0, sizeof(auto_load_arr));
@@ -745,7 +859,27 @@ void TAProtocolUpload(UART_TYPE *uart)
     send_auto[0] = TA_FRAME_HEAD;
     send_auto[3] = 0x77U;
 
-    if((auto_vp >= 0x5000U) && (auto_vp < 0xB000U))
+    if(auto_vp == TA_ASCII_NUMBER_ADDR)
+    {
+        read_dgus_vp(auto_vp, &send_auto[8], 1U);
+        number_value = ((uint16_t)send_auto[8] << 8) | send_auto[9];
+        if(TAFormatFixedAsciiNumber(number_value, &send_auto[8]) == 0U)
+        {
+            return;
+        }
+
+        send_auto[1] = 0x00U;
+        send_auto[2] = 0x0FU;
+        send_auto[5] = 0x08U;
+        protocol_offset = (uint16_t)((auto_vp - 0x1000U) << 1);
+        send_auto[6] = (uint8_t)(protocol_offset >> 8);
+        send_auto[7] = (uint8_t)protocol_offset;
+        send_auto[8U + TA_ASCII_NUMBER_DATA_BYTES] = 0x00U;
+        send_auto[9U + TA_ASCII_NUMBER_DATA_BYTES] = 0x00U;
+        TASetTail(send_auto, 10U + TA_ASCII_NUMBER_DATA_BYTES);
+        TASendData(uart, send_auto, 14U + TA_ASCII_NUMBER_DATA_BYTES);
+    }
+    else if((auto_vp >= 0x5000U) && (auto_vp < 0xB000U))
     {
         /* 字符串区上传到遇到0x00或0xFF为止，与C51 AutoUrat2保持一致。 */
         data_bytes = nlen << 1;
