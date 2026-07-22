@@ -193,13 +193,13 @@ static uint8_t TAIsLimitedStringAddr(uint32_t data_addr)
  * @param data_bytes 收到的字符串字节数
  * @note DGUS按双字节VP写入；偶数字节字符串需保留第三个0xFF后的相邻字节。
  */
-static void TAWriteLimitedString(uint32_t data_addr, uint8_t *data, uint16_t data_bytes)
+static void TAWriteLimitedString(uint32_t data_addr, uint8_t *_data, uint16_t data_bytes)
 {
     uint8_t end_word[2];
     uint16_t kept_bytes;
     uint16_t full_words;
 
-    if(data == NULL)
+    if(_data == NULL)
     {
         return;
     }
@@ -213,13 +213,13 @@ static void TAWriteLimitedString(uint32_t data_addr, uint8_t *data, uint16_t dat
     full_words = kept_bytes >> 1;
     if(full_words > 0U)
     {
-        write_dgus_vp(data_addr, data, full_words);
+        write_dgus_vp(data_addr, _data, full_words);
     }
 
     if((kept_bytes & 0x01U) != 0U)
     {
         /* 最后一个数据字节与第一个0xFF共用一个VP字。 */
-        end_word[0] = data[kept_bytes - 1U];
+        end_word[0] = _data[kept_bytes - 1U];
         end_word[1] = 0xFFU;
         write_dgus_vp(data_addr + full_words, end_word, 1U);
 
