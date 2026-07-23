@@ -174,9 +174,23 @@ extern uint32_t sysFCLK;
 
 
 #define uartTA_PROTOCOL_ENABLED          0
-#define bleV851_BRIDGE_ENABLED           1      /**< UART5 PB-03F与UART4 V851分层协议 */
+#define bleV851_BRIDGE_ENABLED           1      /**< PB-03F与UART4 V851分层协议 */
+#define blePB03F_UART_ID                 2      /**< 测试使用UART2；生产硬件恢复时改为5 */
 #define v851CONTROL_MOCK_ENABLED         1      /**< 生产配置关闭Mock；本地测试时可临时置1 */
+
+#if (blePB03F_UART_ID != 2) && (blePB03F_UART_ID != 5)
+#error "blePB03F_UART_ID must be 2 or 5."
+#endif
+
+#if bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2) && uartTA_PROTOCOL_ENABLED
+#error "TA protocol cannot share UART2 with the PB-03F test transport."
+#endif
+
+#if bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2)
+#define sysDGUS_AUTO_UPLOAD_ENABLED      0      /**< UART2测试蓝牙时禁止混入DGUS自动上传数据 */
+#else
 #define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
+#endif /* bleV851_BRIDGE_ENABLED && UART2 PB-03F test */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40

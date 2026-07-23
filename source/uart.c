@@ -711,7 +711,7 @@ void UartReadFrame(UART_TYPE *uart)
             V851ProtocolReceive(uart, frame, total_frame_len);
             return;
         }
-        if(uart == &Uart5)
+        if(uart == &PB03F_BLE_UART)
         {
             Pb03fBleReceive(uart, frame, total_frame_len);
             return;

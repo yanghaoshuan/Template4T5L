@@ -514,25 +514,28 @@ void DgusAutoUpload()
 
 static void first_enter_action(void)
 {
-    #if uartUART2_ENABLED
+    #if uartUART2_ENABLED && \
+        !(bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2))
     UartSendData(&Uart2, (uint8_t *)"First Enter Action Executed", sizeof("First Enter Action Executed") - 1);
-    #endif /* uartUART2_ENABLED */
+    #endif /* UART2 is available for debug output */
 }
 
 
 static void repeated_enter_action(void)
 {
-    #if uartUART2_ENABLED
+    #if uartUART2_ENABLED && \
+        !(bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2))
     UartSendData(&Uart2, (uint8_t *)"Repeated Enter Action Executed", sizeof("Repeated Enter Action Executed") - 1);
-    #endif /* uartUART2_ENABLED */
+    #endif /* UART2 is available for debug output */
 }
 
 
 static void exit_action(void)
 {
-    #if uartUART2_ENABLED
+    #if uartUART2_ENABLED && \
+        !(bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2))
     UartSendData(&Uart2, (uint8_t *)"Exit Action Executed", sizeof("Exit Action Executed") - 1);
-    #endif /* uartUART2_ENABLED */
+    #endif /* UART2 is available for debug output */
 }
 
 

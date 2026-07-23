@@ -113,7 +113,8 @@ static uint8_t PbElapsed(uint32_t start, uint32_t interval)
 
 static uint8_t PbUartIdle(void)
 {
-    return ((Uart5.TxBusy == 0U) && (Uart5.TxHead == Uart5.TxTail)) ? 1U : 0U;
+    return ((PB03F_BLE_UART.TxBusy == 0U) &&
+            (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail)) ? 1U : 0U;
 }
 
 static uint8_t PbHexValue(char value)
@@ -436,7 +437,7 @@ static void PbSendAtCommand(uint8_t step)
 
     if(len != 0U)
     {
-        UartSendData(&Uart5, pb_at_command, len);
+        UartSendData(&PB03F_BLE_UART, pb_at_command, len);
     }
 }
 
@@ -553,7 +554,7 @@ static void PbStateTask(void)
             pb_at_ok_match = 0U;
             pb_at_error_match = 0U;
             pb_at_line_len = 0U;
-            UartSendData(&Uart5, (uint8_t *)"+++", 3U);
+            UartSendData(&PB03F_BLE_UART, (uint8_t *)"+++", 3U);
             pb_escape_attempts++;
             pb_state_tick = GetSysTick();
             pb_state = PB_STATE_ESCAPE_WAIT;
@@ -1056,7 +1057,7 @@ static void PbSendTask(void)
                 crc_value);
     frame_len = PB03F_BLE_FRAME_HEADER_SIZE + payload_len +
                 PB03F_BLE_FRAME_CRC_SIZE;
-    UartSendData(&Uart5, pb_tx_frame, frame_len);
+    UartSendData(&PB03F_BLE_UART, pb_tx_frame, frame_len);
 
     pb_tx_chunk_index++;
     if(pb_tx_chunk_index >= pb_tx_chunk_total)
@@ -1120,7 +1121,7 @@ const char *Pb03fBleGetMac(void)
 
 void Pb03fBleReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len)
 {
-    if((uart != &Uart5) || (_data == NULL) || (len == 0U))
+    if((uart != &PB03F_BLE_UART) || (_data == NULL) || (len == 0U))
     {
         return;
     }

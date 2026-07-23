@@ -1,0 +1,1572 @@
+{
+  "schema_version": 1,
+  "description": "T5L UART2 PB-03F and UART4 V851 executable serial vectors",
+  "cases": [
+    {
+      "id": "INIT-001",
+      "suite": "init",
+      "title": "PB-03F完整AT初始化",
+      "precondition": "T5L重新上电或复位，电脑端模拟器已打开两路串口",
+      "description": "验证T5L在UART2上完成12步PB-03F配置并进入透传。",
+      "actions": [],
+      "expected": [
+        {
+          "kind": "at_contains",
+          "prefixes": [
+            "AT",
+            "AT+BLEMODE=9",
+            "AT+BLESERUUID=",
+            "AT+BLETXUUID=",
+            "AT+BLERXUUID=",
+            "AT+BLEMTU=240",
+            "AT+BLEMAC?",
+            "AT+BLEAUTH=",
+            "AT+BLENAME=",
+            "AT+BLEADVDATA=",
+            "AT+BLEMODE=0",
+            "AT+TRANSENTER"
+          ],
+          "description": "UART2依次出现12类AT命令，MAC查询、认证、名称和广播命令均存在。"
+        },
+        {
+          "kind": "at_transition_count",
+          "count": 1,
+          "description": "PB-03F模拟器至少完成1次透传切换。"
+        }
+      ]
+    },
+    {
+      "id": "V851-ID-001",
+      "suite": "bridge",
+      "title": "缓存V851设备身份并重配蓝牙名称",
+      "precondition": "INIT-001通过，PB-03F已进入透传",
+      "description": "V851上报device.hello后，T5L缓存身份；新的ble_id触发退出透传并重新配置PB-03F。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "HELLO-001",
+            "msg_type": "device.hello",
+            "protocol_version": "1.0",
+            "device_sn": "SN-TEST-0001",
+            "ble_id": "ABC234",
+            "product_key": "PK-TEST",
+            "data": {
+              "device_identity": {
+                "device_sn": "SN-TEST-0001",
+                "ble_id": "ABC234",
+                "ble_name": "MQXQ-ABC2",
+                "product_key": "PK-TEST",
+                "model": "T5L-TEST",
+                "hardware_version": "HW-1.0",
+                "firmware_version": "FW-1.0",
+                "sales_country_code": "CN"
+              }
+            }
+          }
+        },
+        {
+          "kind": "wait_ble_transparent",
+          "transition_count": 2,
+          "timeout_ms": 15000
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 800,
+          "description": "device.hello本身不产生UART4应答。"
+        },
+        {
+          "kind": "at_transition_count",
+          "count": 2,
+          "timeout_ms": 15000,
+          "description": "UART2先收到+++，随后完成第二轮AT配置并再次进入透传。"
+        }
+      ],
+      "debugger": "V851ProtocolGetDeviceInfo()中的device_sn、ble_id、product_key、model及版本字段与发送值一致。"
+    },
+    {
+      "id": "V851-TIME-001",
+      "suite": "bridge",
+      "title": "缓存服务器时间与绑定状态",
+      "precondition": "V851-ID-001通过",
+      "description": "server.hello_ack只更新本地时间基准、国家码和绑定状态，不产生串口应答。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "HELLO-ACK-001",
+            "msg_type": "server.hello_ack",
+            "timestamp": 2000000000,
+            "data": {
+              "server_time": 2000000000,
+              "bind_status": "BOUND",
+              "sales_country_code": "CN"
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 800,
+          "description": "server.hello_ack不产生UART4应答。"
+        }
+      ],
+      "debugger": "V851ProtocolGetTimestamp()不小于2000000000，bind_status为BOUND。"
+    },
+    {
+      "id": "BLE-INFO-001",
+      "suite": "bridge",
+      "title": "蓝牙查询设备信息",
+      "precondition": "身份、绑定状态和PB-03F MAC均已缓存",
+      "description": "手机侧get_device_info由T5L本地处理，不转发给V851。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 257,
+          "json": {
+            "cmd": "get_device_info",
+            "request_id": "REQ-INFO-001",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "get_device_info_ack",
+            "request_id": "REQ-INFO-001",
+            "result": "OK",
+            "error_code": null,
+            "data": {
+              "mac": "A1B2C3D4E5F6",
+              "device_sn": "SN-TEST-0001",
+              "ble_id": "ABC234",
+              "ble_name": "MQXQ-ABC2",
+              "product_key": "PK-TEST",
+              "model": "T5L-TEST",
+              "hardware_version": "HW-1.0",
+              "firmware_version": "FW-1.0",
+              "sales_country_code": "CN",
+              "bind_status": "BOUND"
+            }
+          },
+          "description": "UART2返回get_device_info_ack，身份、MAC、名称和绑定状态正确。"
+        },
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 500,
+          "description": "UART4无转发数据。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-NET-001",
+      "suite": "bridge",
+      "title": "蓝牙配网请求转发到V851",
+      "precondition": "PB-03F处于透传状态",
+      "description": "合法configure_network应保持JSON内容并封装成AA55帧发往UART4。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 258,
+          "json": {
+            "cmd": "configure_network",
+            "request_id": "REQ-NET-001",
+            "data": {
+              "ssid": "TestWiFi",
+              "password": "12345678"
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "cmd": "configure_network",
+            "request_id": "REQ-NET-001",
+            "data": {
+              "ssid": "TestWiFi",
+              "password": "12345678"
+            }
+          },
+          "description": "UART4收到与蓝牙请求等价的configure_network JSON。"
+        }
+      ]
+    },
+    {
+      "id": "V851-NET-ACK-001",
+      "suite": "bridge",
+      "title": "V851配网应答转回蓝牙",
+      "precondition": "BLE-NET-001已完成",
+      "description": "V851的configure_network_ack属于允许转回蓝牙的应答。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "cmd": "configure_network_ack",
+            "request_id": "REQ-NET-001",
+            "result": "OK",
+            "error_code": null,
+            "message": null,
+            "data": {
+              "ip": "192.168.1.100"
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "configure_network_ack",
+            "request_id": "REQ-NET-001",
+            "result": "OK",
+            "data": {
+              "ip": "192.168.1.100"
+            }
+          },
+          "description": "UART2收到分片封装后的configure_network_ack。"
+        }
+      ]
+    },
+    {
+      "id": "V851-NET-STATUS-001",
+      "suite": "bridge",
+      "title": "V851网络状态转回蓝牙",
+      "precondition": "PB-03F处于透传状态",
+      "description": "network_status属于允许转回蓝牙的异步消息。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "cmd": "network_status",
+            "request_id": "REQ-NET-001",
+            "result": "OK",
+            "data": {
+              "connected": true,
+              "rssi": -45
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "network_status",
+            "data": {
+              "connected": true,
+              "rssi": -45
+            }
+          },
+          "description": "UART2收到network_status。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-UNSUPPORTED-001",
+      "suite": "ble_negative",
+      "title": "蓝牙不支持的业务命令",
+      "precondition": "PB-03F处于透传状态",
+      "description": "除get_device_info和configure_network外的命令由T5L直接拒绝。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 259,
+          "json": {
+            "cmd": "reboot",
+            "request_id": "REQ-BAD-001",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "reboot_ack",
+            "request_id": "REQ-BAD-001",
+            "result": "FAIL",
+            "error_code": "UNSUPPORTED_CMD",
+            "message": "command is not supported by T5L"
+          },
+          "description": "UART2返回UNSUPPORTED_CMD。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-FIELDS-001",
+      "suite": "ble_negative",
+      "title": "蓝牙JSON缺少必要字段",
+      "precondition": "PB-03F处于透传状态",
+      "description": "缺少cmd或request_id时返回INVALID_PAYLOAD。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 260,
+          "json": {
+            "request_id": "REQ-BAD-002",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "unknown_ack",
+            "request_id": null,
+            "result": "FAIL",
+            "error_code": "INVALID_PAYLOAD",
+            "message": "cmd or request_id is missing"
+          },
+          "description": "UART2返回unknown_ack和INVALID_PAYLOAD。"
+        }
+      ]
+    },
+    {
+      "id": "V851-CTL-EXHAUST",
+      "suite": "v851_control",
+      "title": "排风控制命令",
+      "precondition": "V851-TIME-001通过",
+      "description": "验证exhaust.set映射、快照更新及当前未注册处理器时的应答。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-EXHAUST",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-EXHAUST",
+              "cmd": "exhaust.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "level": 3
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "device_sn": "SN-TEST-0001",
+            "ble_id": "ABC234",
+            "data": {
+              "command_id": "CMD-EXHAUST",
+              "server_msg_id": "MSG-EXHAUST",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD",
+              "error_message": "control handler is not registered"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD；这表示协议已接收，但业务执行处理器尚未注册。"
+        }
+      ],
+      "debugger": "V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1，params为{\"enabled\":true,\"level\":3}。"
+    },
+    {
+      "id": "V851-CTL-PLASMA",
+      "suite": "v851_control",
+      "title": "等离子控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证plasma.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-PLASMA",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-PLASMA",
+              "cmd": "plasma.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-PLASMA",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_PLASMA快照valid=1、updated=1。"
+    },
+    {
+      "id": "V851-CTL-ANION",
+      "suite": "v851_control",
+      "title": "负离子控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证anion.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-ANION",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-ANION",
+              "cmd": "anion.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-ANION",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_ANION快照valid=1、updated=1。"
+    },
+    {
+      "id": "V851-CTL-CLIMATE",
+      "suite": "v851_control",
+      "title": "温控命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证climate.set及多字段参数保存。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-CLIMATE",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-CLIMATE",
+              "cmd": "climate.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "mode": "AUTO",
+                "target_temperature": 24
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-CLIMATE",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_CLIMATE快照保存AUTO和24摄氏度参数。"
+    },
+    {
+      "id": "V851-CTL-INLET",
+      "suite": "v851_control",
+      "title": "进风风机控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证inlet_fan.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-INLET",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-INLET",
+              "cmd": "inlet_fan.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "level": 2
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-INLET",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_INLET_FAN快照valid=1、updated=1。"
+    },
+    {
+      "id": "V851-CTL-HUMIDIFIER",
+      "suite": "v851_control",
+      "title": "加湿控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证humidifier.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-HUMIDIFIER",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-HUMIDIFIER",
+              "cmd": "humidifier.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "target_humidity": 55
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-HUMIDIFIER",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。"
+    },
+    {
+      "id": "V851-CTL-UVB",
+      "suite": "v851_control",
+      "title": "UVB控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证uvb.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-UVB",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-UVB",
+              "cmd": "uvb.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "duration_minutes": 15
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-UVB",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_UVB快照valid=1、updated=1。"
+    },
+    {
+      "id": "V851-CTL-LIGHT",
+      "suite": "v851_control",
+      "title": "灯光控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证light.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-LIGHT",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-LIGHT",
+              "cmd": "light.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "brightness": 80,
+                "color_temperature": 4500
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-LIGHT",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_LIGHT快照保存亮度80和色温4500。"
+    },
+    {
+      "id": "V851-CTL-SETTINGS",
+      "suite": "v851_control",
+      "title": "设备设置命令",
+      "precondition": "身份与时间已缓存",
+      "description": "验证device_settings.set控制类型。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-SETTINGS",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-SETTINGS",
+              "cmd": "device_settings.set",
+              "expire_at": 0,
+              "params": {
+                "language": "zh-CN",
+                "volume": 60,
+                "screen_brightness": 70
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-SETTINGS",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_DEVICE_SETTINGS快照保存语言、音量和屏幕亮度。"
+    },
+    {
+      "id": "V851-CTL-PASSWORD",
+      "suite": "v851_control",
+      "title": "设备密码命令脱敏",
+      "precondition": "身份与时间已缓存",
+      "description": "验证device_password.set被识别但快照不保存密码明文。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-PASSWORD",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-PASSWORD",
+              "cmd": "device_password.set",
+              "expire_at": 0,
+              "params": {
+                "password": "654321"
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-PASSWORD",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "V851_CONTROL_DEVICE_PASSWORD快照params_redacted=1、stored_len=0，内存中不出现654321。"
+    },
+    {
+      "id": "V851-CTL-OTA",
+      "suite": "v851_control",
+      "title": "应用层OTA关闭时的合法升级命令",
+      "precondition": "otaOTA_ENABLED为0",
+      "description": "合法ota.upgrade参数通过校验后，因为应用层OTA关闭而返回UNSUPPORTED。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-OTA",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-OTA",
+              "cmd": "ota.upgrade",
+              "expire_at": 0,
+              "params": {
+                "firmware_id": 1001,
+                "firmware_version": "2.0.0",
+                "firmware_url": "https://example.invalid/fw.bin",
+                "size_bytes": 4096,
+                "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-OTA",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD",
+              "error_message": "T5L OTA is disabled"
+            }
+          },
+          "description": "UART4明确返回T5L OTA is disabled，不进入AB CD固件数据流。"
+        }
+      ],
+      "debugger": "V851_CONTROL_OTA快照valid=1、updated=1，应用OTA状态未启动。"
+    },
+    {
+      "id": "V851-UNKNOWN-001",
+      "suite": "v851_negative",
+      "title": "未知V851控制命令",
+      "precondition": "身份与时间已缓存",
+      "description": "未知cmd不映射到任何控制类型，也不创建控制快照。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-UNKNOWN",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-UNKNOWN",
+              "cmd": "unknown.set",
+              "expire_at": 0,
+              "params": {
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-UNKNOWN",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4返回UNSUPPORTED_CMD。"
+        }
+      ],
+      "debugger": "没有任何V851ControlDetails条目的revision因CMD-UNKNOWN增加。"
+    },
+    {
+      "id": "V851-DEDUP-001",
+      "suite": "v851_negative",
+      "title": "重复command_id去重",
+      "precondition": "身份与时间已缓存",
+      "description": "连续发送相同command_id，第二次直接复用去重记录，不再次更新控制快照。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-DEDUP-1",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-DEDUP",
+              "cmd": "light.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "brightness": 20
+              }
+            }
+          }
+        },
+        {
+          "kind": "wait",
+          "ms": 100
+        },
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-DEDUP-2",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-DEDUP",
+              "cmd": "light.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "brightness": 99
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-DEDUP",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "第一次请求返回UNSUPPORTED。"
+        },
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-DEDUP",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "第二次请求返回相同状态，不重新执行。"
+        }
+      ],
+      "debugger": "V851_CONTROL_LIGHT的revision只增加1，保存的brightness仍为20。"
+    },
+    {
+      "id": "V851-EXPIRED-001",
+      "suite": "v851_negative",
+      "title": "已过期控制命令",
+      "precondition": "V851-TIME-001已把服务器时间设置为2000000000",
+      "description": "expire_at早于当前服务器时间时拒绝命令且不更新快照。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-EXPIRED",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-EXPIRED",
+              "cmd": "exhaust.set",
+              "expire_at": 1999999999,
+              "params": {
+                "enabled": false
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-EXPIRED",
+              "status": "FAILED",
+              "error_code": "INVALID_PARAMS",
+              "error_message": "command expired"
+            }
+          },
+          "description": "UART4返回FAILED/INVALID_PARAMS。"
+        }
+      ],
+      "debugger": "V851_CONTROL_EXHAUST的revision不因CMD-EXPIRED增加。"
+    },
+    {
+      "id": "V851-HEARTBEAT-001",
+      "suite": "bridge",
+      "title": "V851心跳静默处理",
+      "precondition": "V851协议已初始化",
+      "description": "device.heartbeat属于V851云链路，T5L明确忽略。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "HEARTBEAT-001",
+            "msg_type": "device.heartbeat",
+            "timestamp": 2000000001,
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 800,
+          "description": "UART4无应答。"
+        },
+        {
+          "port": "ble",
+          "kind": "no_frame",
+          "timeout_ms": 500,
+          "description": "UART2无转发。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-CRC-001",
+      "suite": "ble_negative",
+      "title": "BLE帧CRC错误",
+      "precondition": "PB-03F处于透传状态",
+      "description": "破坏帧尾CRC，T5L返回BLE_PACKET_INVALID。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 513,
+          "mutations": [
+            "bad_crc"
+          ],
+          "json": {
+            "cmd": "get_device_info",
+            "request_id": "REQ-CRC",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "crc error",
+            "data": {
+              "msg_id": 513
+            }
+          },
+          "description": "UART2返回packet_ack，message为crc error。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-JSON-001",
+      "suite": "ble_negative",
+      "title": "BLE载荷不是合法JSON",
+      "precondition": "PB-03F处于透传状态",
+      "description": "帧结构和CRC正确，但载荷JSON语法错误。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "ble_chunk",
+          "msg_id": 514,
+          "chunk_index": 0,
+          "chunk_total": 1,
+          "last": true,
+          "payload_text": "{\"bad\":}"
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "invalid json",
+            "data": {
+              "msg_id": 514
+            }
+          },
+          "description": "UART2返回invalid json。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-VERSION-001",
+      "suite": "ble_negative",
+      "title": "BLE帧版本错误",
+      "precondition": "PB-03F处于透传状态",
+      "description": "把协议版本从01改为02，验证帧头检查。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 515,
+          "mutations": [
+            "bad_version"
+          ],
+          "json": {
+            "cmd": "get_device_info",
+            "request_id": "REQ-VERSION",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "invalid frame header",
+            "data": {
+              "msg_id": 515
+            }
+          },
+          "description": "UART2返回invalid frame header。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-ORDER-001",
+      "suite": "ble_negative",
+      "title": "BLE缺少首分片",
+      "precondition": "当前无进行中的BLE重组",
+      "description": "直接发送第2个分片，验证missing first chunk。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "ble_chunk",
+          "msg_id": 516,
+          "chunk_index": 1,
+          "chunk_total": 2,
+          "last": true,
+          "payload_text": "{}"
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "missing first chunk",
+            "data": {
+              "msg_id": 516
+            }
+          },
+          "description": "UART2返回missing first chunk。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-DUP-001",
+      "suite": "ble_negative",
+      "title": "BLE重复分片",
+      "precondition": "当前无进行中的BLE重组",
+      "description": "同一msg_id的首分片发送两次，验证重复检测。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "ble_chunk",
+          "msg_id": 517,
+          "chunk_index": 0,
+          "chunk_total": 2,
+          "last": false,
+          "payload_text": "{\"cmd\":"
+        },
+        {
+          "kind": "wait",
+          "ms": 30
+        },
+        {
+          "port": "ble",
+          "kind": "ble_chunk",
+          "msg_id": 517,
+          "chunk_index": 0,
+          "chunk_total": 2,
+          "last": false,
+          "payload_text": "{\"cmd\":"
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "missing or duplicate chunk",
+            "data": {
+              "msg_id": 517
+            }
+          },
+          "description": "UART2返回missing or duplicate chunk。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-TIMEOUT-001",
+      "suite": "ble_negative",
+      "title": "BLE重组超时",
+      "precondition": "当前无进行中的BLE重组",
+      "description": "只发送两分片消息的首分片，等待超过5000ms。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "ble_chunk",
+          "msg_id": 518,
+          "chunk_index": 0,
+          "chunk_total": 2,
+          "last": false,
+          "payload_text": "{\"cmd\":"
+        },
+        {
+          "kind": "wait",
+          "ms": 5200
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "missing chunk",
+            "data": {
+              "msg_id": 518
+            }
+          },
+          "description": "UART2在重组超时后返回missing chunk。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-INCOMPLETE-001",
+      "suite": "ble_negative",
+      "title": "BLE半帧接收超时",
+      "precondition": "当前无进行中的BLE帧",
+      "description": "发送声明2字节载荷但仅带1字节载荷的半帧。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "raw_hex",
+          "hex": "4D51010100120000000100027B"
+        },
+        {
+          "kind": "wait",
+          "ms": 5200
+        }
+      ],
+      "expected": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "match": {
+            "cmd": "packet_ack",
+            "result": "FAIL",
+            "error_code": "BLE_PACKET_INVALID",
+            "message": "incomplete frame",
+            "data": {
+              "msg_id": 18
+            }
+          },
+          "description": "UART2在流超时后返回incomplete frame。"
+        }
+      ]
+    },
+    {
+      "id": "V851-CRC-001",
+      "suite": "v851_negative",
+      "title": "V851帧CRC错误",
+      "precondition": "V851接收状态空闲",
+      "description": "破坏AA55帧CRC，T5L应静默丢弃。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "mutations": [
+            "bad_crc"
+          ],
+          "json": {
+            "msg_id": "BAD-CRC",
+            "msg_type": "device.heartbeat",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 1000,
+          "description": "UART4无应答，错误帧被丢弃。"
+        }
+      ]
+    },
+    {
+      "id": "V851-JSON-001",
+      "suite": "v851_negative",
+      "title": "V851载荷不是合法JSON",
+      "precondition": "V851接收状态空闲",
+      "description": "AA55结构和CRC正确，但JSON语法错误。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "raw_hex",
+          "hex": "AA55000BA17B22626164223A7DC363"
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 1000,
+          "description": "UART4无应答，非法JSON被丢弃。"
+        }
+      ]
+    },
+    {
+      "id": "V851-COMMAND-001",
+      "suite": "v851_negative",
+      "title": "V851命令字错误",
+      "precondition": "V851接收状态空闲",
+      "description": "将JSON命令字A1改为A2，验证命令字过滤。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "mutations": [
+            "command_a2"
+          ],
+          "json": {
+            "msg_id": "BAD-COMMAND",
+            "msg_type": "device.heartbeat",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 1000,
+          "description": "UART4无应答。"
+        }
+      ]
+    },
+    {
+      "id": "V851-LENGTH-001",
+      "suite": "v851_negative",
+      "title": "V851声明长度大于实收长度",
+      "precondition": "V851接收状态空闲",
+      "description": "body_len增加1，等待超过5000ms验证半帧静默复位。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "mutations": [
+            "bad_length_plus_one"
+          ],
+          "json": {
+            "msg_id": "BAD-LENGTH",
+            "msg_type": "device.heartbeat",
+            "data": {}
+          }
+        },
+        {
+          "kind": "wait",
+          "ms": 5200
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 500,
+          "description": "UART4无应答，接收状态在5秒后复位。"
+        }
+      ]
+    },
+    {
+      "id": "V851-OVERSIZE-HEADER",
+      "suite": "v851_negative",
+      "title": "V851长度字段超过协议上限",
+      "precondition": "V851接收状态空闲",
+      "description": "发送body_len=2004，超过允许的2003，接收器在读取长度后立即复位。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "raw_hex",
+          "hex": "AA5507D4"
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 800,
+          "description": "UART4无应答。"
+        }
+      ]
+    },
+    {
+      "id": "V851-INCOMPLETE-001",
+      "suite": "v851_negative",
+      "title": "V851半帧接收超时",
+      "precondition": "V851接收状态空闲",
+      "description": "发送AA55头、合法长度和部分载荷，等待5秒后应静默复位。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "raw_hex",
+          "hex": "AA55000AA17B"
+        },
+        {
+          "kind": "wait",
+          "ms": 5200
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "no_frame",
+          "timeout_ms": 500,
+          "description": "UART4无应答，接收状态超时复位。"
+        }
+      ]
+    },
+    {
+      "id": "BLE-BOUNDARY-2000",
+      "suite": "boundary",
+      "title": "BLE最大2000字节JSON与多分片",
+      "precondition": "PB-03F处于透传状态且无待转发请求",
+      "description": "构造恰好2000字节的configure_network，验证9个BLE分片和UART4转发。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "json",
+          "msg_id": 769,
+          "target_length": 2000,
+          "padding_path": "data.padding",
+          "json": {
+            "cmd": "configure_network",
+            "request_id": "REQ-BOUNDARY-2000",
+            "data": {
+              "ssid": "BoundaryWiFi",
+              "password": "12345678"
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "timeout_ms": 3000,
+          "match": {
+            "cmd": "configure_network",
+            "request_id": "REQ-BOUNDARY-2000",
+            "data": {
+              "ssid": "BoundaryWiFi",
+              "password": "12345678"
+            }
+          },
+          "description": "UART4收到完整2000字节JSON，字段未被截断。"
+        }
+      ]
+    },
+    {
+      "id": "V851-BOUNDARY-2000",
+      "suite": "boundary",
+      "title": "V851最大2000字节JSON",
+      "precondition": "V851接收状态空闲",
+      "description": "构造恰好2000字节的排风命令，验证最大AA55帧和控制快照截断标志。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "target_length": 2000,
+          "padding_path": "data.params.padding",
+          "json": {
+            "msg_id": "MSG-BOUNDARY-2000",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-BOUNDARY-2000",
+              "cmd": "exhaust.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "timeout_ms": 3000,
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-BOUNDARY-2000",
+              "status": "UNSUPPORTED",
+              "error_code": "UNSUPPORTED_CMD"
+            }
+          },
+          "description": "UART4完成解析并返回UNSUPPORTED_CMD，而不是因帧长度丢弃。"
+        }
+      ],
+      "debugger": "V851_CONTROL_EXHAUST的params_len大于256、stored_len=256、params_truncated=1。"
+    },
+    {
+      "id": "BLE-OVERSIZE-2001",
+      "suite": "boundary",
+      "title": "BLE拒绝2001字节JSON",
+      "precondition": "仅离线编码检查",
+      "description": "超过BRIDGE_JSON_MAX的数据不得组帧或写入串口。",
+      "actions": [
+        {
+          "port": "ble",
+          "kind": "offline_oversize",
+          "target_length": 2001,
+          "padding_path": "data.padding",
+          "json": {
+            "cmd": "configure_network",
+            "request_id": "REQ-OVER-2001",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "kind": "manual",
+          "description": "编码器抛出长度错误，串口无数据发送。"
+        }
+      ]
+    },
+    {
+      "id": "V851-OVERSIZE-2001",
+      "suite": "boundary",
+      "title": "V851拒绝2001字节JSON",
+      "precondition": "仅离线编码检查",
+      "description": "超过BRIDGE_JSON_MAX的数据不得组帧或写入串口。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "offline_oversize",
+          "target_length": 2001,
+          "padding_path": "data.padding",
+          "json": {
+            "msg_id": "OVER-2001",
+            "msg_type": "device.heartbeat",
+            "data": {}
+          }
+        }
+      ],
+      "expected": [
+        {
+          "kind": "manual",
+          "description": "编码器抛出长度错误，串口无数据发送。"
+        }
+      ]
+    }
+  ]
+}
