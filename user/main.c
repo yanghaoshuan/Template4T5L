@@ -5,6 +5,10 @@
 
 #if bleV851_BRIDGE_ENABLED
 #include "pb03f_ble.h"
+#include "v851_control_info.h"
+#if v851CONTROL_MOCK_ENABLED
+#include "v851_control_mock.h"
+#endif /* v851CONTROL_MOCK_ENABLED */
 #include "v851_protocol.h"
 #endif /* bleV851_BRIDGE_ENABLED */
 
@@ -66,6 +70,10 @@ void main(void)
 	#if bleV851_BRIDGE_ENABLED
 	V851ProtocolInit();
 	Pb03fBleInit();
+	#if v851CONTROL_MOCK_ENABLED
+	(void)V851ControlMockInjectAll();
+	V851ControlInfoDgusTask();
+	#endif /* v851CONTROL_MOCK_ENABLED */
 	#endif /* bleV851_BRIDGE_ENABLED */
 
 	RtcInit();
@@ -85,6 +93,7 @@ void main(void)
 
 	#if bleV851_BRIDGE_ENABLED
 	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
+	SysTaskAdd(7, V851_CONTROL_DGUS_TASK_INTERVAL, V851ControlInfoDgusTask);
 	#endif /* bleV851_BRIDGE_ENABLED */
 
 	#if _4G_AIR780E_ENABLED

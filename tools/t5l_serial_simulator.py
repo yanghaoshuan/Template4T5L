@@ -37,6 +37,7 @@ DEFAULT_BLE_BAUD = 115200
 DEFAULT_V851_BAUD = 921600
 DEFAULT_FRAGMENT_GAP_MS = 20
 DEFAULT_EXPECT_TIMEOUT_MS = 1500
+DEFAULT_V851_STARTUP_DELAY_MS = 1500
 PB03F_TEST_MAC = "A1B2C3D4E5F6"
 
 
@@ -300,8 +301,17 @@ def materialize_action(action: dict[str, Any]) -> tuple[list[bytes], bytes | Non
 def load_vectors(path: Path = DEFAULT_VECTORS) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
-    if data.get("schema_version") != 1 or not isinstance(data.get("cases"), list):
+    if (
+        data.get("schema_version") != 1
+        or not isinstance(data.get("cases"), list)
+        or not isinstance(data.get("standalone_cases"), dict)
+    ):
         raise ValueError("unsupported or invalid serial test vector file")
+    case_ids = {case.get("id") for case in data["cases"]}
+    for mode in ("ble", "v851"):
+        configured = data["standalone_cases"].get(mode)
+        if not isinstance(configured, list) or not set(configured).issubset(case_ids):
+            raise ValueError(f"invalid standalone_cases.{mode}")
     return data
 
 
@@ -351,17 +361,31 @@ def render_markdown(vectors: dict[str, Any]) -> str:
         "| PB-03F 蓝牙 | UART2 | 115200, 8N1, 无流控 | 3.3V TTL USB串口，端口名由 `--ble-port` 指定 |",
         "| V851 | UART4 | 921600, 8N1, 无流控 | 3.3V TTL USB串口，端口名由 `--v851-port` 指定 |",
         "",
-        "两路串口均须 TX/RX 交叉并与 T5L 共地。禁止直接连接 RS-232 电平。",
+        "UART2接线：T5L P0.4(TX) → USB串口RX，T5L P0.5(RX) ← USB串口TX。"
+        "两路串口均须共地。禁止直接连接 RS-232 电平，也不要用USB串口的5V电源脚给T5L供电。",
         "",
         "## 运行方法",
         "",
         "```powershell",
         "python -m pip install \"pyserial>=3.5\"",
+        "python tools/t5l_serial_simulator.py ports --probe",
+        "python tools/t5l_serial_simulator.py monitor --port COM3 --baud 115200 --seconds 10",
         "python tools/t5l_serial_simulator.py list",
-        "python tools/t5l_serial_simulator.py run --ble-port COM3 --v851-port COM4 --suite all",
-        "python tools/t5l_serial_simulator.py run --ble-port COM3 --v851-port COM4 --case BLE-INFO-001",
+        "python tools/t5l_serial_simulator.py run --mode ble --ble-port COM3",
+        "python tools/t5l_serial_simulator.py run --mode v851 --v851-port COM4",
+        "python tools/t5l_serial_simulator.py run --mode both --ble-port COM3 --v851-port COM4",
         "python tools/t5l_serial_simulator.py render-md --check",
         "```",
+        "",
+        "`run`在打开目标串口前会先列出系统当前识别到的端口。若端口显示存在但"
+        "打开时报“拒绝访问”，请关闭串口调试助手、Keil串口窗口或其他占用该COM口"
+        "的程序，再使用 `ports --probe` 确认可访问性。",
+        "",
+        f"- `--mode ble`：只打开UART2蓝牙串口，执行"
+        f" {len(vectors['standalone_cases']['ble'])} 条蓝牙单端用例。",
+        f"- `--mode v851`：只打开UART4 V851串口，执行"
+        f" {len(vectors['standalone_cases']['v851'])} 条V851单端用例。",
+        "- `--mode both`：打开两路串口，执行完整桥接、双向转发及全部异常用例。",
         "",
         "电脑端会自动响应 PB-03F AT 初始化。固定模拟 MAC 为"
         f" `{PB03F_TEST_MAC}`；多分片发送间隔为"
@@ -514,6 +538,9 @@ class BlePeer:
         self.thread = threading.Thread(target=self._run, name="ble-peer", daemon=True)
         self.assemblies: dict[int, list[bytes]] = {}
         self.transition_count = 0
+        self.rx_total = 0
+        self.rx_recent = bytearray()
+        self.rx_lock = threading.Lock()
 
     def start(self) -> None:
         self.thread.start()
@@ -606,6 +633,11 @@ class BlePeer:
         while not self.stop_event.is_set():
             data = self.serial.read(self.serial.in_waiting or 1)
             if data:
+                with self.rx_lock:
+                    self.rx_total += len(data)
+                    self.rx_recent.extend(data)
+                    if len(self.rx_recent) > 256:
+                        del self.rx_recent[:-256]
                 self.buffer.extend(data)
             progressed = True
             while progressed:
@@ -625,6 +657,21 @@ class BlePeer:
                 return True
             time.sleep(0.02)
         return False
+
+    def receive_diagnostic(self) -> str:
+        with self.rx_lock:
+            total = self.rx_total
+            recent = bytes(self.rx_recent)
+        if total == 0:
+            return (
+                "UART2未收到任何字节；请确认固件已重新编译下载、T5L已复位、"
+                "P0.4(TX)→USB串口RX、P0.5(RX)←USB串口TX并共地"
+            )
+        return (
+            f"UART2共收到{total}字节，但未解析出完整AT命令；"
+            f"最近HEX: {_hex_lines(recent, width=24).replace(chr(10), ' | ')}；"
+            "请检查115200波特率、TX/RX方向和乱码"
+        )
 
 
 class V851Peer:
@@ -707,29 +754,42 @@ def _match_subset(actual: Any, expected: Any, path: str = "$") -> list[str]:
 class HardwareRunner:
     def __init__(
         self,
-        ble_serial: Any,
-        v851_serial: Any,
+        ble_serial: Any | None,
+        v851_serial: Any | None,
         *,
         fragment_gap_ms: int = DEFAULT_FRAGMENT_GAP_MS,
         timeout_ms: int = DEFAULT_EXPECT_TIMEOUT_MS,
+        startup_delay_ms: int = DEFAULT_V851_STARTUP_DELAY_MS,
     ):
         self.ble_serial = ble_serial
         self.v851_serial = v851_serial
-        self.ble = BlePeer(ble_serial)
-        self.v851 = V851Peer(v851_serial)
+        self.ble = BlePeer(ble_serial) if ble_serial is not None else None
+        self.v851 = V851Peer(v851_serial) if v851_serial is not None else None
         self.fragment_gap = fragment_gap_ms / 1000.0
         self.timeout = timeout_ms / 1000.0
+        self.startup_delay = startup_delay_ms / 1000.0
         self.manual_checks = 0
 
     def start(self) -> None:
-        self.ble.start()
-        self.v851.start()
-        if not self.ble.wait_transparent(20.0):
-            raise TimeoutError("20秒内未完成PB-03F AT初始化")
+        if self.ble is not None:
+            self.ble.start()
+        if self.v851 is not None:
+            self.v851.start()
+        if self.ble is not None:
+            if not self.ble.wait_transparent(20.0):
+                raise TimeoutError(
+                    "20秒内未完成PB-03F AT初始化；"
+                    + self.ble.receive_diagnostic()
+                )
+        elif self.startup_delay > 0:
+            print(f"仅V851模式：等待T5L启动 {self.startup_delay:.2f}s")
+            time.sleep(self.startup_delay)
 
     def close(self) -> None:
-        self.ble.close()
-        self.v851.close()
+        if self.ble is not None:
+            self.ble.close()
+        if self.v851 is not None:
+            self.v851.close()
 
     def _send_action(self, action: dict[str, Any]) -> None:
         kind = action["kind"]
@@ -737,6 +797,8 @@ class HardwareRunner:
             time.sleep(int(action["ms"]) / 1000.0)
             return
         if kind == "wait_ble_transparent":
+            if self.ble is None:
+                return
             count = int(action.get("transition_count", 1))
             timeout = int(action.get("timeout_ms", 15000)) / 1000.0
             if not self.ble.wait_transition_count(count, timeout):
@@ -762,6 +824,8 @@ class HardwareRunner:
         frames, payload = materialize_action(action)
         port = action.get("port")
         serial_port = self.ble_serial if port == "ble" else self.v851_serial
+        if serial_port is None:
+            raise AssertionError(f"当前模式未打开{port}串口")
         for index, frame in enumerate(frames):
             print(
                 f"[PC→{('UART2 BLE' if port == 'ble' else 'UART4 V851')}] "
@@ -781,6 +845,8 @@ class HardwareRunner:
             self.manual_checks += 1
             return []
         if kind == "at_contains":
+            if self.ble is None:
+                return []
             with self.ble.at_lock:
                 history = list(self.ble.at_history)
             missing = [
@@ -790,6 +856,8 @@ class HardwareRunner:
             ]
             return [f"缺少AT命令前缀: {', '.join(missing)}"] if missing else []
         if kind == "at_transition_count":
+            if self.ble is None:
+                return []
             count = int(expected["count"])
             return (
                 []
@@ -798,6 +866,8 @@ class HardwareRunner:
             )
 
         peer = self.ble if expected["port"] == "ble" else self.v851
+        if peer is None:
+            return []
         if kind == "no_frame":
             try:
                 unexpected = peer.messages.get(timeout=timeout)
@@ -815,8 +885,10 @@ class HardwareRunner:
         return [f"未知预期类型: {kind}"]
 
     def run_case(self, case: dict[str, Any]) -> tuple[bool, list[str]]:
-        _drain(self.ble.messages)
-        _drain(self.v851.messages)
+        if self.ble is not None:
+            _drain(self.ble.messages)
+        if self.v851 is not None:
+            _drain(self.v851.messages)
         failures: list[str] = []
         try:
             for action in case.get("actions", []):
@@ -829,26 +901,69 @@ class HardwareRunner:
 
 
 def _select_cases(
-    vectors: dict[str, Any], case_id: str | None, suite: str | None
+    vectors: dict[str, Any],
+    case_id: str | None,
+    suite: str | None,
+    mode: str = "both",
 ) -> list[dict[str, Any]]:
     cases = vectors["cases"]
     if case_id:
         selected = [case for case in cases if case["id"] == case_id]
         if not selected:
             raise ValueError(f"unknown case: {case_id}")
-        return selected
-    if suite and suite != "all":
+    elif suite and suite != "all":
         selected = [case for case in cases if case["suite"] == suite]
         if not selected:
             raise ValueError(f"unknown or empty suite: {suite}")
+    else:
+        selected = list(cases)
+
+    if mode != "both":
+        allowed = set(vectors["standalone_cases"][mode])
+        incompatible = [case["id"] for case in selected if case["id"] not in allowed]
+        selected = [case for case in selected if case["id"] in allowed]
+        if case_id and incompatible:
+            raise ValueError(
+                f"{case_id}依赖另一侧串口，不能在{mode}单端模式运行"
+            )
+        if not selected:
+            raise ValueError(f"所选范围没有可在{mode}单端模式运行的用例")
+        if incompatible:
+            print(
+                f"{mode}单端模式自动跳过 {len(incompatible)} 条依赖另一侧串口的用例。"
+            )
+    return selected
+
+
+def _add_prerequisite_cases(
+    vectors: dict[str, Any],
+    selected: list[dict[str, Any]],
+    mode: str,
+) -> list[dict[str, Any]]:
+    if mode == "ble":
         return selected
-    return cases
+    selected_ids = {case["id"] for case in selected}
+    setup_ids = {"V851-ID-001", "V851-TIME-001"}
+    if selected_ids.issubset({"INIT-001"} | setup_ids):
+        return selected
+
+    by_id = {case["id"]: case for case in vectors["cases"]}
+    prefix = [by_id[case_id] for case_id in ("V851-ID-001", "V851-TIME-001")
+              if case_id not in selected_ids]
+    if prefix:
+        print(
+            "自动加入V851身份/时间前置用例: "
+            + ", ".join(case["id"] for case in prefix)
+        )
+    return prefix + selected
 
 
 def command_list(args: argparse.Namespace) -> int:
     vectors = load_vectors(Path(args.vectors))
-    for case in vectors["cases"]:
+    cases = _select_cases(vectors, None, "all", args.mode)
+    for case in cases:
         print(f"{case['id']:<22} {case['suite']:<12} {case['title']}")
+    print(f"共 {len(cases)} 条，模式: {args.mode}")
     return 0
 
 
@@ -868,45 +983,176 @@ def command_render(args: argparse.Namespace) -> int:
     return 0
 
 
-def _open_serial(name: str, baudrate: int) -> Any:
+def _require_pyserial() -> Any:
     try:
         import serial  # type: ignore
     except ImportError as exc:
         raise RuntimeError(
             '缺少pyserial，请执行: python -m pip install "pyserial>=3.5"'
         ) from exc
-    return serial.Serial(
-        port=name,
-        baudrate=baudrate,
-        bytesize=8,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        timeout=0.05,
-        write_timeout=2.0,
-        xonxoff=False,
-        rtscts=False,
-        dsrdtr=False,
+    return serial
+
+
+def discover_serial_ports(probe: bool = False) -> list[dict[str, str]]:
+    """Return serial ports currently reported by the operating system."""
+    serial = _require_pyserial()
+    try:
+        from serial.tools import list_ports  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError("当前pyserial不包含serial.tools.list_ports") from exc
+
+    rows: list[dict[str, str]] = []
+    for info in sorted(list_ports.comports(), key=lambda item: item.device.casefold()):
+        status = "未探测"
+        if probe:
+            try:
+                handle = serial.Serial(
+                    port=info.device,
+                    baudrate=DEFAULT_BLE_BAUD,
+                    timeout=0,
+                    write_timeout=0,
+                    xonxoff=False,
+                    rtscts=False,
+                    dsrdtr=False,
+                )
+                handle.close()
+                status = "可访问"
+            except (PermissionError, OSError, serial.SerialException) as exc:
+                status = f"不可访问/可能被占用: {exc}"
+        rows.append(
+            {
+                "device": info.device,
+                "description": info.description or "",
+                "hwid": info.hwid or "",
+                "status": status,
+            }
+        )
+    return rows
+
+
+def print_serial_ports(rows: list[dict[str, str]]) -> None:
+    print("当前系统识别到的串口：")
+    if not rows:
+        print("  （未发现串口）")
+        return
+    for row in rows:
+        print(
+            f"  {row['device']:<8} {row['description'] or '-'}"
+            f" | {row['status']} | {row['hwid'] or '-'}"
+        )
+
+
+def _resolve_port(name: str, rows: list[dict[str, str]]) -> str:
+    for row in rows:
+        if row["device"].casefold() == name.casefold():
+            return row["device"]
+    available = ", ".join(row["device"] for row in rows) or "无"
+    raise RuntimeError(f"未发现串口{name}；当前端口: {available}")
+
+
+def command_ports(args: argparse.Namespace) -> int:
+    rows = discover_serial_ports(probe=args.probe)
+    print_serial_ports(rows)
+    return 0 if rows else 1
+
+
+def command_monitor(args: argparse.Namespace) -> int:
+    rows = discover_serial_ports(probe=False)
+    print_serial_ports(rows)
+    name = _resolve_port(args.port, rows)
+    handle = _open_serial(name, args.baud)
+    received = 0
+    start = time.monotonic()
+    deadline = start + args.seconds
+    print(
+        f"监听{name}，{args.baud} 8N1，共{args.seconds:g}秒。"
+        "请现在复位或重新上电T5L；按Ctrl+C可提前结束。"
     )
+    try:
+        while time.monotonic() < deadline:
+            data = handle.read(handle.in_waiting or 1)
+            if not data:
+                continue
+            received += len(data)
+            ascii_text = "".join(
+                chr(value) if 32 <= value <= 126 else "."
+                for value in data
+            )
+            print(
+                f"[+{time.monotonic() - start:6.2f}s] "
+                f"HEX: {_hex_lines(data, width=24).replace(chr(10), ' | ')}"
+                f" | ASCII: {ascii_text}"
+            )
+    except KeyboardInterrupt:
+        print("监听已由用户停止。")
+    finally:
+        handle.close()
+    if received == 0:
+        print(
+            "未收到任何字节。请检查固件是否已重新下载，以及"
+            "P0.4(TX)→USB串口RX、P0.5(RX)←USB串口TX、GND共地。"
+        )
+        return 1
+    print(f"共收到 {received} 字节。")
+    return 0
+
+
+def _open_serial(name: str, baudrate: int) -> Any:
+    serial = _require_pyserial()
+    try:
+        return serial.Serial(
+            port=name,
+            baudrate=baudrate,
+            bytesize=8,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            timeout=0.05,
+            write_timeout=2.0,
+            xonxoff=False,
+            rtscts=False,
+            dsrdtr=False,
+        )
+    except (PermissionError, OSError, serial.SerialException) as exc:
+        raise RuntimeError(
+            f"无法打开{name}（可能正被串口助手、Keil或其他程序占用）：{exc}"
+        ) from exc
 
 
 def command_run(args: argparse.Namespace) -> int:
     vectors = load_vectors(Path(args.vectors))
-    cases = _select_cases(vectors, args.case, args.suite)
-    ble_serial = _open_serial(args.ble_port, args.ble_baud)
-    try:
-        v851_serial = _open_serial(args.v851_port, args.v851_baud)
-    except Exception:
-        ble_serial.close()
-        raise
+    cases = _select_cases(vectors, args.case, args.suite, args.mode)
+    cases = _add_prerequisite_cases(vectors, cases, args.mode)
+    needs_ble = args.mode in {"ble", "both"}
+    needs_v851 = args.mode in {"v851", "both"}
+    if needs_ble and not args.ble_port:
+        raise RuntimeError(f"{args.mode}模式必须提供--ble-port")
+    if needs_v851 and not args.v851_port:
+        raise RuntimeError(f"{args.mode}模式必须提供--v851-port")
 
-    runner = HardwareRunner(
-        ble_serial,
-        v851_serial,
-        fragment_gap_ms=args.fragment_gap_ms,
-        timeout_ms=args.timeout_ms,
-    )
+    rows = discover_serial_ports(probe=False)
+    print_serial_ports(rows)
+    ble_name = _resolve_port(args.ble_port, rows) if needs_ble else None
+    v851_name = _resolve_port(args.v851_port, rows) if needs_v851 else None
+    if ble_name is not None and v851_name is not None:
+        if ble_name.casefold() == v851_name.casefold():
+            raise RuntimeError("蓝牙和V851不能使用同一个COM口")
+
+    ble_serial = None
+    v851_serial = None
+    runner = None
     failures = 0
     try:
+        if ble_name is not None:
+            ble_serial = _open_serial(ble_name, args.ble_baud)
+        if v851_name is not None:
+            v851_serial = _open_serial(v851_name, args.v851_baud)
+        runner = HardwareRunner(
+            ble_serial,
+            v851_serial,
+            fragment_gap_ms=args.fragment_gap_ms,
+            timeout_ms=args.timeout_ms,
+            startup_delay_ms=args.startup_delay_ms,
+        )
         runner.start()
         for case in cases:
             ok, reasons = runner.run_case(case)
@@ -915,13 +1161,17 @@ def command_run(args: argparse.Namespace) -> int:
                 print(f"       {reason}")
             failures += 0 if ok else 1
     finally:
-        runner.close()
-        ble_serial.close()
-        v851_serial.close()
+        if runner is not None:
+            runner.close()
+        if ble_serial is not None:
+            ble_serial.close()
+        if v851_serial is not None:
+            v851_serial.close()
 
     print(
         f"完成 {len(cases)} 条：通过 {len(cases) - failures}，"
-        f"失败 {failures}，另有 {runner.manual_checks} 项调试器人工检查。"
+        f"失败 {failures}，另有 "
+        f"{runner.manual_checks if runner is not None else 0} 项调试器人工检查。"
     )
     return 1 if failures else 0
 
@@ -932,7 +1182,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = subparsers.add_parser("list", help="列出测试用例")
     list_parser.add_argument("--vectors", default=str(DEFAULT_VECTORS))
+    list_parser.add_argument(
+        "--mode", choices=("ble", "v851", "both"), default="both"
+    )
     list_parser.set_defaults(func=command_list)
+
+    ports_parser = subparsers.add_parser("ports", help="列出当前串口")
+    ports_parser.add_argument(
+        "--probe", action="store_true", help="逐个尝试打开以检查是否被占用"
+    )
+    ports_parser.set_defaults(func=command_ports)
+
+    monitor_parser = subparsers.add_parser("monitor", help="只监听一个串口的原始字节")
+    monitor_parser.add_argument("--port", required=True)
+    monitor_parser.add_argument("--baud", type=int, default=DEFAULT_BLE_BAUD)
+    monitor_parser.add_argument("--seconds", type=float, default=10.0)
+    monitor_parser.set_defaults(func=command_monitor)
 
     render_parser = subparsers.add_parser("render-md", help="生成或检查Markdown")
     render_parser.add_argument("--vectors", default=str(DEFAULT_VECTORS))
@@ -942,14 +1207,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser("run", help="连接两路串口执行测试")
     run_parser.add_argument("--vectors", default=str(DEFAULT_VECTORS))
-    run_parser.add_argument("--ble-port", required=True)
-    run_parser.add_argument("--v851-port", required=True)
+    run_parser.add_argument(
+        "--mode", choices=("ble", "v851", "both"), default="both"
+    )
+    run_parser.add_argument("--ble-port")
+    run_parser.add_argument("--v851-port")
     run_parser.add_argument("--ble-baud", type=int, default=DEFAULT_BLE_BAUD)
     run_parser.add_argument("--v851-baud", type=int, default=DEFAULT_V851_BAUD)
     run_parser.add_argument(
         "--fragment-gap-ms", type=int, default=DEFAULT_FRAGMENT_GAP_MS
     )
     run_parser.add_argument("--timeout-ms", type=int, default=DEFAULT_EXPECT_TIMEOUT_MS)
+    run_parser.add_argument(
+        "--startup-delay-ms", type=int, default=DEFAULT_V851_STARTUP_DELAY_MS
+    )
     selection = run_parser.add_mutually_exclusive_group()
     selection.add_argument("--case")
     selection.add_argument("--suite", default="all")

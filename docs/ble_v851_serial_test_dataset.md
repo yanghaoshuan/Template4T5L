@@ -9,17 +9,26 @@
 | PB-03F 蓝牙 | UART2 | 115200, 8N1, 无流控 | 3.3V TTL USB串口，端口名由 `--ble-port` 指定 |
 | V851 | UART4 | 921600, 8N1, 无流控 | 3.3V TTL USB串口，端口名由 `--v851-port` 指定 |
 
-两路串口均须 TX/RX 交叉并与 T5L 共地。禁止直接连接 RS-232 电平。
+UART2接线：T5L P0.4(TX) → USB串口RX，T5L P0.5(RX) ← USB串口TX。两路串口均须共地。禁止直接连接 RS-232 电平，也不要用USB串口的5V电源脚给T5L供电。
 
 ## 运行方法
 
 ```powershell
 python -m pip install "pyserial>=3.5"
+python tools/t5l_serial_simulator.py ports --probe
+python tools/t5l_serial_simulator.py monitor --port COM3 --baud 115200 --seconds 10
 python tools/t5l_serial_simulator.py list
-python tools/t5l_serial_simulator.py run --ble-port COM3 --v851-port COM4 --suite all
-python tools/t5l_serial_simulator.py run --ble-port COM3 --v851-port COM4 --case BLE-INFO-001
+python tools/t5l_serial_simulator.py run --mode ble --ble-port COM3
+python tools/t5l_serial_simulator.py run --mode v851 --v851-port COM4
+python tools/t5l_serial_simulator.py run --mode both --ble-port COM3 --v851-port COM4
 python tools/t5l_serial_simulator.py render-md --check
 ```
+
+`run`在打开目标串口前会先列出系统当前识别到的端口。若端口显示存在但打开时报“拒绝访问”，请关闭串口调试助手、Keil串口窗口或其他占用该COM口的程序，再使用 `ports --probe` 确认可访问性。
+
+- `--mode ble`：只打开UART2蓝牙串口，执行 11 条蓝牙单端用例。
+- `--mode v851`：只打开UART4 V851串口，执行 25 条V851单端用例。
+- `--mode both`：打开两路串口，执行完整桥接、双向转发及全部异常用例。
 
 电脑端会自动响应 PB-03F AT 初始化。固定模拟 MAC 为 `A1B2C3D4E5F6`；多分片发送间隔为 20 ms，以适配 UART2 的 256 字节接收环形缓冲区。
 

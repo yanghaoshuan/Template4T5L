@@ -655,6 +655,85 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
     }
 }
 
+#if bleV851_BRIDGE_ENABLED
+/**
+ * @brief 将桥接串口中的非DGUS数据交给对应协议解析器
+ * @param[in] uart UART通信接口指针
+ * @param[in] frame 待处理数据
+ * @param[in] len 数据长度
+ */
+static void UartBridgeReceive(UART_TYPE *uart,
+                              const uint8_t *frame,
+                              uint16_t len)
+{
+    if(len == 0U)
+    {
+        return;
+    }
+
+    if(uart == &Uart4)
+    {
+        V851ProtocolReceive(uart, frame, len);
+    }else if(uart == &PB03F_BLE_UART)
+    {
+        Pb03fBleReceive(uart, frame, len);
+    }
+}
+
+/**
+ * @brief 分流桥接协议与标准迪文82/83协议
+ * @details 完整82/83帧直接交给DGUS处理，其余数据仍按原顺序交给
+ *          PB-03F AT/透传协议或V851协议，避免AT解析器误吞二进制帧。
+ * @param[in] uart UART通信接口指针
+ * @param[in,out] frame 接收数据缓冲区
+ * @param[in] len 数据长度
+ */
+static void UartBridgeDwin8283Route(UART_TYPE *uart,
+                                    uint8_t *frame,
+                                    uint16_t len)
+{
+    uint16_t offset = 0U;
+    uint16_t bridge_offset = 0U;
+    uint16_t remaining;
+    uint16_t dwin_frame_len;
+    uint8_t command;
+
+    while(offset < len)
+    {
+        remaining = len - offset;
+        if((remaining >= 4U) &&
+           (frame[offset] == 0x5aU) &&
+           (frame[offset + 1U] == 0xa5U))
+        {
+            dwin_frame_len = (uint16_t)frame[offset + 2U] + 3U;
+            command = frame[offset + 3U];
+            if((dwin_frame_len <= remaining) &&
+               (((command == 0x82U) && (dwin_frame_len >= 6U)) ||
+                ((command == 0x83U) && (dwin_frame_len >= 7U))))
+            {
+                if(offset > bridge_offset)
+                {
+                    UartBridgeReceive(uart, &frame[bridge_offset],
+                                      offset - bridge_offset);
+                }
+                UartStandardDwin8283Protocal(uart, &frame[offset],
+                                             dwin_frame_len);
+                offset += dwin_frame_len;
+                bridge_offset = offset;
+                continue;
+            }
+        }
+        offset++;
+    }
+
+    if(bridge_offset < len)
+    {
+        UartBridgeReceive(uart, &frame[bridge_offset],
+                          len - bridge_offset);
+    }
+}
+#endif /* bleV851_BRIDGE_ENABLED */
+
 
 void UartReadFrame(UART_TYPE *uart)
 {
@@ -706,14 +785,9 @@ void UartReadFrame(UART_TYPE *uart)
         total_frame_len = i;
 
         #if bleV851_BRIDGE_ENABLED
-        if(uart == &Uart4)
+        if((uart == &Uart4) || (uart == &PB03F_BLE_UART))
         {
-            V851ProtocolReceive(uart, frame, total_frame_len);
-            return;
-        }
-        if(uart == &PB03F_BLE_UART)
-        {
-            Pb03fBleReceive(uart, frame, total_frame_len);
+            UartBridgeDwin8283Route(uart, frame, total_frame_len);
             return;
         }
         #endif /* bleV851_BRIDGE_ENABLED */

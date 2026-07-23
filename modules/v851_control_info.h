@@ -6,6 +6,11 @@
 #if bleV851_BRIDGE_ENABLED
 
 #define V851_CONTROL_PARAMS_SNAPSHOT_MAX        256U  /**< 单类控制参数快照上限 */
+#define V851_CONTROL_DGUS_TASK_INTERVAL          10U
+#define V851_CONTROL_DGUS_BASE_ADDR              0x3000UL
+#define V851_CONTROL_DGUS_ADDR_STRIDE            0x0010UL
+#define V851_CONTROL_DGUS_RECORD_BYTES           16U
+#define V851_CONTROL_DGUS_RECORD_WORDS           (V851_CONTROL_DGUS_RECORD_BYTES / 2U)
 
 typedef struct
 {
@@ -58,6 +63,22 @@ const V851ControlDetails *V851ControlInfoGet(V851ControlType type);
  * @brief 显式确认指定控制类型的更新已经读取。
  */
 uint8_t V851ControlInfoClearUpdated(V851ControlType type);
+
+/**
+ * @brief 将指定的控制信息更新同步到DGUS变量空间。
+ *
+ * @details 固定地址映射如下：
+ * - 0x3000：排风控制
+ * - 0x3010：温控
+ * - 0x3020：灯光
+ * - 0x3030：设备设置
+ *
+ * 每条记录固定16字节：
+ * byte0为控制类型，byte1为状态标志，byte2-3为原始参数长度，
+ * byte4-7为版本号，byte8-11为接收时刻，byte12-13为已保存参数长度，
+ * byte14-15为已保存参数的CRC16。多字节数值使用大端顺序。
+ */
+void V851ControlInfoDgusTask(void);
 
 #endif /* bleV851_BRIDGE_ENABLED */
 

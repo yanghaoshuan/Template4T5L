@@ -1,6 +1,48 @@
 {
   "schema_version": 1,
   "description": "T5L UART2 PB-03F and UART4 V851 executable serial vectors",
+  "standalone_cases": {
+    "ble": [
+      "INIT-001",
+      "BLE-UNSUPPORTED-001",
+      "BLE-FIELDS-001",
+      "BLE-CRC-001",
+      "BLE-JSON-001",
+      "BLE-VERSION-001",
+      "BLE-ORDER-001",
+      "BLE-DUP-001",
+      "BLE-TIMEOUT-001",
+      "BLE-INCOMPLETE-001",
+      "BLE-OVERSIZE-2001"
+    ],
+    "v851": [
+      "V851-ID-001",
+      "V851-TIME-001",
+      "V851-CTL-EXHAUST",
+      "V851-CTL-PLASMA",
+      "V851-CTL-ANION",
+      "V851-CTL-CLIMATE",
+      "V851-CTL-INLET",
+      "V851-CTL-HUMIDIFIER",
+      "V851-CTL-UVB",
+      "V851-CTL-LIGHT",
+      "V851-CTL-SETTINGS",
+      "V851-CTL-PASSWORD",
+      "V851-CTL-OTA",
+      "V851-UNKNOWN-001",
+      "V851-DEDUP-001",
+      "V851-EXPIRED-001",
+      "V851-HEARTBEAT-001",
+      "V851-CRC-001",
+      "V851-JSON-001",
+      "V851-COMMAND-001",
+      "V851-LENGTH-001",
+      "V851-OVERSIZE-HEADER",
+      "V851-INCOMPLETE-001",
+      "V851-BOUNDARY-2000",
+      "V851-OVERSIZE-2001"
+    ]
+  },
   "cases": [
     {
       "id": "INIT-001",

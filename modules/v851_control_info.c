@@ -6,6 +6,41 @@
 
 static V851ControlDetails xdata v851_control_details[V851_CONTROL_COUNT];
 
+static void V851ControlInfoWriteBe16(uint8_t *_data, uint16_t value)
+{
+    _data[0] = (uint8_t)(value >> 8);
+    _data[1] = (uint8_t)value;
+}
+
+static void V851ControlInfoWriteBe32(uint8_t *_data, uint32_t value)
+{
+    _data[0] = (uint8_t)(value >> 24);
+    _data[1] = (uint8_t)(value >> 16);
+    _data[2] = (uint8_t)(value >> 8);
+    _data[3] = (uint8_t)value;
+}
+
+static V851ControlType V851ControlInfoDgusType(uint8_t slot)
+{
+    switch(slot)
+    {
+        case 0U:
+            return V851_CONTROL_EXHAUST;
+
+        case 1U:
+            return V851_CONTROL_CLIMATE;
+
+        case 2U:
+            return V851_CONTROL_LIGHT;
+
+        case 3U:
+            return V851_CONTROL_DEVICE_SETTINGS;
+
+        default:
+            return V851_CONTROL_INVALID;
+    }
+}
+
 static void V851ControlInfoCopyText(char *out,
                                     uint16_t out_size,
                                     const char *text,
@@ -145,6 +180,61 @@ uint8_t V851ControlInfoClearUpdated(V851ControlType type)
     }
     v851_control_details[type].updated = 0U;
     return 1U;
+}
+
+void V851ControlInfoDgusTask(void)
+{
+    const V851ControlDetails *details;
+    V851ControlType type;
+    uint8_t record[V851_CONTROL_DGUS_RECORD_BYTES];
+    uint8_t slot;
+    uint8_t flags;
+    uint16_t params_crc;
+    uint32_t address;
+
+    for(slot = 0U; slot < 4U; slot++)
+    {
+        type = V851ControlInfoDgusType(slot);
+        if((type == V851_CONTROL_INVALID) ||
+           (V851ControlInfoIsUpdated(type) == 0U))
+        {
+            continue;
+        }
+
+        details = V851ControlInfoGet(type);
+        if(details == NULL)
+        {
+            continue;
+        }
+
+        memset(record, 0, sizeof(record));
+        flags = 0U;
+        if(details->valid != 0U) flags |= 0x01U;
+        if(details->updated != 0U) flags |= 0x02U;
+        if(details->params_truncated != 0U) flags |= 0x04U;
+        if(details->params_redacted != 0U) flags |= 0x08U;
+
+        params_crc = 0U;
+        if((details->params_redacted == 0U) &&
+           (details->stored_len != 0U))
+        {
+            params_crc = crc_16((uint8_t *)details->params_json,
+                                details->stored_len);
+        }
+
+        record[0] = (uint8_t)type;
+        record[1] = flags;
+        V851ControlInfoWriteBe16(&record[2], details->params_len);
+        V851ControlInfoWriteBe32(&record[4], details->revision);
+        V851ControlInfoWriteBe32(&record[8], details->received_tick);
+        V851ControlInfoWriteBe16(&record[12], details->stored_len);
+        V851ControlInfoWriteBe16(&record[14], params_crc);
+
+        address = V851_CONTROL_DGUS_BASE_ADDR +
+                  ((uint32_t)slot * V851_CONTROL_DGUS_ADDR_STRIDE);
+        write_dgus_vp(address, record, V851_CONTROL_DGUS_RECORD_WORDS);
+        (void)V851ControlInfoClearUpdated(type);
+    }
 }
 
 #endif /* bleV851_BRIDGE_ENABLED */

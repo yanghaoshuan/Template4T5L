@@ -135,6 +135,16 @@ class V851FrameTests(unittest.TestCase):
 
 
 class PeerSimulationTests(unittest.TestCase):
+    def test_ble_timeout_diagnostic_distinguishes_no_data(self) -> None:
+        peer = simulator.BlePeer(FakeSerial())
+        self.assertIn("未收到任何字节", peer.receive_diagnostic())
+        with peer.rx_lock:
+            peer.rx_total = 2
+            peer.rx_recent.extend(b"\x00\xFF")
+        diagnostic = peer.receive_diagnostic()
+        self.assertIn("共收到2字节", diagnostic)
+        self.assertIn("00 FF", diagnostic)
+
     def test_ble_peer_handles_at_initialization_and_reassembles_frames(self) -> None:
         serial_port = FakeSerial()
         peer = simulator.BlePeer(serial_port)
@@ -196,6 +206,28 @@ class PeerSimulationTests(unittest.TestCase):
         finally:
             peer.close()
 
+    def test_runner_can_start_with_v851_only(self) -> None:
+        serial_port = FakeSerial()
+        runner = simulator.HardwareRunner(
+            None, serial_port, startup_delay_ms=0
+        )
+        runner.start()
+        try:
+            self.assertIsNone(runner.ble)
+            self.assertIsNotNone(runner.v851)
+            self.assertEqual(
+                runner._check_expected(
+                    {
+                        "port": "ble",
+                        "kind": "no_frame",
+                        "description": "absent side is skipped",
+                    }
+                ),
+                [],
+            )
+        finally:
+            runner.close()
+
 
 class DatasetTests(unittest.TestCase):
     @classmethod
@@ -206,6 +238,38 @@ class DatasetTests(unittest.TestCase):
         ids = [case["id"] for case in self.vectors["cases"]]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertGreaterEqual(len(ids), 40)
+
+    def test_standalone_mode_selection(self) -> None:
+        ble_cases = simulator._select_cases(
+            self.vectors, None, "all", mode="ble"
+        )
+        v851_cases = simulator._select_cases(
+            self.vectors, None, "all", mode="v851"
+        )
+        self.assertEqual(
+            [case["id"] for case in ble_cases],
+            self.vectors["standalone_cases"]["ble"],
+        )
+        self.assertEqual(
+            [case["id"] for case in v851_cases],
+            self.vectors["standalone_cases"]["v851"],
+        )
+        with self.assertRaises(ValueError):
+            simulator._select_cases(
+                self.vectors, "BLE-NET-001", None, mode="ble"
+            )
+
+    def test_v851_prerequisites_are_added_for_single_case(self) -> None:
+        selected = simulator._select_cases(
+            self.vectors, "V851-EXPIRED-001", None, mode="v851"
+        )
+        prepared = simulator._add_prerequisite_cases(
+            self.vectors, selected, mode="v851"
+        )
+        self.assertEqual(
+            [case["id"] for case in prepared],
+            ["V851-ID-001", "V851-TIME-001", "V851-EXPIRED-001"],
+        )
 
     def test_all_actions_materialize(self) -> None:
         for case in self.vectors["cases"]:
@@ -231,6 +295,29 @@ class DatasetTests(unittest.TestCase):
         expected = simulator.render_markdown(self.vectors)
         actual = simulator.DEFAULT_DOCUMENT.read_text(encoding="utf-8")
         self.assertEqual(actual, expected)
+
+
+class PortDiscoveryTests(unittest.TestCase):
+    def test_resolve_port_is_case_insensitive(self) -> None:
+        rows = [
+            {
+                "device": "COM7",
+                "description": "USB Serial",
+                "hwid": "TEST",
+                "status": "未探测",
+            }
+        ]
+        self.assertEqual(simulator._resolve_port("com7", rows), "COM7")
+        with self.assertRaises(RuntimeError):
+            simulator._resolve_port("COM8", rows)
+
+    def test_monitor_command_is_exposed(self) -> None:
+        args = simulator.build_parser().parse_args(
+            ["monitor", "--port", "COM7", "--seconds", "5"]
+        )
+        self.assertEqual(args.command, "monitor")
+        self.assertEqual(args.port, "COM7")
+        self.assertEqual(args.baud, 115200)
 
 
 class FirmwareMappingTests(unittest.TestCase):
