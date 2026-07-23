@@ -27,6 +27,10 @@
       "V851-CTL-UVB",
       "V851-CTL-LIGHT",
       "V851-CTL-SETTINGS",
+      "V851-CTL-INVALID-MISSING",
+      "V851-CTL-INVALID-BOOL",
+      "V851-CTL-INVALID-TEXT",
+      "V851-CTL-INVALID-RANGE",
       "V851-CTL-PASSWORD",
       "V851-CTL-OTA",
       "V851-UNKNOWN-001",
@@ -393,7 +397,7 @@
       "suite": "v851_control",
       "title": "排风控制命令",
       "precondition": "V851-TIME-001通过",
-      "description": "验证exhaust.set映射、快照更新及当前未注册处理器时的应答。",
+      "description": "验证exhaust.set参数写入0x3000并返回成功应答。",
       "actions": [
         {
           "port": "v851",
@@ -424,15 +428,21 @@
             "data": {
               "command_id": "CMD-EXHAUST",
               "server_msg_id": "MSG-EXHAUST",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD",
-              "error_message": "control handler is not registered"
+              "status": "SUCCESS",
+              "result": {
+                "cmd": "exhaust.set",
+                "executed": true,
+                "applied": {
+                  "enabled": true,
+                  "level": 3
+                }
+              }
             }
           },
-          "description": "UART4返回UNSUPPORTED_CMD；这表示协议已接收，但业务执行处理器尚未注册。"
+          "description": "UART4返回SUCCESS及实际应用参数。"
         }
       ],
-      "debugger": "V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1，params为{\"enabled\":true,\"level\":3}。"
+      "debugger": "0x3000为1、0x3001为3；V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1。"
     },
     {
       "id": "V851-CTL-PLASMA",
@@ -521,7 +531,7 @@
       "suite": "v851_control",
       "title": "温控命令",
       "precondition": "身份与时间已缓存",
-      "description": "验证climate.set及多字段参数保存。",
+      "description": "验证climate.set参数写入0x3010并返回成功应答。",
       "actions": [
         {
           "port": "v851",
@@ -550,14 +560,22 @@
             "msg_type": "device.command_ack",
             "data": {
               "command_id": "CMD-CLIMATE",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
+              "status": "SUCCESS",
+              "result": {
+                "cmd": "climate.set",
+                "executed": true,
+                "applied": {
+                  "enabled": true,
+                  "mode": "AUTO",
+                  "target_temperature": 24
+                }
+              }
             }
           },
-          "description": "UART4返回UNSUPPORTED_CMD。"
+          "description": "UART4返回SUCCESS及实际应用参数。"
         }
       ],
-      "debugger": "V851_CONTROL_CLIMATE快照保存AUTO和24摄氏度参数。"
+      "debugger": "0x3010为1、0x3011为24、0x3012开始为AUTO；控制快照updated=1。"
     },
     {
       "id": "V851-CTL-INLET",
@@ -606,7 +624,7 @@
       "suite": "v851_control",
       "title": "加湿控制命令",
       "precondition": "身份与时间已缓存",
-      "description": "验证humidifier.set控制类型。",
+      "description": "验证humidifier.set参数写入0x3040并返回成功应答。",
       "actions": [
         {
           "port": "v851",
@@ -634,14 +652,22 @@
             "msg_type": "device.command_ack",
             "data": {
               "command_id": "CMD-HUMIDIFIER",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
+              "server_msg_id": "MSG-HUMIDIFIER",
+              "status": "SUCCESS",
+              "result": {
+                "cmd": "humidifier.set",
+                "executed": true,
+                "applied": {
+                  "enabled": true,
+                  "target_humidity": 55
+                }
+              }
             }
           },
-          "description": "UART4返回UNSUPPORTED_CMD。"
+          "description": "UART4返回SUCCESS及实际应用参数。"
         }
       ],
-      "debugger": "V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。"
+      "debugger": "0x3040为1、0x3041为55；V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。"
     },
     {
       "id": "V851-CTL-UVB",
@@ -690,7 +716,7 @@
       "suite": "v851_control",
       "title": "灯光控制命令",
       "precondition": "身份与时间已缓存",
-      "description": "验证light.set控制类型。",
+      "description": "验证light.set参数写入0x3020并返回成功应答。",
       "actions": [
         {
           "port": "v851",
@@ -719,21 +745,29 @@
             "msg_type": "device.command_ack",
             "data": {
               "command_id": "CMD-LIGHT",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
+              "status": "SUCCESS",
+              "result": {
+                "cmd": "light.set",
+                "executed": true,
+                "applied": {
+                  "enabled": true,
+                  "brightness": 80,
+                  "color_temperature": 4500
+                }
+              }
             }
           },
-          "description": "UART4返回UNSUPPORTED_CMD。"
+          "description": "UART4返回SUCCESS及实际应用参数。"
         }
       ],
-      "debugger": "V851_CONTROL_LIGHT快照保存亮度80和色温4500。"
+      "debugger": "0x3020为1、0x3021为80、0x3022为4500；控制快照updated=1。"
     },
     {
       "id": "V851-CTL-SETTINGS",
       "suite": "v851_control",
       "title": "设备设置命令",
       "precondition": "身份与时间已缓存",
-      "description": "验证device_settings.set控制类型。",
+      "description": "验证device_settings.set参数写入0x3030并返回成功应答。",
       "actions": [
         {
           "port": "v851",
@@ -762,14 +796,191 @@
             "msg_type": "device.command_ack",
             "data": {
               "command_id": "CMD-SETTINGS",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
+              "status": "SUCCESS",
+              "result": {
+                "cmd": "device_settings.set",
+                "executed": true,
+                "applied": {
+                  "language": "zh-CN",
+                  "volume": 60,
+                  "screen_brightness": 70
+                }
+              }
             }
           },
-          "description": "UART4返回UNSUPPORTED_CMD。"
+          "description": "UART4返回SUCCESS及实际应用参数。"
         }
       ],
-      "debugger": "V851_CONTROL_DEVICE_SETTINGS快照保存语言、音量和屏幕亮度。"
+      "debugger": "0x3030为60、0x3031为70、0x3032开始为zh-CN；控制快照updated=1。"
+    },
+    {
+      "id": "V851-CTL-INVALID-MISSING",
+      "suite": "v851_control",
+      "title": "控制参数缺少必填字段",
+      "precondition": "身份与时间已缓存",
+      "description": "排风命令缺少level时拒绝执行且不改写0x3000。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-INVALID-MISSING",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-INVALID-MISSING",
+              "cmd": "exhaust.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-INVALID-MISSING",
+              "status": "FAILED",
+              "error_code": "INVALID_PARAMS"
+            }
+          },
+          "description": "UART4返回FAILED/INVALID_PARAMS。"
+        }
+      ],
+      "debugger": "0x3000控制槽保持上一条有效排风控制值，不被缺字段命令清空。"
+    },
+    {
+      "id": "V851-CTL-INVALID-BOOL",
+      "suite": "v851_control",
+      "title": "控制布尔字段类型错误",
+      "precondition": "身份与时间已缓存",
+      "description": "加湿enabled为字符串时拒绝执行且不改写0x3040。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-INVALID-BOOL",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-INVALID-BOOL",
+              "cmd": "humidifier.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": "true",
+                "target_humidity": 55
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-INVALID-BOOL",
+              "status": "FAILED",
+              "error_code": "INVALID_PARAMS"
+            }
+          },
+          "description": "UART4返回FAILED/INVALID_PARAMS。"
+        }
+      ],
+      "debugger": "0x3040控制槽保持上一条有效加湿控制值。"
+    },
+    {
+      "id": "V851-CTL-INVALID-TEXT",
+      "suite": "v851_control",
+      "title": "控制文本字段过长",
+      "precondition": "身份与时间已缓存",
+      "description": "设备语言超过8字节时拒绝执行且不改写0x3030。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-INVALID-TEXT",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-INVALID-TEXT",
+              "cmd": "device_settings.set",
+              "expire_at": 0,
+              "params": {
+                "language": "zh-CN-EXT",
+                "volume": 60,
+                "screen_brightness": 70
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-INVALID-TEXT",
+              "status": "FAILED",
+              "error_code": "INVALID_PARAMS"
+            }
+          },
+          "description": "UART4返回FAILED/INVALID_PARAMS。"
+        }
+      ],
+      "debugger": "0x3030控制槽保持上一条有效设备设置值。"
+    },
+    {
+      "id": "V851-CTL-INVALID-RANGE",
+      "suite": "v851_control",
+      "title": "控制数值超出VP范围",
+      "precondition": "身份与时间已缓存",
+      "description": "灯光brightness超过65535时拒绝执行且不改写0x3020。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "json": {
+            "msg_id": "MSG-INVALID-RANGE",
+            "msg_type": "server.command",
+            "data": {
+              "command_id": "CMD-INVALID-RANGE",
+              "cmd": "light.set",
+              "expire_at": 0,
+              "params": {
+                "enabled": true,
+                "brightness": 65536,
+                "color_temperature": 4500
+              }
+            }
+          }
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "data": {
+              "command_id": "CMD-INVALID-RANGE",
+              "status": "FAILED",
+              "error_code": "INVALID_PARAMS"
+            }
+          },
+          "description": "UART4返回FAILED/INVALID_PARAMS。"
+        }
+      ],
+      "debugger": "0x3020控制槽保持上一条有效灯光控制值。"
     },
     {
       "id": "V851-CTL-PASSWORD",
@@ -916,9 +1127,10 @@
               "command_id": "CMD-DEDUP",
               "cmd": "light.set",
               "expire_at": 0,
-              "params": {
-                "enabled": true,
-                "brightness": 20
+          "params": {
+            "enabled": true,
+            "brightness": 20,
+            "color_temperature": 4500
               }
             }
           }
@@ -937,9 +1149,10 @@
               "command_id": "CMD-DEDUP",
               "cmd": "light.set",
               "expire_at": 0,
-              "params": {
-                "enabled": true,
-                "brightness": 99
+          "params": {
+            "enabled": true,
+            "brightness": 99,
+            "color_temperature": 5000
               }
             }
           }
@@ -952,12 +1165,11 @@
           "match": {
             "msg_type": "device.command_ack",
             "data": {
-              "command_id": "CMD-DEDUP",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
-            }
-          },
-          "description": "第一次请求返回UNSUPPORTED。"
+          "command_id": "CMD-DEDUP",
+          "status": "SUCCESS"
+        }
+      },
+      "description": "第一次请求执行并返回SUCCESS。"
         },
         {
           "port": "v851",
@@ -965,15 +1177,14 @@
           "match": {
             "msg_type": "device.command_ack",
             "data": {
-              "command_id": "CMD-DEDUP",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
-            }
-          },
+          "command_id": "CMD-DEDUP",
+          "status": "SUCCESS"
+        }
+      },
           "description": "第二次请求返回相同状态，不重新执行。"
         }
       ],
-      "debugger": "V851_CONTROL_LIGHT的revision只增加1，保存的brightness仍为20。"
+  "debugger": "V851_CONTROL_LIGHT的revision只增加1，0x3021保持20且0x3022保持4500。"
     },
     {
       "id": "V851-EXPIRED-001",
@@ -1533,8 +1744,9 @@
               "command_id": "CMD-BOUNDARY-2000",
               "cmd": "exhaust.set",
               "expire_at": 0,
-              "params": {
-                "enabled": true
+        "params": {
+          "enabled": true,
+          "level": 3
               }
             }
           }
@@ -1548,12 +1760,11 @@
           "match": {
             "msg_type": "device.command_ack",
             "data": {
-              "command_id": "CMD-BOUNDARY-2000",
-              "status": "UNSUPPORTED",
-              "error_code": "UNSUPPORTED_CMD"
-            }
-          },
-          "description": "UART4完成解析并返回UNSUPPORTED_CMD，而不是因帧长度丢弃。"
+          "command_id": "CMD-BOUNDARY-2000",
+          "status": "SUCCESS"
+        }
+      },
+      "description": "UART4完成解析、写入排风参数并返回SUCCESS，而不是因帧长度丢弃。"
         }
       ],
       "debugger": "V851_CONTROL_EXHAUST的params_len大于256、stored_len=256、params_truncated=1。"

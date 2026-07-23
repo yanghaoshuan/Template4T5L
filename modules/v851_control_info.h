@@ -6,11 +6,14 @@
 #if bleV851_BRIDGE_ENABLED
 
 #define V851_CONTROL_PARAMS_SNAPSHOT_MAX        256U  /**< 单类控制参数快照上限 */
-#define V851_CONTROL_DGUS_TASK_INTERVAL          10U
-#define V851_CONTROL_DGUS_BASE_ADDR              0x3000UL
-#define V851_CONTROL_DGUS_ADDR_STRIDE            0x0010UL
-#define V851_CONTROL_DGUS_RECORD_BYTES           16U
-#define V851_CONTROL_DGUS_RECORD_WORDS           (V851_CONTROL_DGUS_RECORD_BYTES / 2U)
+#define V851_CONTROL_DGUS_SLOT_WORDS             0x0010U
+#define V851_CONTROL_DGUS_SLOT_BYTES             (V851_CONTROL_DGUS_SLOT_WORDS * 2U)
+#define V851_CONTROL_DGUS_TEXT_BYTES             8U
+#define V851_CONTROL_DGUS_EXHAUST_ADDR           0x3000UL
+#define V851_CONTROL_DGUS_CLIMATE_ADDR           0x3010UL
+#define V851_CONTROL_DGUS_LIGHT_ADDR             0x3020UL
+#define V851_CONTROL_DGUS_SETTINGS_ADDR          0x3030UL
+#define V851_CONTROL_DGUS_HUMIDIFIER_ADDR        0x3040UL
 
 typedef struct
 {
@@ -65,20 +68,19 @@ const V851ControlDetails *V851ControlInfoGet(V851ControlType type);
 uint8_t V851ControlInfoClearUpdated(V851ControlType type);
 
 /**
- * @brief 将指定的控制信息更新同步到DGUS变量空间。
+ * @brief 注册写入DGUS变量空间的控制处理器。
  *
  * @details 固定地址映射如下：
- * - 0x3000：排风控制
- * - 0x3010：温控
- * - 0x3020：灯光
- * - 0x3030：设备设置
+ * - 0x3000：排风，+0 enabled，+1 level
+ * - 0x3010：温控，+0 enabled，+1 target_temperature，+2至+5 mode
+ * - 0x3020：灯光，+0 enabled，+1 brightness，+2 color_temperature
+ * - 0x3030：设备设置，+0 volume，+1 screen_brightness，+2至+5 language
+ * - 0x3040：加湿，+0 enabled，+1 target_humidity
  *
- * 每条记录固定16字节：
- * byte0为控制类型，byte1为状态标志，byte2-3为原始参数长度，
- * byte4-7为版本号，byte8-11为接收时刻，byte12-13为已保存参数长度，
- * byte14-15为已保存参数的CRC16。多字节数值使用大端顺序。
+ * @return 五类控制处理器全部注册成功返回1，否则返回0。
+ * @note 每个控制槽占0x10个VP，写入时先整体清零。
  */
-void V851ControlInfoDgusTask(void);
+uint8_t V851ControlInfoDgusInit(void);
 
 #endif /* bleV851_BRIDGE_ENABLED */
 
