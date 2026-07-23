@@ -596,6 +596,26 @@
               <FileType>5</FileType>
               <FilePath>..\modules\v851_protocol.h</FilePath>
             </File>
+            <File>
+              <FileName>v851_control_info.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\v851_control_info.c</FilePath>
+            </File>
+            <File>
+              <FileName>v851_control_info.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\v851_control_info.h</FilePath>
+            </File>
+            <File>
+              <FileName>v851_control_mock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\v851_control_mock.c</FilePath>
+            </File>
+            <File>
+              <FileName>v851_control_mock.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\v851_control_mock.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

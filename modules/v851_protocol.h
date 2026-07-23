@@ -11,6 +11,8 @@
 #define V851_PRODUCT_KEY_MAX                     32U
 #define V851_BLE_ID_MAX                          6U
 #define V851_SHORT_TEXT_MAX                      32U
+#define V851_COMMAND_ID_MAX                      64U
+#define V851_COMMAND_NAME_MAX                    32U
 
 #if uartUART4_TXBUF_SIZE < 2008U
 #error "UART4 TX buffer is too small for a maximum AA55 JSON frame."

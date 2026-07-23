@@ -6,6 +6,7 @@
 #include "core_json.h"
 #include "pb03f_ble.h"
 #include "timer.h"
+#include "v851_control_info.h"
 #if otaOTA_ENABLED
 #include "ota.h"
 #endif
@@ -23,8 +24,6 @@
 #define V851_STREAM_TIMEOUT_MS                 5000UL
 #define V851_OTA_TX_MAX                        64U
 #define V851_JSON_TX_DEPTH                     2U
-#define V851_COMMAND_ID_MAX                    64U
-#define V851_COMMAND_NAME_MAX                  32U
 #define V851_ERROR_CODE_MAX                    64U
 #define V851_DEDUP_DEPTH                       4U
 
@@ -614,6 +613,7 @@ static void V851HandleServerCommand(const uint8_t *_data, uint16_t len)
                                      NULL, 0U, NULL, 0U);
         }else
         {
+            (void)V851ControlInfoUpdate(&command);
             V851HandleOtaCommand(&context);
         }
         return;
@@ -624,15 +624,18 @@ static void V851HandleServerCommand(const uint8_t *_data, uint16_t len)
         result.status = V851_CONTROL_STATUS_FAILED;
         result.error_code = "INVALID_PARAMS";
         result.error_message = "command expired";
-    }else if((command.type != V851_CONTROL_INVALID) &&
-             (v851_handlers[command.type] != NULL))
+    }else if(command.type != V851_CONTROL_INVALID)
     {
-        result.status = V851_CONTROL_STATUS_FAILED;
-        result.error_code = NULL;
-        result.error_message = NULL;
-        result.applied_json = NULL;
-        result.applied_len = 0U;
-        v851_handlers[command.type](&command, &result);
+        (void)V851ControlInfoUpdate(&command);
+        if(v851_handlers[command.type] != NULL)
+        {
+            result.status = V851_CONTROL_STATUS_FAILED;
+            result.error_code = NULL;
+            result.error_message = NULL;
+            result.applied_json = NULL;
+            result.applied_len = 0U;
+            v851_handlers[command.type](&command, &result);
+        }
     }
 
     if(result.status == V851_CONTROL_STATUS_SUCCESS)
@@ -1018,6 +1021,7 @@ void V851ProtocolInit(void)
     memset(v851_ack_json, 0, sizeof(v851_ack_json));
     memset(&v851_device_info, 0, sizeof(v851_device_info));
     memset(v851_handlers, 0, sizeof(v851_handlers));
+    V851ControlInfoInit();
     memset(v851_dedup, 0, sizeof(v851_dedup));
     memset(&v851_ota_command, 0, sizeof(v851_ota_command));
     V851CopyText(v851_device_info.bind_status,

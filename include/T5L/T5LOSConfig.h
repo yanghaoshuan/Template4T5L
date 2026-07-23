@@ -171,6 +171,7 @@ extern uint32_t sysFCLK;
 
 #define uartTA_PROTOCOL_ENABLED          0
 #define bleV851_BRIDGE_ENABLED           1      /**< UART5 PB-03F与UART4 V851分层协议 */
+#define v851CONTROL_MOCK_ENABLED         1      /**< V851控制命令完整帧Mock接口 */
 #define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
