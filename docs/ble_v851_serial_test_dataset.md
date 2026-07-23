@@ -27,7 +27,7 @@ python tools/t5l_serial_simulator.py render-md --check
 `run`在打开目标串口前会先列出系统当前识别到的端口。若端口显示存在但打开时报“拒绝访问”，请关闭串口调试助手、Keil串口窗口或其他占用该COM口的程序，再使用 `ports --probe` 确认可访问性。
 
 - `--mode ble`：只打开UART2蓝牙串口，执行 11 条蓝牙单端用例。
-- `--mode v851`：只打开UART4 V851串口，执行 25 条V851单端用例。
+- `--mode v851`：只打开UART4 V851串口，执行 29 条V851单端用例。
 - `--mode both`：打开两路串口，执行完整桥接、双向转发及全部异常用例。
 
 电脑端会自动响应 PB-03F AT 初始化。固定模拟 MAC 为 `A1B2C3D4E5F6`；多分片发送间隔为 20 ms，以适配 UART2 的 256 字节接收环形缓冲区。
@@ -467,7 +467,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - 分类：`v851_control`
 - 前置条件：V851-TIME-001通过
-- 说明：验证exhaust.set映射、快照更新及当前未注册处理器时的应答。
+- 说明：验证exhaust.set参数写入0x3000并返回成功应答。
 
 #### 发送步骤
 
@@ -506,7 +506,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD；这表示协议已接收，但业务执行处理器尚未注册。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
@@ -516,16 +516,22 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
     "data": {
       "command_id": "CMD-EXHAUST",
       "server_msg_id": "MSG-EXHAUST",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD",
-      "error_message": "control handler is not registered"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "exhaust.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "level": 3
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1，params为{"enabled":true,"level":3}。
+- 0x3000为1、0x3001为3；V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1。
 
 ### V851-CTL-PLASMA — 等离子控制命令
 
@@ -647,7 +653,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证climate.set及多字段参数保存。
+- 说明：验证climate.set参数写入0x3010并返回成功应答。
 
 #### 发送步骤
 
@@ -688,22 +694,30 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-CLIMATE",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "climate.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "mode": "AUTO",
+          "target_temperature": 24
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_CLIMATE快照保存AUTO和24摄氏度参数。
+- 0x3010为1、0x3011为24、0x3012开始为AUTO；控制快照updated=1。
 
 ### V851-CTL-INLET — 进风风机控制命令
 
@@ -769,7 +783,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证humidifier.set控制类型。
+- 说明：验证humidifier.set参数写入0x3040并返回成功应答。
 
 #### 发送步骤
 
@@ -808,22 +822,30 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-HUMIDIFIER",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "server_msg_id": "MSG-HUMIDIFIER",
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "humidifier.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "target_humidity": 55
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。
+- 0x3040为1、0x3041为55；V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。
 
 ### V851-CTL-UVB — UVB控制命令
 
@@ -889,7 +911,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证light.set控制类型。
+- 说明：验证light.set参数写入0x3020并返回成功应答。
 
 #### 发送步骤
 
@@ -929,28 +951,36 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-LIGHT",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "light.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "brightness": 80,
+          "color_temperature": 4500
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_LIGHT快照保存亮度80和色温4500。
+- 0x3020为1、0x3021为80、0x3022为4500；控制快照updated=1。
 
 ### V851-CTL-SETTINGS — 设备设置命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证device_settings.set控制类型。
+- 说明：验证device_settings.set参数写入0x3030并返回成功应答。
 
 #### 发送步骤
 
@@ -991,22 +1021,273 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-SETTINGS",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "device_settings.set",
+        "executed": true,
+        "applied": {
+          "language": "zh-CN",
+          "volume": 60,
+          "screen_brightness": 70
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_DEVICE_SETTINGS快照保存语言、音量和屏幕亮度。
+- 0x3030为60、0x3031为70、0x3032开始为zh-CN；控制快照updated=1。
+
+### V851-CTL-INVALID-MISSING — 控制参数缺少必填字段
+
+- 分类：`v851_control`
+- 前置条件：身份与时间已缓存
+- 说明：排风命令缺少level时拒绝执行且不改写0x3000。
+
+#### 发送步骤
+
+1. 发送 V851 JSON
+
+   JSON：
+
+   ```json
+   {
+     "msg_id": "MSG-INVALID-MISSING",
+     "msg_type": "server.command",
+     "data": {
+       "command_id": "CMD-INVALID-MISSING",
+       "cmd": "exhaust.set",
+       "expire_at": 0,
+       "params": {
+         "enabled": true
+       }
+     }
+   }
+   ```
+
+   实际JSON长度：`164` 字节。
+
+   完整帧：`171` 字节，帧尾CRC字段 `386A`。
+
+   ```text
+   AA 55 00 A7 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 4D 49 53 53
+   49 4E 47 22 2C 22 6D 73 67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22
+   2C 22 64 61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 49 4E 56 41 4C
+   49 44 2D 4D 49 53 53 49 4E 47 22 2C 22 63 6D 64 22 3A 22 65 78 68 61 75 73 74 2E 73 65 74 22 2C
+   22 65 78 70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 65 6E 61 62 6C 65 64
+   22 3A 74 72 75 65 7D 7D 7D 38 6A
+   ```
+
+#### 预期结果
+
+- UART4返回FAILED/INVALID_PARAMS。
+
+  ```json
+  {
+    "msg_type": "device.command_ack",
+    "data": {
+      "command_id": "CMD-INVALID-MISSING",
+      "status": "FAILED",
+      "error_code": "INVALID_PARAMS"
+    }
+  }
+  ```
+
+#### Keil调试器检查
+
+- 0x3000控制槽保持上一条有效排风控制值，不被缺字段命令清空。
+
+### V851-CTL-INVALID-BOOL — 控制布尔字段类型错误
+
+- 分类：`v851_control`
+- 前置条件：身份与时间已缓存
+- 说明：加湿enabled为字符串时拒绝执行且不改写0x3040。
+
+#### 发送步骤
+
+1. 发送 V851 JSON
+
+   JSON：
+
+   ```json
+   {
+     "msg_id": "MSG-INVALID-BOOL",
+     "msg_type": "server.command",
+     "data": {
+       "command_id": "CMD-INVALID-BOOL",
+       "cmd": "humidifier.set",
+       "expire_at": 0,
+       "params": {
+         "enabled": "true",
+         "target_humidity": 55
+       }
+     }
+   }
+   ```
+
+   实际JSON长度：`184` 字节。
+
+   完整帧：`191` 字节，帧尾CRC字段 `4D97`。
+
+   ```text
+   AA 55 00 BB A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 42 4F 4F 4C
+   22 2C 22 6D 73 67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22 64
+   61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 49 4E 56 41 4C 49 44 2D
+   42 4F 4F 4C 22 2C 22 63 6D 64 22 3A 22 68 75 6D 69 64 69 66 69 65 72 2E 73 65 74 22 2C 22 65 78
+   70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 22
+   74 72 75 65 22 2C 22 74 61 72 67 65 74 5F 68 75 6D 69 64 69 74 79 22 3A 35 35 7D 7D 7D 4D 97
+   ```
+
+#### 预期结果
+
+- UART4返回FAILED/INVALID_PARAMS。
+
+  ```json
+  {
+    "msg_type": "device.command_ack",
+    "data": {
+      "command_id": "CMD-INVALID-BOOL",
+      "status": "FAILED",
+      "error_code": "INVALID_PARAMS"
+    }
+  }
+  ```
+
+#### Keil调试器检查
+
+- 0x3040控制槽保持上一条有效加湿控制值。
+
+### V851-CTL-INVALID-TEXT — 控制文本字段过长
+
+- 分类：`v851_control`
+- 前置条件：身份与时间已缓存
+- 说明：设备语言超过8字节时拒绝执行且不改写0x3030。
+
+#### 发送步骤
+
+1. 发送 V851 JSON
+
+   JSON：
+
+   ```json
+   {
+     "msg_id": "MSG-INVALID-TEXT",
+     "msg_type": "server.command",
+     "data": {
+       "command_id": "CMD-INVALID-TEXT",
+       "cmd": "device_settings.set",
+       "expire_at": 0,
+       "params": {
+         "language": "zh-CN-EXT",
+         "volume": 60,
+         "screen_brightness": 70
+       }
+     }
+   }
+   ```
+
+   实际JSON长度：`209` 字节。
+
+   完整帧：`216` 字节，帧尾CRC字段 `3125`。
+
+   ```text
+   AA 55 00 D4 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 54 45 58 54
+   22 2C 22 6D 73 67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22 64
+   61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 49 4E 56 41 4C 49 44 2D
+   54 45 58 54 22 2C 22 63 6D 64 22 3A 22 64 65 76 69 63 65 5F 73 65 74 74 69 6E 67 73 2E 73 65 74
+   22 2C 22 65 78 70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 6C 61 6E 67 75
+   61 67 65 22 3A 22 7A 68 2D 43 4E 2D 45 58 54 22 2C 22 76 6F 6C 75 6D 65 22 3A 36 30 2C 22 73 63
+   72 65 65 6E 5F 62 72 69 67 68 74 6E 65 73 73 22 3A 37 30 7D 7D 7D 31 25
+   ```
+
+#### 预期结果
+
+- UART4返回FAILED/INVALID_PARAMS。
+
+  ```json
+  {
+    "msg_type": "device.command_ack",
+    "data": {
+      "command_id": "CMD-INVALID-TEXT",
+      "status": "FAILED",
+      "error_code": "INVALID_PARAMS"
+    }
+  }
+  ```
+
+#### Keil调试器检查
+
+- 0x3030控制槽保持上一条有效设备设置值。
+
+### V851-CTL-INVALID-RANGE — 控制数值超出VP范围
+
+- 分类：`v851_control`
+- 前置条件：身份与时间已缓存
+- 说明：灯光brightness超过65535时拒绝执行且不改写0x3020。
+
+#### 发送步骤
+
+1. 发送 V851 JSON
+
+   JSON：
+
+   ```json
+   {
+     "msg_id": "MSG-INVALID-RANGE",
+     "msg_type": "server.command",
+     "data": {
+       "command_id": "CMD-INVALID-RANGE",
+       "cmd": "light.set",
+       "expire_at": 0,
+       "params": {
+         "enabled": true,
+         "brightness": 65536,
+         "color_temperature": 4500
+       }
+     }
+   }
+   ```
+
+   实际JSON长度：`202` 字节。
+
+   完整帧：`209` 字节，帧尾CRC字段 `02BC`。
+
+   ```text
+   AA 55 00 CD A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 52 41 4E 47
+   45 22 2C 22 6D 73 67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22
+   64 61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 49 4E 56 41 4C 49 44
+   2D 52 41 4E 47 45 22 2C 22 63 6D 64 22 3A 22 6C 69 67 68 74 2E 73 65 74 22 2C 22 65 78 70 69 72
+   65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 74 72 75 65
+   2C 22 62 72 69 67 68 74 6E 65 73 73 22 3A 36 35 35 33 36 2C 22 63 6F 6C 6F 72 5F 74 65 6D 70 65
+   72 61 74 75 72 65 22 3A 34 35 30 30 7D 7D 7D 02 BC
+   ```
+
+#### 预期结果
+
+- UART4返回FAILED/INVALID_PARAMS。
+
+  ```json
+  {
+    "msg_type": "device.command_ack",
+    "data": {
+      "command_id": "CMD-INVALID-RANGE",
+      "status": "FAILED",
+      "error_code": "INVALID_PARAMS"
+    }
+  }
+  ```
+
+#### Keil调试器检查
+
+- 0x3020控制槽保持上一条有效灯光控制值。
 
 ### V851-CTL-PASSWORD — 设备密码命令脱敏
 
@@ -1215,23 +1496,24 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
        "expire_at": 0,
        "params": {
          "enabled": true,
-         "brightness": 20
+         "brightness": 20,
+         "color_temperature": 4500
        }
      }
    }
    ```
 
-   实际JSON长度：`160` 字节。
+   实际JSON长度：`185` 字节。
 
-   完整帧：`167` 字节，帧尾CRC字段 `4B71`。
+   完整帧：`192` 字节，帧尾CRC字段 `F737`。
 
    ```text
-   AA 55 00 A3 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 44 45 44 55 50 2D 31 22 2C 22 6D 73
+   AA 55 00 BC A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 44 45 44 55 50 2D 31 22 2C 22 6D 73
    67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22 64 61 74 61 22 3A
    7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 44 45 44 55 50 22 2C 22 63 6D 64 22 3A
    22 6C 69 67 68 74 2E 73 65 74 22 2C 22 65 78 70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D
    73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 74 72 75 65 2C 22 62 72 69 67 68 74 6E 65 73 73 22 3A
-   32 30 7D 7D 7D 4B 71
+   32 30 2C 22 63 6F 6C 6F 72 5F 74 65 6D 70 65 72 61 74 75 72 65 22 3A 34 35 30 30 7D 7D 7D F7 37
    ```
 
 2. 等待 100 ms
@@ -1250,36 +1532,36 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
        "expire_at": 0,
        "params": {
          "enabled": true,
-         "brightness": 99
+         "brightness": 99,
+         "color_temperature": 5000
        }
      }
    }
    ```
 
-   实际JSON长度：`160` 字节。
+   实际JSON长度：`185` 字节。
 
-   完整帧：`167` 字节，帧尾CRC字段 `9592`。
+   完整帧：`192` 字节，帧尾CRC字段 `853E`。
 
    ```text
-   AA 55 00 A3 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 44 45 44 55 50 2D 32 22 2C 22 6D 73
+   AA 55 00 BC A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 44 45 44 55 50 2D 32 22 2C 22 6D 73
    67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22 64 61 74 61 22 3A
    7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 44 45 44 55 50 22 2C 22 63 6D 64 22 3A
    22 6C 69 67 68 74 2E 73 65 74 22 2C 22 65 78 70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D
    73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 74 72 75 65 2C 22 62 72 69 67 68 74 6E 65 73 73 22 3A
-   39 39 7D 7D 7D 95 92
+   39 39 2C 22 63 6F 6C 6F 72 5F 74 65 6D 70 65 72 61 74 75 72 65 22 3A 35 30 30 30 7D 7D 7D 85 3E
    ```
 
 #### 预期结果
 
-- 第一次请求返回UNSUPPORTED。
+- 第一次请求执行并返回SUCCESS。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-DEDUP",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS"
     }
   }
   ```
@@ -1290,15 +1572,14 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-DEDUP",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS"
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_LIGHT的revision只增加1，保存的brightness仍为20。
+- V851_CONTROL_LIGHT的revision只增加1，0x3021保持20且0x3022保持4500。
 
 ### V851-EXPIRED-001 — 已过期控制命令
 
@@ -2016,7 +2297,8 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
        "cmd": "exhaust.set",
        "expire_at": 0,
        "params": {
-         "enabled": true
+         "enabled": true,
+         "level": 3
        }
      }
    }
@@ -2024,7 +2306,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
    实际JSON长度：`2000` 字节。
 
-   完整帧：`2007` 字节，帧尾CRC字段 `BCC6`。
+   完整帧：`2007` 字节，帧尾CRC字段 `4DFE`。
 
    ```text
    AA 55 07 D3 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 42 4F 55 4E 44 41 52 59 2D 32 30 30
@@ -2032,7 +2314,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
    64 61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 42 4F 55 4E 44 41 52
    59 2D 32 30 30 30 22 2C 22 63 6D 64 22 3A 22 65 78 68 61 75 73 74 2E 73 65 74 22 2C 22 65 78 70
    69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 74 72
-   75 65 2C 22 70 61 64 64 69 6E 67 22 3A 22 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
+   75 65 2C 22 6C 65 76 65 6C 22 3A 33 2C 22 70 61 64 64 69 6E 67 22 3A 22 58 58 58 58 58 58 58 58
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
@@ -2089,20 +2371,19 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
    58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58
-   58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 22 7D 7D 7D BC C6
+   58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 22 7D 7D 7D 4D FE
    ```
 
 #### 预期结果
 
-- UART4完成解析并返回UNSUPPORTED_CMD，而不是因帧长度丢弃。
+- UART4完成解析、写入排风参数并返回SUCCESS，而不是因帧长度丢弃。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-BOUNDARY-2000",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS"
     }
   }
   ```

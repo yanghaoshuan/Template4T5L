@@ -70,9 +70,9 @@ void main(void)
 	#if bleV851_BRIDGE_ENABLED
 	V851ProtocolInit();
 	Pb03fBleInit();
+	(void)V851ControlInfoDgusInit();
 	#if v851CONTROL_MOCK_ENABLED
 	(void)V851ControlMockInjectAll();
-	V851ControlInfoDgusTask();
 	#endif /* v851CONTROL_MOCK_ENABLED */
 	#endif /* bleV851_BRIDGE_ENABLED */
 
@@ -93,7 +93,6 @@ void main(void)
 
 	#if bleV851_BRIDGE_ENABLED
 	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
-	SysTaskAdd(7, V851_CONTROL_DGUS_TASK_INTERVAL, V851ControlInfoDgusTask);
 	#endif /* bleV851_BRIDGE_ENABLED */
 
 	#if _4G_AIR780E_ENABLED

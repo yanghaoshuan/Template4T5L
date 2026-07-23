@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 
@@ -17,46 +18,84 @@ class V851ControlDgusTests(unittest.TestCase):
             REPO_ROOT / "modules" / "v851_control_info.c"
         ).read_text(encoding="utf-8")
         cls.main = (REPO_ROOT / "user" / "main.c").read_text(encoding="utf-8")
-
-    def test_dgus_address_layout_uses_requested_base_and_stride(self) -> None:
-        self.assertIn(
-            "#define V851_CONTROL_DGUS_BASE_ADDR              0x3000UL",
-            self.header,
-        )
-        self.assertIn(
-            "#define V851_CONTROL_DGUS_ADDR_STRIDE            0x0010UL",
-            self.header,
-        )
-        for slot, control_type in enumerate(
-            (
-                "V851_CONTROL_EXHAUST",
-                "V851_CONTROL_CLIMATE",
-                "V851_CONTROL_LIGHT",
-                "V851_CONTROL_DEVICE_SETTINGS",
+        cls.vectors = json.loads(
+            (REPO_ROOT / "tests" / "serial_bridge_vectors.json").read_text(
+                encoding="utf-8"
             )
-        ):
-            with self.subTest(slot=slot):
-                case = f"case {slot}U:"
-                case_index = self.source.index(case)
-                return_index = self.source.index(
-                    f"return {control_type};",
-                    case_index,
-                )
-                self.assertGreater(return_index, case_index)
-
-    def test_control_api_is_called_and_updates_are_written(self) -> None:
-        self.assertIn("V851ControlInfoIsUpdated(type)", self.source)
-        self.assertIn("V851ControlInfoGet(type)", self.source)
-        self.assertIn("write_dgus_vp(address, record", self.source)
-        self.assertIn("V851ControlInfoClearUpdated(type)", self.source)
-
-    def test_mock_controls_are_injected_and_sync_task_is_registered(self) -> None:
-        self.assertIn("(void)V851ControlMockInjectAll();", self.main)
-        self.assertIn("V851ControlInfoDgusTask();", self.main)
-        self.assertIn(
-            "V851_CONTROL_DGUS_TASK_INTERVAL, V851ControlInfoDgusTask",
-            self.main,
         )
+
+    def test_dgus_address_layout_is_contiguous(self) -> None:
+        expected = {
+            "EXHAUST": "0x3000UL",
+            "CLIMATE": "0x3010UL",
+            "LIGHT": "0x3020UL",
+            "SETTINGS": "0x3030UL",
+            "HUMIDIFIER": "0x3040UL",
+        }
+        for name, address in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(
+                    f"#define V851_CONTROL_DGUS_{name}_ADDR",
+                    self.header,
+                )
+                self.assertIn(address, self.header)
+
+    def test_five_handlers_are_registered_and_write_actual_fields(self) -> None:
+        for control_type in (
+            "V851_CONTROL_EXHAUST",
+            "V851_CONTROL_CLIMATE",
+            "V851_CONTROL_LIGHT",
+            "V851_CONTROL_DEVICE_SETTINGS",
+            "V851_CONTROL_HUMIDIFIER",
+        ):
+            with self.subTest(control_type=control_type):
+                self.assertIn(
+                    f"{control_type}, V851ControlInfoDgusHandler",
+                    self.source,
+                )
+        self.assertIn('"target_humidity"', self.source)
+        self.assertIn("V851_CONTROL_STATUS_SUCCESS", self.source)
+        self.assertIn('"INVALID_PARAMS"', self.source)
+        self.assertIn("write_dgus_vp(address, record", self.source)
+
+    def test_handlers_are_registered_before_mock_injection(self) -> None:
+        register_index = self.main.index("(void)V851ControlInfoDgusInit();")
+        mock_index = self.main.index("(void)V851ControlMockInjectAll();")
+        self.assertLess(register_index, mock_index)
+        self.assertNotIn("V851ControlInfoDgusTask", self.main)
+
+    def test_selected_control_vectors_expect_success(self) -> None:
+        selected = {
+            "V851-CTL-EXHAUST",
+            "V851-CTL-CLIMATE",
+            "V851-CTL-LIGHT",
+            "V851-CTL-SETTINGS",
+            "V851-CTL-HUMIDIFIER",
+        }
+        by_id = {case["id"]: case for case in self.vectors["cases"]}
+        for case_id in selected:
+            with self.subTest(case_id=case_id):
+                match = by_id[case_id]["expected"][0]["match"]["data"]
+                self.assertEqual(match["status"], "SUCCESS")
+                self.assertNotIn("error_code", match)
+
+    def test_unregistered_control_still_expects_unsupported(self) -> None:
+        by_id = {case["id"]: case for case in self.vectors["cases"]}
+        match = by_id["V851-CTL-PLASMA"]["expected"][0]["match"]["data"]
+        self.assertEqual(match["status"], "UNSUPPORTED")
+
+    def test_invalid_control_vectors_expect_invalid_params(self) -> None:
+        by_id = {case["id"]: case for case in self.vectors["cases"]}
+        for case_id in (
+            "V851-CTL-INVALID-MISSING",
+            "V851-CTL-INVALID-BOOL",
+            "V851-CTL-INVALID-TEXT",
+            "V851-CTL-INVALID-RANGE",
+        ):
+            with self.subTest(case_id=case_id):
+                match = by_id[case_id]["expected"][0]["match"]["data"]
+                self.assertEqual(match["status"], "FAILED")
+                self.assertEqual(match["error_code"], "INVALID_PARAMS")
 
 
 if __name__ == "__main__":
