@@ -68,6 +68,14 @@ const V851ControlDetails *V851ControlInfoGet(V851ControlType type);
 uint8_t V851ControlInfoClearUpdated(V851ControlType type);
 
 /**
+ * @brief 校验控制参数并同步写入对应DGUS控制槽。
+ *
+ * @note 该入口需要由协议层直接调用，使Keil C51链接器能够正确分析
+ *       write_dgus_vp调用链，避免函数指针间接调用造成XDATA overlay冲突。
+ */
+void V851ControlInfoDgusHandler(V851ControlHandlerContext *context);
+
+/**
  * @brief 注册写入DGUS变量空间的控制处理器。
  *
  * @details 固定地址映射如下：

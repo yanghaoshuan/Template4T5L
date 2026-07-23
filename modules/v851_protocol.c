@@ -641,7 +641,18 @@ static void V851HandleServerCommand(const uint8_t *_data, uint16_t len)
             result.applied_len = 0U;
             handler_context.command = &command;
             handler_context.result = &result;
-            v851_handlers[command.type](&handler_context);
+            if(v851_handlers[command.type] == V851ControlInfoDgusHandler)
+            {
+                /*
+                 * Keil C51无法从函数指针调用推导完整overlay调用树。
+                 * 对DGUS处理器保留显式调用，避免write_dgus_vp的局部区
+                 * 与本函数命令上下文重叠。
+                 */
+                V851ControlInfoDgusHandler(&handler_context);
+            }else
+            {
+                v851_handlers[command.type](&handler_context);
+            }
         }
     }
 

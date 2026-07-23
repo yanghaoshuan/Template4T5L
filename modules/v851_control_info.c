@@ -109,7 +109,7 @@ static void V851ControlInfoDgusInvalid(V851ControlHandlerContext *context)
     context->result->applied_len = 0U;
 }
 
-static void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
+void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
 {
     const V851ControlCommand *command;
     uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];

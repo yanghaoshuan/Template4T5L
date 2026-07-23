@@ -64,6 +64,19 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertLess(register_index, mock_index)
         self.assertNotIn("V851ControlInfoDgusTask", self.main)
 
+    def test_dgus_handler_has_a_c51_overlay_safe_direct_call(self) -> None:
+        protocol = (
+            REPO_ROOT / "modules" / "v851_protocol.c"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "v851_handlers[command.type] == V851ControlInfoDgusHandler",
+            protocol,
+        )
+        self.assertIn(
+            "V851ControlInfoDgusHandler(&handler_context);",
+            protocol,
+        )
+
     def test_selected_control_vectors_expect_success(self) -> None:
         selected = {
             "V851-CTL-EXHAUST",
