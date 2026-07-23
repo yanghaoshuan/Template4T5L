@@ -1916,52 +1916,114 @@ JSONStatus_t JSON_Iterate( const char * buf,
 
 
 
-JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint8_t *outArray)
+JSONStatus_t JSONSearchToArray( const uint8_t * frame,
+                                json_size_t len,
+                                const char * query,
+                                json_size_t queryLength,
+                                char * outArray,
+                                json_size_t outCapacity )
 {
-	JSONStatus_t result;
-    char * value,save;
+    JSONStatus_t result;
+    const char * value;
     json_size_t valueLength;
+    json_size_t i;
+    JSONTypes_t valueType;
 
-    result = JSON_Search( frame, len, query, queryLength,
-                                &value, &valueLength );
-
-    if( result == JSONSuccess )
+    if( ( frame == NULL ) || ( query == NULL ) || ( outArray == NULL ) )
     {
-        save = value[valueLength];
-        value[valueLength] = 0x00;
-        CopyAsciiString(outArray,value,0);
-        /**
-         * @note:使用一个结束符，用于进行strcmp
-         */
-        outArray[valueLength] = '\0';
-        value[valueLength] = save;
-        return JSONSuccess;
+        return JSONNullParameter;
     }
-    return JSONNotFound;
+
+    if( ( len == 0U ) || ( queryLength == 0U ) || ( outCapacity == 0U ) )
+    {
+        return JSONBadParameter;
+    }
+
+    outArray[ 0 ] = '\0';
+    result = JSON_SearchConst( ( const char * ) frame,
+                               len,
+                               query,
+                               queryLength,
+                               &value,
+                               &valueLength,
+                               &valueType );
+    if( result != JSONSuccess )
+    {
+        return result;
+    }
+
+    if( ( valueType != JSONString ) || ( valueLength >= outCapacity ) )
+    {
+        return JSONBadParameter;
+    }
+
+    for( i = 0U; i < valueLength; i++ )
+    {
+        outArray[ i ] = value[ i ];
+    }
+    outArray[ valueLength ] = '\0';
+
+    return JSONSuccess;
 }
 
 
-JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint16_t *number)
+JSONStatus_t JSONSearchToNumber( const uint8_t * frame,
+                                 json_size_t len,
+                                 const char * query,
+                                 json_size_t queryLength,
+                                 uint32_t * number )
 {
-	JSONStatus_t result;
-    char * value,save;
+    JSONStatus_t result;
+    const char * value;
     json_size_t valueLength;
-    uint16_t i,temp;
-    result = JSON_Search( frame, len, query, queryLength,
-                                &value, &valueLength );
+    json_size_t i;
+    uint8_t digit;
+    uint32_t converted = 0UL;
+    JSONTypes_t valueType;
 
-    if( result == JSONSuccess )
+    if( ( frame == NULL ) || ( query == NULL ) || ( number == NULL ) )
     {
-        save = value[valueLength];
-        value[valueLength] = 0x00;
-        /** 将查询到的flag的ascii码转成hex数据，输出到flag */
-        for(i=0;i<valueLength;i++)
-        {
-            temp = temp*10 + (value[i] - '0');
-        }
-        *number = temp;
-        value[valueLength] = save;
-        return JSONSuccess;
+        return JSONNullParameter;
     }
-    return JSONNotFound;
+
+    if( ( len == 0U ) || ( queryLength == 0U ) )
+    {
+        return JSONBadParameter;
+    }
+
+    result = JSON_SearchConst( ( const char * ) frame,
+                               len,
+                               query,
+                               queryLength,
+                               &value,
+                               &valueLength,
+                               &valueType );
+    if( result != JSONSuccess )
+    {
+        return result;
+    }
+
+    if( ( valueType != JSONNumber ) || ( valueLength == 0U ) )
+    {
+        return JSONBadParameter;
+    }
+
+    for( i = 0U; i < valueLength; i++ )
+    {
+        if( ( value[ i ] < '0' ) || ( value[ i ] > '9' ) )
+        {
+            return JSONBadParameter;
+        }
+
+        digit = ( uint8_t ) ( value[ i ] - '0' );
+        if( ( converted > 429496729UL ) ||
+            ( ( converted == 429496729UL ) && ( digit > 5U ) ) )
+        {
+            return JSONBadParameter;
+        }
+        converted = ( converted * 10UL ) + digit;
+    }
+
+    *number = converted;
+    return JSONSuccess;
 }

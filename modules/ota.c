@@ -1,7 +1,7 @@
 /**
  * @file    ota.c
  * @brief   OTA升级模块实现文件
- * @details 本文件实现AB CD协议OTA状态机，负责向R11请求升级数据、
+ * @details 本文件实现AB CD协议OTA状态机，负责向V851/R11请求升级数据、
  *          校验分包CRC16、写入NAND Flash、校验整文件CRC32、
  *          生成4KB升级头文件并触发T5L Boot升级流程。
  * @author  yangming
@@ -13,6 +13,9 @@
 #if otaOTA_ENABLED
 
 #include "uart.h"
+#if bleV851_BRIDGE_ENABLED
+#include "v851_protocol.h"
+#endif
 #include <string.h>
 
 /* OTA协议帧头和命令定义 */
@@ -50,6 +53,7 @@ uint8_t OtaCompleteFlag;             /**< OTA完成标志 */
 static uint16_t xdata OtaTimeoutReload;             /**< OTA超时重装值 */
 static uint8_t xdata OtaHeaderBuffer[OTA_HEADER_BYTES]; /**< OTA 4KB头文件缓存 */
 static uint8_t OtaLastResult = 2U;                  /**< 06命令最近一次回复结果，用于超时重发 */
+static uint8_t OtaLastReportedProgress;             /**< UART4 JSON进度限频 */
 
 /**
  * @brief 读取大端16位整数
@@ -180,7 +184,7 @@ static void OtaSetTimeout(uint8_t step)
 
 /**
  * @brief 发送OTA协议帧
- * @details 自动回填AB CD帧中的大端长度字段，并通过Uart_R11发送。
+ * @details 自动回填AB CD帧中的大端长度字段，并通过UART4或旧Uart_R11发送。
  * @param[in,out] buf 待发送协议帧缓冲区
  * @param[in] len 协议帧总长度，单位为字节
  * @return 无
@@ -188,7 +192,11 @@ static void OtaSetTimeout(uint8_t step)
 static void OtaSendFrame(uint8_t *buf, uint16_t len)
 {
     OtaWriteBe16(&buf[2], len - 4U);
+    #if bleV851_BRIDGE_ENABLED
+    (void)V851ProtocolSendOtaFrame(buf, len);
+    #else
     UartSendData(&Uart_R11, buf, len);
+    #endif
 }
 
 /**
@@ -416,6 +424,9 @@ static void OtaHandleFileInfo(uint8_t *frame, uint16_t len)
     {
         OtaInit();
         OtaClearNandHeader();
+        #if bleV851_BRIDGE_ENABLED
+        V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING, 0U, NULL);
+        #endif
     }
 
     OtaStatus.total_num = frame[5];
@@ -497,6 +508,15 @@ static void OtaWritePacketToNand(uint8_t *frame, uint16_t packet_len)
             progress = 100UL;
         }
         OtaSpeedShow((uint8_t)progress);
+        #if bleV851_BRIDGE_ENABLED
+        if(((uint8_t)progress >= (uint8_t)(OtaLastReportedProgress + 5U)) ||
+           ((uint8_t)progress == 100U))
+        {
+            OtaLastReportedProgress = (uint8_t)progress;
+            V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING,
+                                       (uint8_t)progress, NULL);
+        }
+        #endif
     }
 
     OtaWaitNandIdle();
@@ -523,6 +543,10 @@ static uint8_t OtaFileCrcOk(void)
     blocks = OtaCeilDiv32(file->size, OTA_PACKET_BYTES);
     nand_addr = otaNAND_START_ADDR + ((uint32_t)file->flash_start * OTA_PACKET_BYTES);
 
+    #if bleV851_BRIDGE_ENABLED
+    V851ProtocolNotifyOtaState(V851_OTA_STAGE_VERIFYING,
+                               OtaLastReportedProgress, NULL);
+    #endif
     OtaWaitNandIdle();
     OtaStartNandCrc(nand_addr, blocks);
     OtaWaitNandIdle();
@@ -582,11 +606,21 @@ static void OtaHandlePacketData(uint8_t *frame, uint16_t len)
             if((OtaStatus.now_num + 1U) >= OtaStatus.total_num)
             {
                 OtaStatus.download_end_flag = 0x01U;
+                OtaLastReportedProgress = 100U;
+                #if bleV851_BRIDGE_ENABLED
+                V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING,
+                                           100U, NULL);
+                #endif
             }
         }else
         {
             OtaSendData06(3U);
             OtaSetTimeout(OTA_STEP_WAIT_RESULT_ACK);
+            #if bleV851_BRIDGE_ENABLED
+            V851ProtocolNotifyOtaState(V851_OTA_STAGE_FAILED,
+                                       OtaLastReportedProgress,
+                                       "HARDWARE_FAULT");
+            #endif
         }
     }else
     {
@@ -709,7 +743,13 @@ static void OtaFinishUpgrade(void)
     uint8_t boot_cmd[4];
     uint16_t complete_flag_word = 1U;
 
-    SysEnterCritical();
+    #if bleV851_BRIDGE_ENABLED
+    V851ProtocolNotifyOtaState(V851_OTA_STAGE_REBOOTING, 100U, NULL);
+    V851ProtocolTask();
+    delay_ms(30);
+    V851ProtocolTask();
+    delay_ms(30);
+    #endif
 
     OtaBuildHeader();
     write_dgus_vp(otaCACHE_VP_A, OtaHeaderBuffer, OTA_HEADER_WORDS);
@@ -720,7 +760,6 @@ static void OtaFinishUpgrade(void)
     OtaCompleteFlag = 1U;
     write_dgus_vp(otaUPGRADE_FLAG_ADDR, (uint8_t *)&complete_flag_word, 1);
     DgusToFlash(flashMAIN_BLOCK_ORDER, otaUPGRADE_FLAG_ADDR, otaUPGRADE_FLAG_ADDR, 2);
-    SysEnterCritical();
 
     OtaStatus.download_end_flag = 0U;
 
@@ -728,6 +767,7 @@ static void OtaFinishUpgrade(void)
     boot_cmd[1] = 0xAA;
     boot_cmd[2] = 0x5A;
     boot_cmd[3] = 0xA5;
+    SysEnterCritical();
     write_dgus_vp(OTA_BOOT_CMD_ADDR, boot_cmd, 2);
 
     SysExitCritical();
@@ -748,12 +788,14 @@ static void OtaTestTrigger(void)
     read_dgus_vp(otaTEST_TRIGGER_ADDR, (uint8_t *)&trigger, 1);
     if(trigger == 0x5AA5U)
     {
+        #if !bleV851_BRIDGE_ENABLED
         cmd[0] = 0xAA;
         cmd[1] = 0x55;
         cmd[2] = 0x00;
         cmd[3] = 0x01;
         cmd[4] = 0xF3;
         UartSendData(&Uart_R11, cmd, sizeof(cmd));
+        #endif
         write_dgus_vp(otaTEST_TRIGGER_ADDR, (uint8_t *)&zero, 1);
     }
 }
@@ -772,6 +814,7 @@ void OtaInit(void)
     OtaTimeout = 0U;
     OtaTimeoutReload = 0U;
     OtaLastResult = 2U;
+    OtaLastReportedProgress = 0U;
 }
 
 /**
@@ -916,6 +959,19 @@ void OtaSpeedShow(uint8_t speed_num)
         value = speed_num;
         write_dgus_vp(otaSPEED_VP_ADDR, (uint8_t *)&value, 1);
     }
+}
+
+void OtaAcknowledgeComplete(void)
+{
+    uint16_t complete_flag_word = 0U;
+
+    OtaCompleteFlag = 0U;
+    write_dgus_vp(otaUPGRADE_FLAG_ADDR,
+                  (uint8_t *)&complete_flag_word, 1);
+    DgusToFlash(flashMAIN_BLOCK_ORDER,
+                otaUPGRADE_FLAG_ADDR,
+                otaUPGRADE_FLAG_ADDR,
+                2);
 }
 
 #endif /* otaOTA_ENABLED */

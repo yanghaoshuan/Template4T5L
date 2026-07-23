@@ -1,9 +1,9 @@
 /**
  * @file    ota.h
  * @brief   OTA升级模块头文件
- * @details 本文件提供R11模块OTA升级协议接口，支持升级文件信息接收、
+ * @details 本文件提供V851/R11 OTA升级协议接口，支持升级文件信息接收、
  *          分包下载、NAND写入、升级头文件生成和升级完成后重启触发。
- *          OTA协议帧通过Uart_R11接收，帧头为AB CD。
+ *          OTA协议帧通过UART4或旧Uart_R11接收，帧头为AB CD。
  * @author  yangming
  * @version 1.0.0
  */
@@ -102,6 +102,11 @@ void OtaTimerTick1ms(void);
  * @return 无
  */
 void OtaSpeedShow(uint8_t speed_num);
+
+/**
+ * @brief Clear the persistent post-upgrade completion flag after V851 receives SUCCESS.
+ */
+void OtaAcknowledgeComplete(void);
 
 #endif /* otaOTA_ENABLED */
 

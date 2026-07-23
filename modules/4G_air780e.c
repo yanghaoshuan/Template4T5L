@@ -236,12 +236,17 @@ static void Air780E_ServerConnectTask(void)
                         case air780eCONNECT_HTTP:
                             if('{' == air780e_receive_buf[0])
                             {
-                                if(JSONSearchToArray(air780e_receive_buf,strlen(air780e_receive_buf),"type",sizeof("type") - 1,json_cmd) == JSONSuccess)
+                                if(JSONSearchToArray(air780e_receive_buf, strlen(air780e_receive_buf),
+                                                     "type", sizeof("type") - 1U,
+                                                     (char *)json_cmd, sizeof(json_cmd)) == JSONSuccess)
                                 {
                                     if(strcmp((char *)json_cmd,"up_date") == 0)
                                     {
                                         memset(json_cmd,0,sizeof(json_cmd));
-                                        if(JSONSearchToArray(air780e_receive_buf,strlen(air780e_receive_buf),"content",sizeof("content") - 1,json_cmd) == JSONSuccess)
+                                        if(JSONSearchToArray(air780e_receive_buf, strlen(air780e_receive_buf),
+                                                             "content", sizeof("content") - 1U,
+                                                             (char *)json_cmd,
+                                                             sizeof(json_cmd) - 1U) == JSONSuccess)
                                         {
                                             //在末尾补上两个0x00
                                             json_cmd[strlen(json_cmd)] = 0x00;
@@ -257,14 +262,22 @@ static void Air780E_ServerConnectTask(void)
                             }
                             break;
                         case air780eCONNECT_MQTT:
-                            if(JSONSearchToArray(air780e_receive_buf,strlen(air780e_receive_buf),air780e_status.machine_no_rx,strlen(air780e_status.machine_no_rx),json_cmd) == JSONSuccess)
+                            if(JSONSearchToArray(air780e_receive_buf, strlen(air780e_receive_buf),
+                                                 (const char *)air780e_status.machine_no_rx,
+                                                 strlen(air780e_status.machine_no_rx),
+                                                 (char *)json_cmd, sizeof(json_cmd)) == JSONSuccess)
                             {
-                                if(JSONSearchToArray(air780e_receive_buf,strlen(air780e_receive_buf),"type",sizeof("type") - 1,json_cmd) == JSONSuccess)
+                                if(JSONSearchToArray(air780e_receive_buf, strlen(air780e_receive_buf),
+                                                     "type", sizeof("type") - 1U,
+                                                     (char *)json_cmd, sizeof(json_cmd)) == JSONSuccess)
                                 {
                                     if(strcmp((char *)json_cmd,"up_date") == 0)
                                     {
                                         memset(json_cmd,0,sizeof(json_cmd));
-                                        if(JSONSearchToArray(air780e_receive_buf,strlen(air780e_receive_buf),"content",sizeof("content") - 1,json_cmd) == JSONSuccess)
+                                        if(JSONSearchToArray(air780e_receive_buf, strlen(air780e_receive_buf),
+                                                             "content", sizeof("content") - 1U,
+                                                             (char *)json_cmd,
+                                                             sizeof(json_cmd) - 1U) == JSONSuccess)
                                         {
                                             //在末尾补上两个0x00
                                             json_cmd[strlen(json_cmd)] = 0x00;

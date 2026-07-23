@@ -24,6 +24,11 @@
 #include "ota.h"
 #endif /* otaOTA_ENABLED */
 
+#if bleV851_BRIDGE_ENABLED
+#include "pb03f_ble.h"
+#include "v851_protocol.h"
+#endif /* bleV851_BRIDGE_ENABLED */
+
 #if sysSET_FROM_LIB
 uint16_t sys_2k_ratio;
 uint32_t sysFOSC;
@@ -653,7 +658,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 
 void UartReadFrame(UART_TYPE *uart)
 {
-    uint8_t frame[uartUART_COMMON_FRAME_SIZE];
+    static uint8_t xdata frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
     if(uart->RxFlag == UART_NON_REC)
         return;
@@ -699,6 +704,20 @@ void UartReadFrame(UART_TYPE *uart)
             #endif /* uartUART5_ENABLED */
         }   
         total_frame_len = i;
+
+        #if bleV851_BRIDGE_ENABLED
+        if(uart == &Uart4)
+        {
+            V851ProtocolReceive(uart, frame, total_frame_len);
+            return;
+        }
+        if(uart == &Uart5)
+        {
+            Pb03fBleReceive(uart, frame, total_frame_len);
+            return;
+        }
+        #endif /* bleV851_BRIDGE_ENABLED */
+
         while(i > 0)
         {
             frame_offset = total_frame_len - i;

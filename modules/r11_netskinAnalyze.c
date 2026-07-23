@@ -1028,17 +1028,28 @@ static void R11IPResultHandle(uint8_t *frame,uint16_t len)
  */
 static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 {
+    uint32_t remove_flag;
+
 	/** 此处需要去掉帧头 */
-	if(JSONSearchToArray(&frame[5],len-5,"cmd",sizeof("cmd") - 1,Json_Wechat.send_cmd) == JSONSuccess)
+	if(JSONSearchToArray(&frame[5], len - 5U,
+                         "cmd", sizeof("cmd") - 1U,
+                         Json_Wechat.send_cmd,
+                         sizeof(Json_Wechat.send_cmd)) == JSONSuccess)
 	{
 		if(strcmp((char *)Json_Wechat.send_cmd,"getskinapi") == 0)
 		{
 			/** 处理getskinapi的逻辑 */
-			if(JSONSearchToArray(&frame[5],len-5,"weixinurl",sizeof("weixinurl") - 1,Json_Wechat.weixin_url) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5], len - 5U,
+                                 "weixinurl", sizeof("weixinurl") - 1U,
+                                 Json_Wechat.weixin_url,
+                                 sizeof(Json_Wechat.weixin_url)) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.app_qr_addr,Json_Wechat.weixin_url,64);
 			}
-			if(JSONSearchToArray(&frame[5],len-5,"storeurl",sizeof("storeurl") - 1,Json_Wechat.store_url) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5], len - 5U,
+                                 "storeurl", sizeof("storeurl") - 1U,
+                                 Json_Wechat.store_url,
+                                 sizeof(Json_Wechat.store_url)) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.clerk_qr_addr,Json_Wechat.store_url,64);
 			}
@@ -1049,8 +1060,12 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"removeUser") == 0)
 		{
 			/** 处理removeUser的逻辑 */
-			if(JSONSearchToNumber(&frame[5],len-5,"code",sizeof("code") - 1,(uint16_t *)&Json_Wechat.remove_flag) == JSONSuccess)
+			if((JSONSearchToNumber(&frame[5], len - 5U,
+                                        "code", sizeof("code") - 1U,
+                                        &remove_flag) == JSONSuccess) &&
+               (remove_flag <= 0xFFFFUL))
 			{
+				Json_Wechat.remove_flag = (uint16_t)remove_flag;
 				if(Json_Wechat.remove_flag == 0 && net_connected_state == NET_REMOVEUSER_WAITING)
 				{
 					net_connected_state = NET_GETSKINAPI_SEND;
@@ -1060,11 +1075,17 @@ static void R11JsonToWeChatString(uint8_t *frame,uint16_t len)
 		}else if(strcmp((char *)Json_Wechat.send_cmd,"weixin") == 0)
 		{
 			/** 处理weixin的逻辑 */
-			if(JSONSearchToArray(&frame[5],len-5,"tel",sizeof("tel") - 1,Json_Wechat.weixin_tel) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5], len - 5U,
+                                 "tel", sizeof("tel") - 1U,
+                                 Json_Wechat.weixin_tel,
+                                 sizeof(Json_Wechat.weixin_tel)) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.user_tel_addr,Json_Wechat.weixin_tel,16);
 			}
-			if(JSONSearchToArray(&frame[5],len-5,"name",sizeof("name") - 1,Json_Wechat.weixin_name) == JSONSuccess)
+			if(JSONSearchToArray(&frame[5], len - 5U,
+                                 "name", sizeof("name") - 1U,
+                                 Json_Wechat.weixin_name,
+                                 sizeof(Json_Wechat.weixin_name)) == JSONSuccess)
 			{
 				write_dgus_vp(addr_st.user_name_addr,Json_Wechat.weixin_name,16);
 			}

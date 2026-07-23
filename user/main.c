@@ -3,6 +3,11 @@
 #include "timer.h"
 #include "core_json.h"
 
+#if bleV851_BRIDGE_ENABLED
+#include "pb03f_ble.h"
+#include "v851_protocol.h"
+#endif /* bleV851_BRIDGE_ENABLED */
+
 #if otaOTA_ENABLED
 #include "ota.h"
 #endif /* otaOTA_ENABLED */
@@ -50,21 +55,37 @@ void main(void)
 
 	T5LCpuInit();
 
-	RtcInit();
-	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
-
 	#if otaOTA_ENABLED
 	/**
-	 * @note OTA初始化依赖DGUS变量空间和Uart_R11，需在T5LCpuInit之后执行。
+	 * @note OTA初始化依赖DGUS变量空间，需在T5LCpuInit之后执行。
 	 */
 	OtaDataInit();
 	OtaInit();
-	SysTaskAdd(4, otaTASK_INTERVAL, OtaTask);
 	#endif /* otaOTA_ENABLED */
+
+	#if bleV851_BRIDGE_ENABLED
+	V851ProtocolInit();
+	Pb03fBleInit();
+	#endif /* bleV851_BRIDGE_ENABLED */
+
+	RtcInit();
+	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
 	// SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
 
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
+
+	#if bleV851_BRIDGE_ENABLED
+	SysTaskAdd(3, PB03F_BLE_TASK_INTERVAL, Pb03fBleTask);
+	#endif /* bleV851_BRIDGE_ENABLED */
+
+	#if otaOTA_ENABLED
+	SysTaskAdd(4, otaTASK_INTERVAL, OtaTask);
+	#endif /* otaOTA_ENABLED */
+
+	#if bleV851_BRIDGE_ENABLED
+	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
+	#endif /* bleV851_BRIDGE_ENABLED */
 
 	#if _4G_AIR780E_ENABLED
 	SysTaskAdd(6, AIR780E_TASK_INTERVAL, Air780E_Task);

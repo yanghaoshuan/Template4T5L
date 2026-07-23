@@ -112,7 +112,7 @@ typedef            long			int32_t;
  * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
  * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
  */
-#define sysADVERTISE_MODE_ENABLED       1
+#define sysADVERTISE_MODE_ENABLED       0
 #define sysN5CAMERA_MODE_ENABLED       0
 #define sysBEAUTY_MODE_ENABLED         0
 
@@ -170,6 +170,7 @@ extern uint32_t sysFCLK;
 
 
 #define uartTA_PROTOCOL_ENABLED          0
+#define bleV851_BRIDGE_ENABLED           1      /**< UART5 PB-03F与UART4 V851分层协议 */
 #define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
@@ -184,9 +185,9 @@ extern uint32_t sysFCLK;
 
 /**
  * @brief OTA升级功能配置
- * @details OTA通过Uart_R11接收AB CD协议帧，将升级文件下载到NAND Flash后触发Boot升级。
+ * @details OTA通过UART4 V851接收AB CD协议帧，将升级文件写入NAND Flash后触发Boot升级。
  */
-#define otaOTA_ENABLED                 1              /**< OTA升级功能使能标志 */
+#define otaOTA_ENABLED                 1              /**< V851下载、T5L写入NAND并触发Boot升级 */
 #define otaCRC32_CHECK_ENABLED         1              /**< OTA整文件CRC32校验使能标志 */
 #define otaDEBUG_ENABLED               0              /**< OTA调试输出使能标志，当前默认关闭 */
 #define otaTASK_INTERVAL               2              /**< OTA周期任务执行间隔，单位为系统任务节拍 */
@@ -203,9 +204,9 @@ extern uint32_t sysFCLK;
 #define otaUPDATE_INFO_ADDR            0x4100         /**< OTA版本号、时间段等信息起始VP地址 */
 #define otaCHARGE_STATUS_ADDR          0x1000         /**< 参考项目保留的充电状态VP地址 */
 
-#if otaOTA_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-#error "OTA requires Uart_R11. Enable one R11 mode or disable otaOTA_ENABLED."
-#endif /* otaOTA_ENABLED && !R11 mode */
+#if otaOTA_ENABLED && !bleV851_BRIDGE_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
+#error "OTA requires the V851 bridge or one legacy R11 mode."
+#endif /* otaOTA_ENABLED && no transport */
 
 
 
@@ -255,7 +256,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     2000
+#define uartUART_COMMON_FRAME_SIZE     4608
 
 /**
  * @brief Modbus协议支持使能标志
@@ -318,8 +319,8 @@ extern uint32_t sysFCLK;
 #define uartUART4_ENABLED               1
 
 #if uartUART4_ENABLED
-    #define uartUART4_TXBUF_SIZE         256
-    #define uartUART4_RXBUF_SIZE         256
+    #define uartUART4_TXBUF_SIZE         2048
+    #define uartUART4_RXBUF_SIZE         4608
     #define uartUART4_TIMEOUT_ENABLED    uartUART4_ENABLED
     
     #if uartUART4_TIMEOUT_ENABLED
@@ -338,7 +339,7 @@ extern uint32_t sysFCLK;
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
+    #define uartUART5_RXBUF_SIZE         2304
     #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
     
     #if uartUART5_TIMEOUT_ENABLED
@@ -346,8 +347,8 @@ extern uint32_t sysFCLK;
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
     #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     #define uartUART5_BAUDRATE           921600
-    #else 
-    #define uartUART5_BAUDRATE           921600
+    #else
+    #define uartUART5_BAUDRATE           115200
     #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #define uartUART5_485_ENABLED        0
     

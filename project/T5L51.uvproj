@@ -566,6 +566,36 @@
               <FileType>5</FileType>
               <FilePath>..\modules\ota.h</FilePath>
             </File>
+            <File>
+              <FileName>bridge_json.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\bridge_json.c</FilePath>
+            </File>
+            <File>
+              <FileName>bridge_json.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\bridge_json.h</FilePath>
+            </File>
+            <File>
+              <FileName>pb03f_ble.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\pb03f_ble.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb03f_ble.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\pb03f_ble.h</FilePath>
+            </File>
+            <File>
+              <FileName>v851_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\v851_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>v851_protocol.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\v851_protocol.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

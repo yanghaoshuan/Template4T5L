@@ -325,8 +325,24 @@ JSONStatus_t JSON_Iterate( const char * buf,
 
 
 
-JSONStatus_t JSONSearchToArray(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint8_t *outArray);
-JSONStatus_t JSONSearchToNumber(uint8_t *frame,json_size_t len,uint8_t *query,uint8_t queryLength,uint16_t *number);
+/**
+ * @brief Search for a JSON string and copy it to a bounded, null-terminated buffer.
+ */
+JSONStatus_t JSONSearchToArray( const uint8_t * frame,
+                                json_size_t len,
+                                const char * query,
+                                json_size_t queryLength,
+                                char * outArray,
+                                json_size_t outCapacity );
+
+/**
+ * @brief Search for an unsigned decimal JSON number and convert it to uint32_t.
+ */
+JSONStatus_t JSONSearchToNumber( const uint8_t * frame,
+                                 json_size_t len,
+                                 const char * query,
+                                 json_size_t queryLength,
+                                 uint32_t * number );
 
 
 #endif /* ifndef CORE_JSON_H_ */
