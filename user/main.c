@@ -53,19 +53,9 @@ void main(void)
 	T5lNorFlashInit();
 	#endif /* flashDUAL_BACKUP_ENABLED */
 
-	#if sysSET_FROM_LIB
-	R11ConfigInitFormLib();
-	#endif /* sysSET_FROM_LIB */
 
 	T5LCpuInit();
 
-	#if otaOTA_ENABLED
-	/**
-	 * @note OTA初始化依赖DGUS变量空间，需在T5LCpuInit之后执行。
-	 */
-	OtaDataInit();
-	OtaInit();
-	#endif /* otaOTA_ENABLED */
 
 	#if bleV851_BRIDGE_ENABLED
 	V851ProtocolInit();
@@ -79,51 +69,19 @@ void main(void)
 	RtcInit();
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
-	// SysTaskAdd(1, COUNT_TASK_INTERVAL, CountTask);
-
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 
 	#if bleV851_BRIDGE_ENABLED
 	SysTaskAdd(3, PB03F_BLE_TASK_INTERVAL, Pb03fBleTask);
 	#endif /* bleV851_BRIDGE_ENABLED */
 
-	#if otaOTA_ENABLED
-	SysTaskAdd(4, otaTASK_INTERVAL, OtaTask);
-	#endif /* otaOTA_ENABLED */
-
 	#if bleV851_BRIDGE_ENABLED
 	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
 	SysTaskAdd(7, V851_CONTROL_DGUS_TASK_INTERVAL, V851ControlInfoDgusTask);
 	#endif /* bleV851_BRIDGE_ENABLED */
 
-	#if _4G_AIR780E_ENABLED
-	SysTaskAdd(6, AIR780E_TASK_INTERVAL, Air780E_Task);
-	#endif
-
-	#if sysBEAUTY_MODE_ENABLED
-	SysTaskAdd(3, R11_TASK_INTERVAL, R11NetskinAnalyzeTask);
-	#endif /* sysBEAUTY_MODE_ENABLED */
-
-	#if sysN5CAMERA_MODE_ENABLED
-	SysTaskAdd(3, R11_TASK_INTERVAL, R11N5CameraTask);
-	#endif /* sysN5CAMERA_MODE_ENABLED */
-
-	#if sysADVERTISE_MODE_ENABLED
-	SysTaskAdd(3, R11_TASK_INTERVAL, R11AdvertiseTask);
-	#endif /* sysADVERTISE_MODE_ENABLED */
-
 	while(1)
 	{
-	/** 这个任务需要在主循环中运行，用来进行数据出错后的处理 */
-	#if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-	if(data_write_f > 2)
-	{
-		EX0 = 0;
-		EX1 = 0;
-		data_write_f = 0;
-		EX1_Start();
-	}
-	#endif /* sysBEAUTY_MODE_ENABLED||sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
-	SysTaskRun();
+		SysTaskRun();
 	}
 }

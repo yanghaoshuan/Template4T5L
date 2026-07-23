@@ -151,7 +151,7 @@ extern uint32_t sysFCLK;
  * @brief 2k分辨率模式
  * @details 1: 1920*1080分辨率屏幕, 0: 其他
  */
-#define sys2K_RATIO                  1
+#define sys2K_RATIO                  0
 
 #if sys2K_RATIO
 /**
