@@ -19,8 +19,12 @@
 #define V851_MAGIC_CD                          0xCDU
 #define V851_JSON_COMMAND                      0xA1U
 #define V851_JSON_FRAME_MAX                    (BRIDGE_JSON_MAX + 7U)
+#if otaOTA_ENABLED
 #define V851_OTA_FRAME_MAX                     4128U
 #define V851_RX_FRAME_MAX                      V851_OTA_FRAME_MAX
+#else
+#define V851_RX_FRAME_MAX                      V851_JSON_FRAME_MAX
+#endif
 #define V851_STREAM_TIMEOUT_MS                 5000UL
 #define V851_OTA_TX_MAX                        64U
 #define V851_JSON_TX_DEPTH                     2U
@@ -573,6 +577,7 @@ static void V851HandleServerCommand(const uint8_t *_data, uint16_t len)
     V851CommandContext context;
     V851ControlCommand command;
     V851ControlResult result;
+    V851ControlHandlerContext handler_context;
     V851DedupRecord *record;
     uint32_t now;
 
@@ -634,7 +639,9 @@ static void V851HandleServerCommand(const uint8_t *_data, uint16_t len)
             result.error_message = NULL;
             result.applied_json = NULL;
             result.applied_len = 0U;
-            v851_handlers[command.type](&command, &result);
+            handler_context.command = &command;
+            handler_context.result = &result;
+            v851_handlers[command.type](&handler_context);
         }
     }
 
@@ -918,11 +925,15 @@ void V851ProtocolReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len)
             {
                 v851_rx_kind = V851_RX_JSON;
                 v851_rx_frame[v851_rx_len++] = _data[i];
-            }else if((v851_rx_frame[0] == V851_MAGIC_AB) && (_data[i] == V851_MAGIC_CD))
+            }
+            #if otaOTA_ENABLED
+            else if((v851_rx_frame[0] == V851_MAGIC_AB) && (_data[i] == V851_MAGIC_CD))
             {
                 v851_rx_kind = V851_RX_OTA;
                 v851_rx_frame[v851_rx_len++] = _data[i];
-            }else if((_data[i] == V851_MAGIC_AA) || (_data[i] == V851_MAGIC_AB))
+            }
+            #endif
+            else if(_data[i] == V851_MAGIC_AA)
             {
                 v851_rx_frame[0] = _data[i];
                 v851_rx_tick = GetSysTick();
@@ -944,9 +955,13 @@ void V851ProtocolReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len)
         {
             body_len = V851ReadBe16(&v851_rx_frame[2]);
             if(((v851_rx_kind == V851_RX_JSON) &&
-                ((body_len < 3U) || (body_len > (BRIDGE_JSON_MAX + 3U)))) ||
+                ((body_len < 3U) || (body_len > (BRIDGE_JSON_MAX + 3U))))
+               #if otaOTA_ENABLED
+               ||
                ((v851_rx_kind == V851_RX_OTA) &&
-                ((body_len == 0U) || (body_len > (V851_OTA_FRAME_MAX - 4U)))))
+                ((body_len == 0U) || (body_len > (V851_OTA_FRAME_MAX - 4U))))
+               #endif
+               )
             {
                 V851ResetRx();
                 continue;

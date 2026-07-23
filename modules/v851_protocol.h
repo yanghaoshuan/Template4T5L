@@ -3,6 +3,7 @@
 
 #include "sys.h"
 #include "uart.h"
+#include "timer.h"
 
 #if bleV851_BRIDGE_ENABLED
 
@@ -18,8 +19,14 @@
 #error "UART4 TX buffer is too small for a maximum AA55 JSON frame."
 #endif
 
-#if uartUART4_RXBUF_SIZE < 4128U
-#error "UART4 RX buffer is too small for a maximum AB CD OTA frame."
+#if otaOTA_ENABLED
+    #if uartUART4_RXBUF_SIZE < 4128U
+    #error "UART4 RX buffer is too small for a maximum AB CD OTA frame."
+    #endif
+#else
+    #if uartUART4_RXBUF_SIZE < 2008U
+    #error "UART4 RX buffer is too small for a maximum AA55 JSON frame."
+    #endif
 #endif
 
 #if uartUART_COMMON_FRAME_SIZE < uartUART4_RXBUF_SIZE
@@ -87,8 +94,13 @@ typedef struct
     uint16_t applied_len;
 } V851ControlResult;
 
-typedef void (*V851ControlHandler)(const V851ControlCommand *command,
-                                  V851ControlResult *result);
+typedef struct
+{
+    const V851ControlCommand *command;
+    V851ControlResult *result;
+} V851ControlHandlerContext;
+
+typedef void (*V851ControlHandler)(V851ControlHandlerContext *context);
 
 typedef enum
 {

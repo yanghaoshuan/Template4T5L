@@ -262,8 +262,8 @@
               </Ocr1>
               <Ocr2>
                 <Type>0</Type>
-                <StartAddress>0x0</StartAddress>
-                <Size>0x0</Size>
+                <StartAddress>0x8000</StartAddress>
+                <Size>0x8000</Size>
               </Ocr2>
               <Ocr3>
                 <Type>0</Type>
@@ -356,8 +356,8 @@
             <UserClasses></UserClasses>
             <CSection></CSection>
             <UserSection></UserSection>
-            <CodeBaseAddress>0X0000-0X2CFF,0X8000-0XFFFF</CodeBaseAddress>
-            <XDataBaseAddress>0X2D00-0X7FFF</XDataBaseAddress>
+            <CodeBaseAddress>0X0000-0XFFFF</CodeBaseAddress>
+            <XDataBaseAddress>0X8000-0XFFFF</XDataBaseAddress>
             <PDataBaseAddress></PDataBaseAddress>
             <BitBaseAddress></BitBaseAddress>
             <DataBaseAddress></DataBaseAddress>
