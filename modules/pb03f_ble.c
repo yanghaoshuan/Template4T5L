@@ -9,10 +9,6 @@
 
 #include <string.h>
 
-#define PB_MAGIC_HIGH                         0x4DU
-#define PB_MAGIC_LOW                          0x51U
-#define PB_FRAME_VERSION                      0x01U
-#define PB_FRAME_FLAG_LAST                    0x01U
 #define PB_TX_QUEUE_DEPTH                     2U
 #define PB_AT_STEP_COUNT                      12U
 #define PB_AT_MAX_ATTEMPTS                    3U
@@ -20,7 +16,6 @@
 #define PB_AT_TIMEOUT_MS                      1000UL
 #define PB_RESTART_DELAY_MS                   5000UL
 #define PB_ESCAPE_RETRY_DELAY_MS              5000UL
-#define PB_STREAM_TIMEOUT_MS                  5000UL
 #define PB_QR_VP_ADDR                         0x05ADU
 #define PB_QR_BUFFER_BYTES                    40U
 #define PB_AT_COMMAND_MAX                     96U
@@ -63,10 +58,6 @@ static char pb_at_line[PB_AT_LINE_MAX];
 static uint8_t pb_at_line_len;
 static uint8_t pb_at_command[PB_AT_COMMAND_MAX];
 
-static uint8_t pb_frame[PB03F_BLE_ATT_PAYLOAD_MAX];
-static uint16_t pb_frame_len;
-static uint16_t pb_frame_expected_len;
-static uint32_t pb_frame_tick;
 static uint8_t pb_boot_match;
 
 static uint8_t xdata pb_rx_json[BRIDGE_JSON_MAX + 1U];
@@ -104,17 +95,6 @@ static void PbWriteBe16(uint8_t *_data, uint16_t value)
 {
     _data[0] = (uint8_t)(value >> 8);
     _data[1] = (uint8_t)value;
-}
-
-static uint8_t PbElapsed(uint32_t start, uint32_t interval)
-{
-    return ((uint32_t)(GetSysTick() - start) >= interval) ? 1U : 0U;
-}
-
-static uint8_t PbUartIdle(void)
-{
-    return ((PB03F_BLE_UART.TxBusy == 0U) &&
-            (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail)) ? 1U : 0U;
 }
 
 static uint8_t PbHexValue(char value)
@@ -178,17 +158,6 @@ static uint8_t PbMatchToken(uint8_t value,
     return 0U;
 }
 
-static void PbResetFrame(void)
-{
-    if(pb_frame_len != 0U)
-    {
-        memset(pb_frame, 0, pb_frame_len);
-    }
-    pb_frame_len = 0U;
-    pb_frame_expected_len = 0U;
-    pb_frame_tick = 0UL;
-}
-
 static void PbResetRxAssembly(void)
 {
     if(pb_rx_json_len != 0U)
@@ -227,7 +196,6 @@ static void PbStartConfiguration(uint32_t delay)
     pb_boot_match = 0U;
     pb_tx_active = 0U;
     pb_reconfigure_requested = 0U;
-    PbResetFrame();
     PbResetRxAssembly();
     pb_rx_locked = 0U;
     pb_forward_pending = 0U;
@@ -384,63 +352,6 @@ static uint16_t PbBuildAdvCommand(void)
     return pos;
 }
 
-static void PbSendAtCommand(uint8_t step)
-{
-    uint16_t len = 0U;
-
-    switch(step)
-    {
-        case 0U:
-            len = PbCommandText(0U, "AT\r\n");
-            break;
-        case 1U:
-            len = PbCommandText(0U, "AT+BLEMODE=9\r\n");
-            break;
-        case 2U:
-            len = PbCommandText(0U,
-                "AT+BLESERUUID=4D515851504554008A3D7C2E9F1B6D10\r\n");
-            break;
-        case 3U:
-            len = PbCommandText(0U,
-                "AT+BLETXUUID=4D515851504554038A3D7C2E9F1B6D10\r\n");
-            break;
-        case 4U:
-            len = PbCommandText(0U,
-                "AT+BLERXUUID=4D515851504554028A3D7C2E9F1B6D10\r\n");
-            break;
-        case 5U:
-            len = PbCommandText(0U, "AT+BLEMTU=240\r\n");
-            break;
-        case 6U:
-            pb_mac_valid = 0U;
-            memset(pb_mac, 0, sizeof(pb_mac));
-            len = PbCommandText(0U, "AT+BLEMAC?\r\n");
-            break;
-        case 7U:
-            len = PbBuildAuthCommand();
-            break;
-        case 8U:
-            len = PbBuildNameCommand();
-            break;
-        case 9U:
-            len = PbBuildAdvCommand();
-            break;
-        case 10U:
-            len = PbCommandText(0U, "AT+BLEMODE=0\r\n");
-            break;
-        case 11U:
-            len = PbCommandText(0U, "AT+TRANSENTER\r\n");
-            break;
-        default:
-            break;
-    }
-
-    if(len != 0U)
-    {
-        UartSendData(&PB03F_BLE_UART, pb_at_command, len);
-    }
-}
-
 static void PbParseAtLine(void)
 {
     uint8_t i;
@@ -498,92 +409,50 @@ static void PbHandleAtBytes(const uint8_t *_data, uint16_t len)
     }
 }
 
-static void PbStateTask(void)
+static uint8_t PbCommitJson(uint8_t slot, uint16_t len)
 {
-    if(pb_state == PB_STATE_WAIT_DELAY)
+    uint16_t crc_value;
+
+    if((slot != pb_tx_tail) || (len == 0U) || (len > BRIDGE_JSON_MAX))
     {
-        if(PbElapsed(pb_state_tick, pb_wait_delay) != 0U)
-        {
-            pb_state = PB_STATE_SEND_COMMAND;
-        }
-    }else if(pb_state == PB_STATE_SEND_COMMAND)
-    {
-        if(PbUartIdle() != 0U)
-        {
-            pb_at_result = PB_AT_RESULT_NONE;
-            pb_at_ok_match = 0U;
-            pb_at_error_match = 0U;
-            pb_at_line_len = 0U;
-            PbSendAtCommand(pb_at_step);
-            pb_at_attempts++;
-            pb_state_tick = GetSysTick();
-            pb_state = PB_STATE_WAIT_RESPONSE;
-        }
-    }else if(pb_state == PB_STATE_WAIT_RESPONSE)
-    {
-        if((pb_at_result == PB_AT_RESULT_OK) &&
-           ((pb_at_step != 6U) || (pb_mac_valid != 0U)))
-        {
-            pb_at_attempts = 0U;
-            pb_at_step++;
-            if(pb_at_step >= PB_AT_STEP_COUNT)
-            {
-                pb_state = PB_STATE_TRANSPARENT;
-                PbResetFrame();
-                PbResetRxAssembly();
-            }else
-            {
-                pb_state = PB_STATE_SEND_COMMAND;
-            }
-        }else if((pb_at_result == PB_AT_RESULT_ERROR) ||
-                 (PbElapsed(pb_state_tick, PB_AT_TIMEOUT_MS) != 0U))
-        {
-            if(pb_at_attempts < PB_AT_MAX_ATTEMPTS)
-            {
-                pb_state = PB_STATE_SEND_COMMAND;
-            }else
-            {
-                PbStartConfiguration(PB_RESTART_DELAY_MS);
-            }
-        }
-    }else if(pb_state == PB_STATE_ESCAPE_SEND)
-    {
-        if(PbUartIdle() != 0U)
-        {
-            pb_at_result = PB_AT_RESULT_NONE;
-            pb_at_ok_match = 0U;
-            pb_at_error_match = 0U;
-            pb_at_line_len = 0U;
-            UartSendData(&PB03F_BLE_UART, (uint8_t *)"+++", 3U);
-            pb_escape_attempts++;
-            pb_state_tick = GetSysTick();
-            pb_state = PB_STATE_ESCAPE_WAIT;
-        }
-    }else if(pb_state == PB_STATE_ESCAPE_WAIT)
-    {
-        if(pb_at_result == PB_AT_RESULT_OK)
-        {
-            PbStartConfiguration(50UL);
-        }else if((pb_at_result == PB_AT_RESULT_ERROR) ||
-                 (PbElapsed(pb_state_tick, PB_AT_TIMEOUT_MS) != 0U))
-        {
-            if(pb_escape_attempts < PB_AT_MAX_ATTEMPTS)
-            {
-                pb_state = PB_STATE_ESCAPE_SEND;
-            }else
-            {
-                pb_escape_attempts = 0U;
-                pb_state_tick = GetSysTick();
-                pb_state = PB_STATE_ESCAPE_DELAY;
-            }
-        }
-    }else if(pb_state == PB_STATE_ESCAPE_DELAY)
-    {
-        if(PbElapsed(pb_state_tick, PB_ESCAPE_RETRY_DELAY_MS) != 0U)
-        {
-            pb_state = PB_STATE_ESCAPE_SEND;
-        }
+        return 0U;
     }
+
+    if((len <= PB03F_BLE_CHUNK_PAYLOAD_MAX) &&
+       (pb_state == PB_STATE_TRANSPARENT) &&
+       (pb_tx_count == 0U) && (pb_tx_active == 0U) &&
+       (PB03F_BLE_UART.TxBusy == 0U) &&
+       (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail))
+    {
+        pb_tx_frame[0] = PB03F_BLE_FRAME_MAGIC_HIGH;
+        pb_tx_frame[1] = PB03F_BLE_FRAME_MAGIC_LOW;
+        pb_tx_frame[2] = PB03F_BLE_FRAME_VERSION;
+        pb_tx_frame[3] = PB03F_BLE_FRAME_FLAG_LAST;
+        PbWriteBe16(&pb_tx_frame[4], pb_tx_next_msg_id++);
+        PbWriteBe16(&pb_tx_frame[6], 0U);
+        PbWriteBe16(&pb_tx_frame[8], 1U);
+        PbWriteBe16(&pb_tx_frame[10], len);
+        memcpy(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE],
+               pb_tx_json[slot], len);
+        crc_value = crc_16(pb_tx_frame,
+                           PB03F_BLE_FRAME_HEADER_SIZE + len);
+        PbWriteBe16(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE + len],
+                    crc_value);
+        UartSendData(&PB03F_BLE_UART, pb_tx_frame,
+                     PB03F_BLE_FRAME_HEADER_SIZE + len +
+                     PB03F_BLE_FRAME_CRC_SIZE);
+        memset(pb_tx_json[slot], 0, len);
+        return 1U;
+    }
+
+    pb_tx_json_len[slot] = len;
+    pb_tx_tail++;
+    if(pb_tx_tail >= PB_TX_QUEUE_DEPTH)
+    {
+        pb_tx_tail = 0U;
+    }
+    pb_tx_count++;
+    return 1U;
 }
 
 static uint8_t PbQueueJson(const uint8_t *_data, uint16_t len)
@@ -598,14 +467,7 @@ static uint8_t PbQueueJson(const uint8_t *_data, uint16_t len)
 
     slot = pb_tx_tail;
     memcpy(pb_tx_json[slot], _data, len);
-    pb_tx_json_len[slot] = len;
-    pb_tx_tail++;
-    if(pb_tx_tail >= PB_TX_QUEUE_DEPTH)
-    {
-        pb_tx_tail = 0U;
-    }
-    pb_tx_count++;
-    return 1U;
+    return PbCommitJson(slot, len);
 }
 
 static void PbQueuePacketError(uint16_t msg_id, const char *message)
@@ -634,13 +496,7 @@ static void PbQueuePacketError(uint16_t msg_id, const char *message)
         return;
     }
 
-    pb_tx_json_len[slot] = len;
-    pb_tx_tail++;
-    if(pb_tx_tail >= PB_TX_QUEUE_DEPTH)
-    {
-        pb_tx_tail = 0U;
-    }
-    pb_tx_count++;
+    (void)PbCommitJson(slot, len);
 }
 
 static void PbQueueBusinessError(const char *cmd,
@@ -689,13 +545,7 @@ static void PbQueueBusinessError(const char *cmd,
         return;
     }
 
-    pb_tx_json_len[slot] = len;
-    pb_tx_tail++;
-    if(pb_tx_tail >= PB_TX_QUEUE_DEPTH)
-    {
-        pb_tx_tail = 0U;
-    }
-    pb_tx_count++;
+    (void)PbCommitJson(slot, len);
 }
 
 static void PbQueueDeviceInfoAck(const char *request_id)
@@ -755,13 +605,7 @@ static void PbQueueDeviceInfoAck(const char *request_id)
         return;
     }
 
-    pb_tx_json_len[slot] = len;
-    pb_tx_tail++;
-    if(pb_tx_tail >= PB_TX_QUEUE_DEPTH)
-    {
-        pb_tx_tail = 0U;
-    }
-    pb_tx_count++;
+    (void)PbCommitJson(slot, len);
 }
 
 static void PbFailAssembly(uint16_t msg_id, const char *message)
@@ -808,9 +652,15 @@ static void PbHandleCompletedJson(void)
             PbResetRxAssembly();
             return;
         }
-        pb_forward_pending = 1U;
-        pb_rx_locked = 1U;
-        PbKeepCompletedAssembly();
+        if(V851ProtocolSendJson(pb_rx_json, pb_rx_json_len) != 0U)
+        {
+            PbResetRxAssembly();
+        }else
+        {
+            pb_forward_pending = 1U;
+            pb_rx_locked = 1U;
+            PbKeepCompletedAssembly();
+        }
     }else
     {
         PbQueueBusinessError(cmd, request_id, "UNSUPPORTED_CMD",
@@ -819,38 +669,34 @@ static void PbHandleCompletedJson(void)
     }
 }
 
-static void PbProcessFrame(void)
+static void PbProcessFrame(const uint8_t *_data, uint16_t len)
 {
     uint8_t flags;
-    uint16_t crc_calc;
-    uint16_t crc_recv;
     uint16_t msg_id;
     uint16_t chunk_index;
     uint16_t chunk_total;
     uint16_t payload_len;
 
-    msg_id = PbReadBe16(&pb_frame[4]);
-    payload_len = PbReadBe16(&pb_frame[10]);
-    crc_calc = crc_16(pb_frame, PB03F_BLE_FRAME_HEADER_SIZE + payload_len);
-    crc_recv = PbReadBe16(&pb_frame[PB03F_BLE_FRAME_HEADER_SIZE + payload_len]);
-    if(crc_calc != crc_recv)
+    if((_data == NULL) || (len < (PB03F_BLE_FRAME_HEADER_SIZE +
+                                  PB03F_BLE_FRAME_CRC_SIZE)))
     {
-        PbFailAssembly(msg_id, "crc error");
         return;
     }
 
-    flags = pb_frame[3];
-    chunk_index = PbReadBe16(&pb_frame[6]);
-    chunk_total = PbReadBe16(&pb_frame[8]);
+    msg_id = PbReadBe16(&_data[4]);
+    payload_len = PbReadBe16(&_data[10]);
+    flags = _data[3];
+    chunk_index = PbReadBe16(&_data[6]);
+    chunk_total = PbReadBe16(&_data[8]);
     if((chunk_total == 0U) || (chunk_total > PB03F_BLE_MAX_CHUNKS) ||
        (chunk_index >= chunk_total))
     {
         PbFailAssembly(msg_id, "invalid chunk index");
         return;
     }
-    if((((flags & PB_FRAME_FLAG_LAST) != 0U) &&
+    if((((flags & PB03F_BLE_FRAME_FLAG_LAST) != 0U) &&
         (chunk_index != (chunk_total - 1U))) ||
-       (((flags & PB_FRAME_FLAG_LAST) == 0U) &&
+       (((flags & PB03F_BLE_FRAME_FLAG_LAST) == 0U) &&
         (chunk_index == (chunk_total - 1U))))
     {
         PbFailAssembly(msg_id, "invalid last flag");
@@ -890,12 +736,12 @@ static void PbProcessFrame(void)
     }
 
     memcpy(&pb_rx_json[pb_rx_json_len],
-           &pb_frame[PB03F_BLE_FRAME_HEADER_SIZE], payload_len);
+           &_data[PB03F_BLE_FRAME_HEADER_SIZE], payload_len);
     pb_rx_json_len += payload_len;
     pb_rx_next_chunk++;
     pb_rx_tick = GetSysTick();
 
-    if((flags & PB_FRAME_FLAG_LAST) != 0U)
+    if((flags & PB03F_BLE_FRAME_FLAG_LAST) != 0U)
     {
         if((pb_rx_next_chunk != pb_rx_chunk_total) ||
            (JSON_Validate((const char *)pb_rx_json,
@@ -918,158 +764,6 @@ static uint8_t PbObserveBootByte(uint8_t value)
         return 1U;
     }
     return 0U;
-}
-
-static void PbHandleTransparentBytes(const uint8_t *_data, uint16_t len)
-{
-    uint16_t i;
-    uint16_t payload_len;
-
-    for(i = 0U; i < len; i++)
-    {
-        if(pb_frame_len == 0U)
-        {
-            if(_data[i] == PB_MAGIC_HIGH)
-            {
-                pb_frame[pb_frame_len++] = _data[i];
-                pb_frame_tick = GetSysTick();
-                pb_boot_match = 0U;
-            }else if(PbObserveBootByte(_data[i]) != 0U)
-            {
-                return;
-            }
-            continue;
-        }
-
-        if(pb_frame_len == 1U)
-        {
-            if(_data[i] == PB_MAGIC_LOW)
-            {
-                pb_frame[pb_frame_len++] = _data[i];
-            }else if(_data[i] == PB_MAGIC_HIGH)
-            {
-                pb_frame[0] = _data[i];
-                pb_frame_tick = GetSysTick();
-            }else
-            {
-                PbResetFrame();
-                if(PbObserveBootByte(_data[i]) != 0U)
-                {
-                    return;
-                }
-            }
-            continue;
-        }
-
-        if(pb_frame_len >= sizeof(pb_frame))
-        {
-            PbQueuePacketError(PbReadBe16(&pb_frame[4]), "frame too large");
-            PbResetFrame();
-            continue;
-        }
-        pb_frame[pb_frame_len++] = _data[i];
-
-        if(pb_frame_len == PB03F_BLE_FRAME_HEADER_SIZE)
-        {
-            payload_len = PbReadBe16(&pb_frame[10]);
-            if((pb_frame[2] != PB_FRAME_VERSION) || (payload_len == 0U) ||
-               (payload_len > PB03F_BLE_CHUNK_PAYLOAD_MAX))
-            {
-                PbQueuePacketError(PbReadBe16(&pb_frame[4]),
-                                   "invalid frame header");
-                PbResetFrame();
-                continue;
-            }
-            pb_frame_expected_len = PB03F_BLE_FRAME_HEADER_SIZE +
-                                    payload_len + PB03F_BLE_FRAME_CRC_SIZE;
-        }
-
-        if((pb_frame_expected_len != 0U) &&
-           (pb_frame_len == pb_frame_expected_len))
-        {
-            PbProcessFrame();
-            PbResetFrame();
-        }
-    }
-}
-
-static void PbForwardTask(void)
-{
-    if(pb_forward_pending == 0U)
-    {
-        return;
-    }
-
-    if(V851ProtocolSendJson(pb_rx_json, pb_rx_json_len) != 0U)
-    {
-        pb_forward_pending = 0U;
-        pb_rx_locked = 0U;
-        PbResetRxAssembly();
-    }
-}
-
-static void PbSendTask(void)
-{
-    uint8_t slot;
-    uint16_t json_len;
-    uint16_t offset;
-    uint16_t remaining;
-    uint16_t payload_len;
-    uint16_t frame_len;
-    uint16_t crc_value;
-
-    if((pb_state != PB_STATE_TRANSPARENT) ||
-       (pb_tx_count == 0U) || (PbUartIdle() == 0U))
-    {
-        return;
-    }
-
-    slot = pb_tx_head;
-    json_len = pb_tx_json_len[slot];
-    if(pb_tx_active == 0U)
-    {
-        pb_tx_active = 1U;
-        pb_tx_chunk_index = 0U;
-        pb_tx_chunk_total = (json_len + PB03F_BLE_CHUNK_PAYLOAD_MAX - 1U) /
-                            PB03F_BLE_CHUNK_PAYLOAD_MAX;
-        pb_tx_msg_id = pb_tx_next_msg_id++;
-    }
-
-    offset = pb_tx_chunk_index * PB03F_BLE_CHUNK_PAYLOAD_MAX;
-    remaining = json_len - offset;
-    payload_len = (remaining > PB03F_BLE_CHUNK_PAYLOAD_MAX) ?
-                  PB03F_BLE_CHUNK_PAYLOAD_MAX : remaining;
-
-    pb_tx_frame[0] = PB_MAGIC_HIGH;
-    pb_tx_frame[1] = PB_MAGIC_LOW;
-    pb_tx_frame[2] = PB_FRAME_VERSION;
-    pb_tx_frame[3] = ((pb_tx_chunk_index + 1U) == pb_tx_chunk_total) ?
-                     PB_FRAME_FLAG_LAST : 0U;
-    PbWriteBe16(&pb_tx_frame[4], pb_tx_msg_id);
-    PbWriteBe16(&pb_tx_frame[6], pb_tx_chunk_index);
-    PbWriteBe16(&pb_tx_frame[8], pb_tx_chunk_total);
-    PbWriteBe16(&pb_tx_frame[10], payload_len);
-    memcpy(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE],
-           &pb_tx_json[slot][offset], payload_len);
-    crc_value = crc_16(pb_tx_frame,
-                       PB03F_BLE_FRAME_HEADER_SIZE + payload_len);
-    PbWriteBe16(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE + payload_len],
-                crc_value);
-    frame_len = PB03F_BLE_FRAME_HEADER_SIZE + payload_len +
-                PB03F_BLE_FRAME_CRC_SIZE;
-    UartSendData(&PB03F_BLE_UART, pb_tx_frame, frame_len);
-
-    pb_tx_chunk_index++;
-    if(pb_tx_chunk_index >= pb_tx_chunk_total)
-    {
-        pb_tx_active = 0U;
-        pb_tx_head++;
-        if(pb_tx_head >= PB_TX_QUEUE_DEPTH)
-        {
-            pb_tx_head = 0U;
-        }
-        pb_tx_count--;
-    }
 }
 
 uint8_t Pb03fBleSendJson(const uint8_t *_data, uint16_t len)
@@ -1119,56 +813,285 @@ const char *Pb03fBleGetMac(void)
     return pb_mac;
 }
 
-void Pb03fBleReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len)
+void Pb03fBleReceive(const uint8_t *_data, uint16_t len)
 {
-    if((uart != &PB03F_BLE_UART) || (_data == NULL) || (len == 0U))
+    uint16_t i;
+
+    if((_data == NULL) || (len == 0U))
     {
         return;
     }
 
-    if(pb_state == PB_STATE_TRANSPARENT)
-    {
-        PbHandleTransparentBytes(_data, len);
-    }else
+    if(pb_state != PB_STATE_TRANSPARENT)
     {
         PbHandleAtBytes(_data, len);
+        return;
     }
+
+    if((len >= (PB03F_BLE_FRAME_HEADER_SIZE +
+                PB03F_BLE_FRAME_CRC_SIZE)) &&
+       (_data[0] == PB03F_BLE_FRAME_MAGIC_HIGH) &&
+       (_data[1] == PB03F_BLE_FRAME_MAGIC_LOW))
+    {
+        PbProcessFrame(_data, len);
+        return;
+    }
+
+    for(i = 0U; i < len; i++)
+    {
+        if(PbObserveBootByte(_data[i]) != 0U)
+        {
+            return;
+        }
+    }
+}
+
+void Pb03fBleFrameError(uint16_t msg_id, const char *message)
+{
+    if(message != NULL)
+    {
+        PbQueuePacketError(msg_id, message);
+    }
+}
+
+uint8_t Pb03fBleIsTransparent(void)
+{
+    return (pb_state == PB_STATE_TRANSPARENT) ? 1U : 0U;
 }
 
 void Pb03fBleTask(void)
 {
-    PbStateTask();
+    uint8_t slot;
+    uint16_t command_len = 0U;
+    uint16_t json_len;
+    uint16_t offset;
+    uint16_t remaining;
+    uint16_t payload_len;
+    uint16_t frame_len;
+    uint16_t crc_value;
 
-    if((pb_frame_len != 0U) &&
-       (PbElapsed(pb_frame_tick, PB_STREAM_TIMEOUT_MS) != 0U))
+    if(pb_state == PB_STATE_WAIT_DELAY)
     {
-        if(pb_frame_len >= 6U)
+        if((uint32_t)(GetSysTick() - pb_state_tick) >= pb_wait_delay)
         {
-            PbQueuePacketError(PbReadBe16(&pb_frame[4]), "incomplete frame");
+            pb_state = PB_STATE_SEND_COMMAND;
         }
-        PbResetFrame();
+    }else if(pb_state == PB_STATE_SEND_COMMAND)
+    {
+        if((PB03F_BLE_UART.TxBusy == 0U) &&
+           (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail))
+        {
+            pb_at_result = PB_AT_RESULT_NONE;
+            pb_at_ok_match = 0U;
+            pb_at_error_match = 0U;
+            pb_at_line_len = 0U;
+
+            switch(pb_at_step)
+            {
+                case 0U:
+                    command_len = PbCommandText(0U, "AT\r\n");
+                    break;
+                case 1U:
+                    command_len = PbCommandText(0U, "AT+BLEMODE=9\r\n");
+                    break;
+                case 2U:
+                    command_len = PbCommandText(0U,
+                        "AT+BLESERUUID=4D515851504554008A3D7C2E9F1B6D10\r\n");
+                    break;
+                case 3U:
+                    command_len = PbCommandText(0U,
+                        "AT+BLETXUUID=4D515851504554038A3D7C2E9F1B6D10\r\n");
+                    break;
+                case 4U:
+                    command_len = PbCommandText(0U,
+                        "AT+BLERXUUID=4D515851504554028A3D7C2E9F1B6D10\r\n");
+                    break;
+                case 5U:
+                    command_len = PbCommandText(0U, "AT+BLEMTU=240\r\n");
+                    break;
+                case 6U:
+                    pb_mac_valid = 0U;
+                    memset(pb_mac, 0, sizeof(pb_mac));
+                    command_len = PbCommandText(0U, "AT+BLEMAC?\r\n");
+                    break;
+                case 7U:
+                    command_len = PbBuildAuthCommand();
+                    break;
+                case 8U:
+                    command_len = PbBuildNameCommand();
+                    break;
+                case 9U:
+                    command_len = PbBuildAdvCommand();
+                    break;
+                case 10U:
+                    command_len = PbCommandText(0U, "AT+BLEMODE=0\r\n");
+                    break;
+                case 11U:
+                    command_len = PbCommandText(0U, "AT+TRANSENTER\r\n");
+                    break;
+                default:
+                    break;
+            }
+
+            if(command_len != 0U)
+            {
+                UartSendData(&PB03F_BLE_UART, pb_at_command, command_len);
+                pb_at_attempts++;
+                pb_state_tick = GetSysTick();
+                pb_state = PB_STATE_WAIT_RESPONSE;
+            }
+        }
+    }else if(pb_state == PB_STATE_WAIT_RESPONSE)
+    {
+        if((pb_at_result == PB_AT_RESULT_OK) &&
+           ((pb_at_step != 6U) || (pb_mac_valid != 0U)))
+        {
+            pb_at_attempts = 0U;
+            pb_at_step++;
+            if(pb_at_step >= PB_AT_STEP_COUNT)
+            {
+                pb_state = PB_STATE_TRANSPARENT;
+                PbResetRxAssembly();
+            }else
+            {
+                pb_state = PB_STATE_SEND_COMMAND;
+            }
+        }else if((pb_at_result == PB_AT_RESULT_ERROR) ||
+                 ((uint32_t)(GetSysTick() - pb_state_tick) >=
+                  PB_AT_TIMEOUT_MS))
+        {
+            if(pb_at_attempts < PB_AT_MAX_ATTEMPTS)
+            {
+                pb_state = PB_STATE_SEND_COMMAND;
+            }else
+            {
+                PbStartConfiguration(PB_RESTART_DELAY_MS);
+            }
+        }
+    }else if(pb_state == PB_STATE_ESCAPE_SEND)
+    {
+        if((PB03F_BLE_UART.TxBusy == 0U) &&
+           (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail))
+        {
+            pb_at_result = PB_AT_RESULT_NONE;
+            pb_at_ok_match = 0U;
+            pb_at_error_match = 0U;
+            pb_at_line_len = 0U;
+            UartSendData(&PB03F_BLE_UART, (uint8_t *)"+++", 3U);
+            pb_escape_attempts++;
+            pb_state_tick = GetSysTick();
+            pb_state = PB_STATE_ESCAPE_WAIT;
+        }
+    }else if(pb_state == PB_STATE_ESCAPE_WAIT)
+    {
+        if(pb_at_result == PB_AT_RESULT_OK)
+        {
+            PbStartConfiguration(50UL);
+        }else if((pb_at_result == PB_AT_RESULT_ERROR) ||
+                 ((uint32_t)(GetSysTick() - pb_state_tick) >=
+                  PB_AT_TIMEOUT_MS))
+        {
+            if(pb_escape_attempts < PB_AT_MAX_ATTEMPTS)
+            {
+                pb_state = PB_STATE_ESCAPE_SEND;
+            }else
+            {
+                pb_escape_attempts = 0U;
+                pb_state_tick = GetSysTick();
+                pb_state = PB_STATE_ESCAPE_DELAY;
+            }
+        }
+    }else if((pb_state == PB_STATE_ESCAPE_DELAY) &&
+             ((uint32_t)(GetSysTick() - pb_state_tick) >=
+              PB_ESCAPE_RETRY_DELAY_MS))
+    {
+        pb_state = PB_STATE_ESCAPE_SEND;
     }
+
     if((pb_rx_active != 0U) &&
-       (PbElapsed(pb_rx_tick, PB03F_BLE_REASSEMBLY_TIMEOUT_MS) != 0U))
+       ((uint32_t)(GetSysTick() - pb_rx_tick) >=
+        PB03F_BLE_REASSEMBLY_TIMEOUT_MS))
     {
         PbFailAssembly(pb_rx_msg_id, "missing chunk");
     }
 
-    PbForwardTask();
+    if((pb_forward_pending != 0U) &&
+       (V851ProtocolSendJson(pb_rx_json, pb_rx_json_len) != 0U))
+    {
+        pb_forward_pending = 0U;
+        pb_rx_locked = 0U;
+        PbResetRxAssembly();
+    }
 
     if((pb_state == PB_STATE_TRANSPARENT) &&
        (pb_reconfigure_requested != 0U) &&
        (pb_tx_active == 0U) && (pb_tx_count == 0U) &&
        (pb_rx_active == 0U) && (pb_rx_locked == 0U) &&
-       (pb_forward_pending == 0U) && (pb_frame_len == 0U) &&
-       (PbUartIdle() != 0U))
+       (pb_forward_pending == 0U) &&
+       (PB03F_BLE_UART.TxBusy == 0U) &&
+       (PB03F_BLE_UART.TxHead == PB03F_BLE_UART.TxTail))
     {
         pb_state = PB_STATE_ESCAPE_SEND;
-        PbStateTask();
         return;
     }
 
-    PbSendTask();
+    if((pb_state != PB_STATE_TRANSPARENT) ||
+       (pb_tx_count == 0U) ||
+       (PB03F_BLE_UART.TxBusy != 0U) ||
+       (PB03F_BLE_UART.TxHead != PB03F_BLE_UART.TxTail))
+    {
+        return;
+    }
+
+    slot = pb_tx_head;
+    json_len = pb_tx_json_len[slot];
+    if(pb_tx_active == 0U)
+    {
+        pb_tx_active = 1U;
+        pb_tx_chunk_index = 0U;
+        pb_tx_chunk_total =
+            (json_len + PB03F_BLE_CHUNK_PAYLOAD_MAX - 1U) /
+            PB03F_BLE_CHUNK_PAYLOAD_MAX;
+        pb_tx_msg_id = pb_tx_next_msg_id++;
+    }
+
+    offset = pb_tx_chunk_index * PB03F_BLE_CHUNK_PAYLOAD_MAX;
+    remaining = json_len - offset;
+    payload_len = (remaining > PB03F_BLE_CHUNK_PAYLOAD_MAX) ?
+                  PB03F_BLE_CHUNK_PAYLOAD_MAX : remaining;
+    pb_tx_frame[0] = PB03F_BLE_FRAME_MAGIC_HIGH;
+    pb_tx_frame[1] = PB03F_BLE_FRAME_MAGIC_LOW;
+    pb_tx_frame[2] = PB03F_BLE_FRAME_VERSION;
+    pb_tx_frame[3] =
+        ((pb_tx_chunk_index + 1U) == pb_tx_chunk_total) ?
+        PB03F_BLE_FRAME_FLAG_LAST : 0U;
+    PbWriteBe16(&pb_tx_frame[4], pb_tx_msg_id);
+    PbWriteBe16(&pb_tx_frame[6], pb_tx_chunk_index);
+    PbWriteBe16(&pb_tx_frame[8], pb_tx_chunk_total);
+    PbWriteBe16(&pb_tx_frame[10], payload_len);
+    memcpy(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE],
+           &pb_tx_json[slot][offset], payload_len);
+    crc_value = crc_16(pb_tx_frame,
+                       PB03F_BLE_FRAME_HEADER_SIZE + payload_len);
+    PbWriteBe16(&pb_tx_frame[PB03F_BLE_FRAME_HEADER_SIZE + payload_len],
+                crc_value);
+    frame_len = PB03F_BLE_FRAME_HEADER_SIZE + payload_len +
+                PB03F_BLE_FRAME_CRC_SIZE;
+    UartSendData(&PB03F_BLE_UART, pb_tx_frame, frame_len);
+
+    pb_tx_chunk_index++;
+    if(pb_tx_chunk_index >= pb_tx_chunk_total)
+    {
+        memset(pb_tx_json[slot], 0, json_len);
+        pb_tx_json_len[slot] = 0U;
+        pb_tx_active = 0U;
+        pb_tx_head++;
+        if(pb_tx_head >= PB_TX_QUEUE_DEPTH)
+        {
+            pb_tx_head = 0U;
+        }
+        pb_tx_count--;
+    }
 }
 
 void Pb03fBleInit(void)
@@ -1189,7 +1112,6 @@ void Pb03fBleInit(void)
     pb_tx_count = 0U;
     pb_tx_active = 0U;
     pb_tx_next_msg_id = 1U;
-    PbResetFrame();
     PbResetRxAssembly();
     PbStartConfiguration(PB_POWER_DELAY_MS);
 }

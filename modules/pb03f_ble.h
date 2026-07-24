@@ -9,6 +9,10 @@
 #define PB03F_BLE_TASK_INTERVAL                 1U
 #define PB03F_BLE_MTU                           240U
 #define PB03F_BLE_ATT_PAYLOAD_MAX               (PB03F_BLE_MTU - 3U)
+#define PB03F_BLE_FRAME_MAGIC_HIGH              0x4DU
+#define PB03F_BLE_FRAME_MAGIC_LOW               0x51U
+#define PB03F_BLE_FRAME_VERSION                 0x01U
+#define PB03F_BLE_FRAME_FLAG_LAST               0x01U
 #define PB03F_BLE_FRAME_HEADER_SIZE             12U
 #define PB03F_BLE_FRAME_CRC_SIZE                2U
 #define PB03F_BLE_CHUNK_PAYLOAD_MAX             (PB03F_BLE_ATT_PAYLOAD_MAX - PB03F_BLE_FRAME_HEADER_SIZE - PB03F_BLE_FRAME_CRC_SIZE)
@@ -47,7 +51,9 @@
 
 void Pb03fBleInit(void);
 void Pb03fBleTask(void);
-void Pb03fBleReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len);
+void Pb03fBleReceive(const uint8_t *_data, uint16_t len);
+void Pb03fBleFrameError(uint16_t msg_id, const char *message);
+uint8_t Pb03fBleIsTransparent(void);
 uint8_t Pb03fBleSendJson(const uint8_t *_data, uint16_t len);
 uint8_t Pb03fBleSetProvisionedIdentity(const uint8_t *ble_id, uint16_t len);
 const char *Pb03fBleGetMac(void);

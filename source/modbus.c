@@ -41,6 +41,10 @@ static uint8_t prvModbusCrcCheck(uint8_t *frame, uint16_t len)
 void UartStandardModbusRTUProtocal(UART_TYPE *uart,uint8_t *frame, uint16_t len)
 {
     ModbusErrorCode ErrnoFlag = modbusERR_NONE;
+    if((uart == NULL) || (frame == NULL))
+    {
+        return;
+    }
     if(prvModbusCrcCheck(frame, len))
     {
         if(frame[0] == modbusSLAVE_ADDRESS)

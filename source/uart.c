@@ -655,89 +655,13 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
     }
 }
 
-#if bleV851_BRIDGE_ENABLED
-/**
- * @brief 将PB-03F串口中的非DGUS数据交给蓝牙协议解析器
- * @param[in] uart UART通信接口指针
- * @param[in] frame 待处理数据
- * @param[in] len 数据长度
- */
-static void UartBridgeReceive(UART_TYPE *uart,
-                              const uint8_t *frame,
-                              uint16_t len)
-{
-    if(len == 0U)
-    {
-        return;
-    }
-
-    if(uart == &PB03F_BLE_UART)
-    {
-        Pb03fBleReceive(uart, frame, len);
-    }
-}
-
-/**
- * @brief 分流桥接协议与标准迪文82/83协议
- * @details 完整82/83帧直接交给DGUS处理，其余数据仍按原顺序交给
- *          PB-03F AT/透传协议，避免AT解析器误吞二进制帧。
- * @param[in] uart UART通信接口指针
- * @param[in,out] frame 接收数据缓冲区
- * @param[in] len 数据长度
- */
-static void UartBridgeDwin8283Route(UART_TYPE *uart,
-                                    uint8_t *frame,
-                                    uint16_t len)
-{
-    uint16_t offset = 0U;
-    uint16_t bridge_offset = 0U;
-    uint16_t remaining;
-    uint16_t dwin_frame_len;
-    uint8_t command;
-
-    while(offset < len)
-    {
-        remaining = len - offset;
-        if((remaining >= 4U) &&
-           (frame[offset] == 0x5aU) &&
-           (frame[offset + 1U] == 0xa5U))
-        {
-            dwin_frame_len = (uint16_t)frame[offset + 2U] + 3U;
-            command = frame[offset + 3U];
-            if((dwin_frame_len <= remaining) &&
-               (((command == 0x82U) && (dwin_frame_len >= 6U)) ||
-                ((command == 0x83U) && (dwin_frame_len >= 7U))))
-            {
-                if(offset > bridge_offset)
-                {
-                    UartBridgeReceive(uart, &frame[bridge_offset],
-                                      offset - bridge_offset);
-                }
-                UartStandardDwin8283Protocal(uart, &frame[offset],
-                                             dwin_frame_len);
-                offset += dwin_frame_len;
-                bridge_offset = offset;
-                continue;
-            }
-        }
-        offset++;
-    }
-
-    if(bridge_offset < len)
-    {
-        UartBridgeReceive(uart, &frame[bridge_offset],
-                          len - bridge_offset);
-    }
-}
-#endif /* bleV851_BRIDGE_ENABLED */
-
-
 void UartReadFrame(UART_TYPE *uart)
 {
     static uint8_t xdata frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
     #if bleV851_BRIDGE_ENABLED
-    uint16_t body_len,json_len,crc_calc,crc_recv;
+    uint16_t body_len,json_len,payload_len,msg_id,raw_len;
+    uint16_t crc_calc,crc_recv;
     #endif /* bleV851_BRIDGE_ENABLED */
     if(uart->RxFlag == UART_NON_REC)
         return;
@@ -784,19 +708,18 @@ void UartReadFrame(UART_TYPE *uart)
         }   
         total_frame_len = i;
 
-        #if bleV851_BRIDGE_ENABLED
-        if(uart == &PB03F_BLE_UART)
-        {
-            UartBridgeDwin8283Route(uart, frame, total_frame_len);
-            return;
-        }
-        #endif /* bleV851_BRIDGE_ENABLED */
-
         while(i > 0)
         {
             frame_offset = total_frame_len - i;
             if(i < 2U)
             {
+                #if bleV851_BRIDGE_ENABLED
+                if(uart == &PB03F_BLE_UART)
+                {
+                    Pb03fBleReceive(&frame[frame_offset], i);
+                    i = 0U;
+                }
+                #endif /* bleV851_BRIDGE_ENABLED */
                 break;
             }
 
@@ -819,7 +742,68 @@ void UartReadFrame(UART_TYPE *uart)
                 UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
                 #endif /* sysN5CAMERA_MODE_ENABLED */
                 i -= one_frame_len;
-            }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
+            }
+            #if bleV851_BRIDGE_ENABLED
+            else if((uart == &PB03F_BLE_UART) &&
+                    (Pb03fBleIsTransparent() != 0U) &&
+                    (frame[frame_offset] == PB03F_BLE_FRAME_MAGIC_HIGH) &&
+                    (frame[frame_offset + 1U] == PB03F_BLE_FRAME_MAGIC_LOW))
+            {
+                msg_id = 0U;
+                if(i < PB03F_BLE_FRAME_HEADER_SIZE)
+                {
+                    if(i >= 6U)
+                    {
+                        msg_id = ((uint16_t)frame[frame_offset + 4U] << 8) |
+                                 frame[frame_offset + 5U];
+                    }
+                    Pb03fBleFrameError(msg_id, "incomplete frame");
+                    i--;
+                    continue;
+                }
+
+                msg_id = ((uint16_t)frame[frame_offset + 4U] << 8) |
+                         frame[frame_offset + 5U];
+                payload_len =
+                    ((uint16_t)frame[frame_offset + 10U] << 8) |
+                    frame[frame_offset + 11U];
+                if((frame[frame_offset + 2U] !=
+                    PB03F_BLE_FRAME_VERSION) ||
+                   (payload_len == 0U) ||
+                   (payload_len > PB03F_BLE_CHUNK_PAYLOAD_MAX))
+                {
+                    Pb03fBleFrameError(msg_id, "invalid frame header");
+                    i--;
+                    continue;
+                }
+
+                one_frame_len = PB03F_BLE_FRAME_HEADER_SIZE + payload_len +
+                                PB03F_BLE_FRAME_CRC_SIZE;
+                if(i < one_frame_len)
+                {
+                    Pb03fBleFrameError(msg_id, "incomplete frame");
+                    i--;
+                    continue;
+                }
+
+                crc_calc = crc_16(&frame[frame_offset],
+                                  PB03F_BLE_FRAME_HEADER_SIZE + payload_len);
+                crc_recv =
+                    ((uint16_t)frame[frame_offset +
+                                     one_frame_len - 2U] << 8) |
+                    frame[frame_offset + one_frame_len - 1U];
+                if(crc_calc != crc_recv)
+                {
+                    Pb03fBleFrameError(msg_id, "crc error");
+                    i -= one_frame_len;
+                    continue;
+                }
+
+                Pb03fBleReceive(&frame[frame_offset], one_frame_len);
+                i -= one_frame_len;
+            }
+            #endif /* bleV851_BRIDGE_ENABLED */
+            else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
             {
                 if(i < 4U)
                 {
@@ -971,11 +955,31 @@ void UartReadFrame(UART_TYPE *uart)
             #endif /* uartTA_PROTOCOL_ENABLED */
             else
             {
-                if(i>0)
+                #if bleV851_BRIDGE_ENABLED
+                if(uart == &PB03F_BLE_UART)
+                {
+                    raw_len = 1U;
+                    while(raw_len < i)
+                    {
+                        if(((raw_len + 1U) < i) &&
+                           (((frame[frame_offset + raw_len] == 0x5aU) &&
+                             (frame[frame_offset + raw_len + 1U] == 0xa5U)) ||
+                            ((Pb03fBleIsTransparent() != 0U) &&
+                             (frame[frame_offset + raw_len] ==
+                              PB03F_BLE_FRAME_MAGIC_HIGH) &&
+                             (frame[frame_offset + raw_len + 1U] ==
+                              PB03F_BLE_FRAME_MAGIC_LOW))))
+                        {
+                            break;
+                        }
+                        raw_len++;
+                    }
+                    Pb03fBleReceive(&frame[frame_offset], raw_len);
+                    i -= raw_len;
+                }else
+                #endif /* bleV851_BRIDGE_ENABLED */
                 {
                     i--;
-                }else{
-                    break;
                 }
             }
         }

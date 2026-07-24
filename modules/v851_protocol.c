@@ -36,7 +36,7 @@ typedef struct
     char error_code[V851_ERROR_CODE_MAX + 1U];
 } V851DedupRecord;
 
-static uint8_t xdata v851_tx_frame[V851_JSON_TX_DEPTH][V851_JSON_FRAME_MAX];
+static uint8_t xdata v851_tx_buffer[V851_JSON_TX_DEPTH][V851_JSON_FRAME_MAX];
 static uint16_t v851_tx_len[V851_JSON_TX_DEPTH];
 static uint8_t v851_tx_head;
 static uint8_t v851_tx_tail;
@@ -66,11 +66,6 @@ static void V851WriteBe16(uint8_t *_data, uint16_t value)
 {
     _data[0] = (uint8_t)(value >> 8);
     _data[1] = (uint8_t)value;
-}
-
-static uint8_t V851UartIdle(void)
-{
-    return ((Uart4.TxBusy == 0U) && (Uart4.TxHead == Uart4.TxTail)) ? 1U : 0U;
 }
 
 static void V851CopyText(char *out, uint16_t out_size,
@@ -715,16 +710,24 @@ uint8_t V851ProtocolSendJson(const uint8_t *_data, uint16_t len)
     }
 
     slot = v851_tx_tail;
-    body_len = len + 3U;
-    frame_len = body_len + 4U;
-    v851_tx_frame[slot][0] = V851_FRAME_MAGIC_HIGH;
-    v851_tx_frame[slot][1] = V851_FRAME_MAGIC_LOW;
-    V851WriteBe16(&v851_tx_frame[slot][2], body_len);
-    v851_tx_frame[slot][4] = V851_JSON_COMMAND;
-    memcpy(&v851_tx_frame[slot][5], _data, len);
-    crc_value = crc_16(&v851_tx_frame[slot][4], len + 1U);
-    V851WriteBe16(&v851_tx_frame[slot][frame_len - 2U], crc_value);
-    v851_tx_len[slot] = frame_len;
+    memcpy(&v851_tx_buffer[slot][5], _data, len);
+    if((v851_tx_count == 0U) && (v851_ota_tx_pending == 0U) &&
+       (Uart4.TxBusy == 0U) && (Uart4.TxHead == Uart4.TxTail))
+    {
+        body_len = len + V851_JSON_BODY_OVERHEAD;
+        frame_len = body_len + 4U;
+        v851_tx_buffer[slot][0] = V851_FRAME_MAGIC_HIGH;
+        v851_tx_buffer[slot][1] = V851_FRAME_MAGIC_LOW;
+        V851WriteBe16(&v851_tx_buffer[slot][2], body_len);
+        v851_tx_buffer[slot][4] = V851_JSON_COMMAND;
+        crc_value = crc_16(&v851_tx_buffer[slot][4], len + 1U);
+        V851WriteBe16(&v851_tx_buffer[slot][frame_len - 2U], crc_value);
+        UartSendData(&Uart4, v851_tx_buffer[slot], frame_len);
+        memset(v851_tx_buffer[slot], 0, frame_len);
+        return 1U;
+    }
+
+    v851_tx_len[slot] = len;
     v851_tx_tail++;
     if(v851_tx_tail >= V851_JSON_TX_DEPTH)
     {
@@ -742,7 +745,8 @@ uint8_t V851ProtocolSendOtaFrame(const uint8_t *_data, uint16_t len)
         return 0U;
     }
 
-    if((V851UartIdle() != 0U) && (v851_tx_count == 0U))
+    if((Uart4.TxBusy == 0U) && (Uart4.TxHead == Uart4.TxTail) &&
+       (v851_tx_count == 0U))
     {
         UartSendData(&Uart4, (uint8_t *)_data, len);
     }else
@@ -758,10 +762,6 @@ void V851ProtocolNotifyOtaState(V851OtaStage stage,
                                 uint8_t progress,
                                 const char *error_code)
 {
-    const char *stage_text;
-    const char *status;
-    uint8_t sent;
-
     if(v851_ota_command_active == 0U)
     {
         return;
@@ -771,54 +771,17 @@ void V851ProtocolNotifyOtaState(V851OtaStage stage,
         progress = 100U;
     }
 
-    status = "IN_PROGRESS";
-    switch(stage)
+    v851_ota_terminal_pending = 1U;
+    v851_ota_terminal_stage = stage;
+    v851_ota_terminal_progress = progress;
+    if(error_code != NULL)
     {
-        case V851_OTA_STAGE_VERIFYING: stage_text = "VERIFYING"; break;
-        case V851_OTA_STAGE_REBOOTING: stage_text = "REBOOTING"; break;
-        case V851_OTA_STAGE_SUCCESS:
-            stage_text = "SUCCESS";
-            status = "SUCCESS";
-            break;
-        case V851_OTA_STAGE_FAILED:
-            stage_text = "FAILED";
-            status = "FAILED";
-            break;
-        default: stage_text = "INSTALLING"; break;
-    }
-
-    if((stage != V851_OTA_STAGE_SUCCESS) &&
-       (stage != V851_OTA_STAGE_FAILED) &&
-       (v851_tx_count != 0U))
+        V851CopyText(v851_ota_terminal_error,
+                     sizeof(v851_ota_terminal_error),
+                     error_code, (uint16_t)strlen(error_code));
+    }else
     {
-        return;
-    }
-
-    sent = V851SendCommandAck(&v851_ota_command, status,
-                              error_code,
-                              (error_code != NULL) ? "T5L OTA processing failed" : NULL,
-                              stage_text, progress, NULL, 0U);
-    if((stage == V851_OTA_STAGE_SUCCESS) || (stage == V851_OTA_STAGE_FAILED))
-    {
-        if(sent != 0U)
-        {
-            v851_ota_command_active = 0U;
-            v851_ota_terminal_pending = 0U;
-        }else
-        {
-            v851_ota_terminal_pending = 1U;
-            v851_ota_terminal_stage = stage;
-            v851_ota_terminal_progress = progress;
-            if(error_code != NULL)
-            {
-                V851CopyText(v851_ota_terminal_error,
-                             sizeof(v851_ota_terminal_error),
-                             error_code, (uint16_t)strlen(error_code));
-            }else
-            {
-                v851_ota_terminal_error[0] = '\0';
-            }
-        }
+        v851_ota_terminal_error[0] = '\0';
     }
 }
 
@@ -836,19 +799,62 @@ uint8_t V851ProtocolRegisterControlHandler(V851ControlType type,
 void V851ProtocolTask(void)
 {
     uint8_t slot;
+    uint8_t sent;
+    uint16_t json_len;
+    uint16_t body_len;
+    uint16_t frame_len;
+    uint16_t crc_value;
+    V851OtaStage stage;
+    uint8_t progress;
+    const char *error_code;
+    const char *stage_text;
+    const char *status;
 
     if((v851_ota_terminal_pending != 0U) &&
        (v851_tx_count < V851_JSON_TX_DEPTH))
     {
-        V851OtaStage stage = v851_ota_terminal_stage;
-        uint8_t progress = v851_ota_terminal_progress;
-        const char *error_code = (v851_ota_terminal_error[0] != '\0') ?
-                                 v851_ota_terminal_error : NULL;
-        v851_ota_terminal_pending = 0U;
-        V851ProtocolNotifyOtaState(stage, progress, error_code);
+        stage = v851_ota_terminal_stage;
+        progress = v851_ota_terminal_progress;
+        error_code = (v851_ota_terminal_error[0] != '\0') ?
+                     v851_ota_terminal_error : NULL;
+        status = "IN_PROGRESS";
+        switch(stage)
+        {
+            case V851_OTA_STAGE_VERIFYING:
+                stage_text = "VERIFYING";
+                break;
+            case V851_OTA_STAGE_REBOOTING:
+                stage_text = "REBOOTING";
+                break;
+            case V851_OTA_STAGE_SUCCESS:
+                stage_text = "SUCCESS";
+                status = "SUCCESS";
+                break;
+            case V851_OTA_STAGE_FAILED:
+                stage_text = "FAILED";
+                status = "FAILED";
+                break;
+            default:
+                stage_text = "INSTALLING";
+                break;
+        }
+
+        sent = V851SendCommandAck(
+            &v851_ota_command, status, error_code,
+            (error_code != NULL) ? "T5L OTA processing failed" : NULL,
+            stage_text, progress, NULL, 0U);
+        if(sent != 0U)
+        {
+            v851_ota_terminal_pending = 0U;
+            if((stage == V851_OTA_STAGE_SUCCESS) ||
+               (stage == V851_OTA_STAGE_FAILED))
+            {
+                v851_ota_command_active = 0U;
+            }
+        }
     }
 
-    if(V851UartIdle() == 0U)
+    if((Uart4.TxBusy != 0U) || (Uart4.TxHead != Uart4.TxTail))
     {
         return;
     }
@@ -861,8 +867,17 @@ void V851ProtocolTask(void)
     }else if(v851_tx_count != 0U)
     {
         slot = v851_tx_head;
-        UartSendData(&Uart4, v851_tx_frame[slot], v851_tx_len[slot]);
-        memset(v851_tx_frame[slot], 0, v851_tx_len[slot]);
+        json_len = v851_tx_len[slot];
+        body_len = json_len + V851_JSON_BODY_OVERHEAD;
+        frame_len = body_len + 4U;
+        v851_tx_buffer[slot][0] = V851_FRAME_MAGIC_HIGH;
+        v851_tx_buffer[slot][1] = V851_FRAME_MAGIC_LOW;
+        V851WriteBe16(&v851_tx_buffer[slot][2], body_len);
+        v851_tx_buffer[slot][4] = V851_JSON_COMMAND;
+        crc_value = crc_16(&v851_tx_buffer[slot][4], json_len + 1U);
+        V851WriteBe16(&v851_tx_buffer[slot][frame_len - 2U], crc_value);
+        UartSendData(&Uart4, v851_tx_buffer[slot], frame_len);
+        memset(v851_tx_buffer[slot], 0, frame_len);
         v851_tx_len[slot] = 0U;
         v851_tx_head++;
         if(v851_tx_head >= V851_JSON_TX_DEPTH)
@@ -875,7 +890,7 @@ void V851ProtocolTask(void)
 
 void V851ProtocolInit(void)
 {
-    memset(v851_tx_frame, 0, sizeof(v851_tx_frame));
+    memset(v851_tx_buffer, 0, sizeof(v851_tx_buffer));
     memset(v851_ack_json, 0, sizeof(v851_ack_json));
     memset(&v851_device_info, 0, sizeof(v851_device_info));
     memset(v851_handlers, 0, sizeof(v851_handlers));
