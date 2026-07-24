@@ -82,7 +82,7 @@ static uint8_t V851ControlInfoReadText(const V851ControlCommand *command,
     char text[V851_CONTROL_DGUS_TEXT_BYTES + 1U];
     uint16_t text_len;
 
-    if((command == NULL) || (name == NULL) || (out == NULL) ||
+    if((command == NULL) || (name == NULL) ||
        (command->params_json == NULL) || (command->params_len == 0U) ||
        (JSONSearchToArray(command->params_json,
                           command->params_len,
@@ -97,7 +97,10 @@ static uint8_t V851ControlInfoReadText(const V851ControlCommand *command,
     {
         return 0U;
     }
-    memcpy(out, text, text_len);
+    if(out != NULL)
+    {
+        memcpy(out, text, text_len);
+    }
     return 1U;
 }
 
@@ -145,6 +148,26 @@ void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
             }
             break;
 
+        case V851_CONTROL_PLASMA:
+            valid = V851ControlInfoReadBool(
+                command, "enabled", sizeof("enabled") - 1U, &value0);
+            if(valid != 0U)
+            {
+                V851ControlInfoWriteBe16(&record[0], value0);
+                address = V851_CONTROL_DGUS_PLASMA_ADDR;
+            }
+            break;
+
+        case V851_CONTROL_ANION:
+            valid = V851ControlInfoReadBool(
+                command, "enabled", sizeof("enabled") - 1U, &value0);
+            if(valid != 0U)
+            {
+                V851ControlInfoWriteBe16(&record[0], value0);
+                address = V851_CONTROL_DGUS_ANION_ADDR;
+            }
+            break;
+
         case V851_CONTROL_CLIMATE:
             valid = V851ControlInfoReadBool(
                 command, "enabled", sizeof("enabled") - 1U, &value0);
@@ -152,12 +175,53 @@ void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
                 command, "target_temperature",
                 sizeof("target_temperature") - 1U, &value1);
             valid &= V851ControlInfoReadText(
-                command, "mode", sizeof("mode") - 1U, &record[4]);
+                command, "mode", sizeof("mode") - 1U, NULL);
             if(valid != 0U)
             {
                 V851ControlInfoWriteBe16(&record[0], value0);
                 V851ControlInfoWriteBe16(&record[2], value1);
                 address = V851_CONTROL_DGUS_CLIMATE_ADDR;
+            }
+            break;
+
+        case V851_CONTROL_INLET_FAN:
+            valid = V851ControlInfoReadBool(
+                command, "enabled", sizeof("enabled") - 1U, &value0);
+            valid &= V851ControlInfoReadUint16(
+                command, "level", sizeof("level") - 1U, &value1);
+            if(valid != 0U)
+            {
+                V851ControlInfoWriteBe16(&record[0], value0);
+                V851ControlInfoWriteBe16(&record[2], value1);
+                address = V851_CONTROL_DGUS_INLET_FAN_ADDR;
+            }
+            break;
+
+        case V851_CONTROL_HUMIDIFIER:
+            valid = V851ControlInfoReadBool(
+                command, "enabled", sizeof("enabled") - 1U, &value0);
+            valid &= V851ControlInfoReadUint16(
+                command, "target_humidity",
+                sizeof("target_humidity") - 1U, &value1);
+            if(valid != 0U)
+            {
+                V851ControlInfoWriteBe16(&record[0], value0);
+                V851ControlInfoWriteBe16(&record[2], value1);
+                address = V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
+            }
+            break;
+
+        case V851_CONTROL_UVB:
+            valid = V851ControlInfoReadBool(
+                command, "enabled", sizeof("enabled") - 1U, &value0);
+            valid &= V851ControlInfoReadUint16(
+                command, "duration_minutes",
+                sizeof("duration_minutes") - 1U, &value1);
+            if(valid != 0U)
+            {
+                V851ControlInfoWriteBe16(&record[0], value0);
+                V851ControlInfoWriteBe16(&record[2], value1);
+                address = V851_CONTROL_DGUS_UVB_ADDR;
             }
             break;
 
@@ -175,36 +239,6 @@ void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
                 V851ControlInfoWriteBe16(&record[2], value1);
                 V851ControlInfoWriteBe16(&record[4], value2);
                 address = V851_CONTROL_DGUS_LIGHT_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_DEVICE_SETTINGS:
-            valid = V851ControlInfoReadUint16(
-                command, "volume", sizeof("volume") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "screen_brightness",
-                sizeof("screen_brightness") - 1U, &value1);
-            valid &= V851ControlInfoReadText(
-                command, "language", sizeof("language") - 1U, &record[4]);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_SETTINGS_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_HUMIDIFIER:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "target_humidity",
-                sizeof("target_humidity") - 1U, &value1);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
             }
             break;
 
@@ -375,22 +409,37 @@ uint8_t V851ControlInfoDgusInit(void)
         return 0U;
     }
     if(V851ProtocolRegisterControlHandler(
+           V851_CONTROL_PLASMA, V851ControlInfoDgusHandler) == 0U)
+    {
+        return 0U;
+    }
+    if(V851ProtocolRegisterControlHandler(
+           V851_CONTROL_ANION, V851ControlInfoDgusHandler) == 0U)
+    {
+        return 0U;
+    }
+    if(V851ProtocolRegisterControlHandler(
            V851_CONTROL_CLIMATE, V851ControlInfoDgusHandler) == 0U)
     {
         return 0U;
     }
     if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_LIGHT, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_DEVICE_SETTINGS, V851ControlInfoDgusHandler) == 0U)
+           V851_CONTROL_INLET_FAN, V851ControlInfoDgusHandler) == 0U)
     {
         return 0U;
     }
     if(V851ProtocolRegisterControlHandler(
            V851_CONTROL_HUMIDIFIER, V851ControlInfoDgusHandler) == 0U)
+    {
+        return 0U;
+    }
+    if(V851ProtocolRegisterControlHandler(
+           V851_CONTROL_UVB, V851ControlInfoDgusHandler) == 0U)
+    {
+        return 0U;
+    }
+    if(V851ProtocolRegisterControlHandler(
+           V851_CONTROL_LIGHT, V851ControlInfoDgusHandler) == 0U)
     {
         return 0U;
     }

@@ -23,14 +23,26 @@ static const char *V851ControlMockCommand(V851ControlMockCase mock_case)
         case V851_CONTROL_MOCK_EXHAUST:
             return "exhaust.set";
 
-        case V851_CONTROL_MOCK_CLIMATE:
-            return "climate.set";
+        case V851_CONTROL_MOCK_INLET_FAN:
+            return "inlet_fan.set";
+
+        case V851_CONTROL_MOCK_UVB:
+            return "uvb.set";
+
+        case V851_CONTROL_MOCK_HUMIDIFIER:
+            return "humidifier.set";
 
         case V851_CONTROL_MOCK_LIGHT:
             return "light.set";
 
-        case V851_CONTROL_MOCK_DEVICE_SETTINGS:
-            return "device_settings.set";
+        case V851_CONTROL_MOCK_CLIMATE:
+            return "climate.set";
+
+        case V851_CONTROL_MOCK_PLASMA:
+            return "plasma.set";
+
+        case V851_CONTROL_MOCK_ANION:
+            return "anion.set";
 
         default:
             return NULL;
@@ -44,14 +56,26 @@ static const char *V851ControlMockParams(V851ControlMockCase mock_case)
         case V851_CONTROL_MOCK_EXHAUST:
             return "{\"enabled\":true,\"level\":3}";
 
-        case V851_CONTROL_MOCK_CLIMATE:
-            return "{\"enabled\":true,\"mode\":\"AUTO\",\"target_temperature\":24}";
+        case V851_CONTROL_MOCK_INLET_FAN:
+            return "{\"enabled\":true,\"level\":2}";
+
+        case V851_CONTROL_MOCK_UVB:
+            return "{\"enabled\":true,\"duration_minutes\":15}";
+
+        case V851_CONTROL_MOCK_HUMIDIFIER:
+            return "{\"enabled\":true,\"target_humidity\":55}";
 
         case V851_CONTROL_MOCK_LIGHT:
             return "{\"enabled\":true,\"brightness\":80,\"color_temperature\":4500}";
 
-        case V851_CONTROL_MOCK_DEVICE_SETTINGS:
-            return "{\"language\":\"zh-CN\",\"volume\":60,\"screen_brightness\":70}";
+        case V851_CONTROL_MOCK_CLIMATE:
+            return "{\"enabled\":true,\"mode\":\"AUTO\",\"target_temperature\":24}";
+
+        case V851_CONTROL_MOCK_PLASMA:
+            return "{\"enabled\":true}";
+
+        case V851_CONTROL_MOCK_ANION:
+            return "{\"enabled\":true}";
 
         default:
             return NULL;
@@ -65,14 +89,26 @@ static V851ControlType V851ControlMockType(V851ControlMockCase mock_case)
         case V851_CONTROL_MOCK_EXHAUST:
             return V851_CONTROL_EXHAUST;
 
-        case V851_CONTROL_MOCK_CLIMATE:
-            return V851_CONTROL_CLIMATE;
+        case V851_CONTROL_MOCK_INLET_FAN:
+            return V851_CONTROL_INLET_FAN;
+
+        case V851_CONTROL_MOCK_UVB:
+            return V851_CONTROL_UVB;
+
+        case V851_CONTROL_MOCK_HUMIDIFIER:
+            return V851_CONTROL_HUMIDIFIER;
 
         case V851_CONTROL_MOCK_LIGHT:
             return V851_CONTROL_LIGHT;
 
-        case V851_CONTROL_MOCK_DEVICE_SETTINGS:
-            return V851_CONTROL_DEVICE_SETTINGS;
+        case V851_CONTROL_MOCK_CLIMATE:
+            return V851_CONTROL_CLIMATE;
+
+        case V851_CONTROL_MOCK_PLASMA:
+            return V851_CONTROL_PLASMA;
+
+        case V851_CONTROL_MOCK_ANION:
+            return V851_CONTROL_ANION;
 
         default:
             return V851_CONTROL_INVALID;

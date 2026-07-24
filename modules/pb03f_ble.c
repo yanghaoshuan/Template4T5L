@@ -16,7 +16,7 @@
 #define PB_AT_TIMEOUT_MS                      1000UL
 #define PB_RESTART_DELAY_MS                   5000UL
 #define PB_ESCAPE_RETRY_DELAY_MS              5000UL
-#define PB_QR_VP_ADDR                         0x05ADU
+#define PB_QR_VP_ADDR                         0x5500U
 #define PB_QR_BUFFER_BYTES                    40U
 #define PB_AT_COMMAND_MAX                     96U
 #define PB_AT_LINE_MAX                        80U

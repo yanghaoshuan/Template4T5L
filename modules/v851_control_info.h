@@ -6,14 +6,17 @@
 #if bleV851_BRIDGE_ENABLED
 
 #define V851_CONTROL_PARAMS_SNAPSHOT_MAX        256U  /**< 单类控制参数快照上限 */
-#define V851_CONTROL_DGUS_SLOT_WORDS             0x0010U
+#define V851_CONTROL_DGUS_SLOT_WORDS             0x0004U
 #define V851_CONTROL_DGUS_SLOT_BYTES             (V851_CONTROL_DGUS_SLOT_WORDS * 2U)
 #define V851_CONTROL_DGUS_TEXT_BYTES             8U
-#define V851_CONTROL_DGUS_EXHAUST_ADDR           0x3000UL
-#define V851_CONTROL_DGUS_CLIMATE_ADDR           0x3010UL
-#define V851_CONTROL_DGUS_LIGHT_ADDR             0x3020UL
-#define V851_CONTROL_DGUS_SETTINGS_ADDR          0x3030UL
-#define V851_CONTROL_DGUS_HUMIDIFIER_ADDR        0x3040UL
+#define V851_CONTROL_DGUS_EXHAUST_ADDR           0x5100UL
+#define V851_CONTROL_DGUS_INLET_FAN_ADDR         0x5104UL
+#define V851_CONTROL_DGUS_UVB_ADDR               0x510CUL
+#define V851_CONTROL_DGUS_HUMIDIFIER_ADDR        0x5110UL
+#define V851_CONTROL_DGUS_LIGHT_ADDR             0x5114UL
+#define V851_CONTROL_DGUS_CLIMATE_ADDR           0x5118UL
+#define V851_CONTROL_DGUS_PLASMA_ADDR            0x5120UL
+#define V851_CONTROL_DGUS_ANION_ADDR             0x5124UL
 
 typedef struct
 {
@@ -79,14 +82,17 @@ void V851ControlInfoDgusHandler(V851ControlHandlerContext *context);
  * @brief 注册写入DGUS变量空间的控制处理器。
  *
  * @details 固定地址映射如下：
- * - 0x3000：排风，+0 enabled，+1 level
- * - 0x3010：温控，+0 enabled，+1 target_temperature，+2至+5 mode
- * - 0x3020：灯光，+0 enabled，+1 brightness，+2 color_temperature
- * - 0x3030：设备设置，+0 volume，+1 screen_brightness，+2至+5 language
- * - 0x3040：加湿，+0 enabled，+1 target_humidity
+ * - 0x5100：排风，+0 enabled，+1 level
+ * - 0x5104：进风，+0 enabled，+1 level
+ * - 0x510C：UVB，+0 enabled，+1 duration_minutes
+ * - 0x5110：加湿/雾化，+0 enabled，+1 target_humidity
+ * - 0x5114：灯光，+0 enabled，+1 brightness，+2 color_temperature
+ * - 0x5118：温控/加热，+0 enabled，+1 target_temperature
+ * - 0x5120：等离子，+0 enabled
+ * - 0x5124：负离子，+0 enabled
  *
- * @return 五类控制处理器全部注册成功返回1，否则返回0。
- * @note 每个控制槽占0x10个VP，写入时先整体清零。
+ * @return 八类控制处理器全部注册成功返回1，否则返回0。
+ * @note 每个控制槽占4个VP，写入时先整体清零。
  */
 uint8_t V851ControlInfoDgusInit(void);
 

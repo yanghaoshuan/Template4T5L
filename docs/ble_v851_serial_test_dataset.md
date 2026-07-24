@@ -467,7 +467,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - 分类：`v851_control`
 - 前置条件：V851-TIME-001通过
-- 说明：验证exhaust.set参数写入0x3000并返回成功应答。
+- 说明：验证exhaust.set参数写入0x5100并返回成功应答。
 
 #### 发送步骤
 
@@ -531,13 +531,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3000为1、0x3001为3；V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1。
+- 0x5100为1、0x5101为3，0x5102至0x5103为0；V851ControlInfoGet(V851_CONTROL_EXHAUST)有效且updated=1。
 
 ### V851-CTL-PLASMA — 等离子控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证plasma.set控制类型。
+- 说明：验证plasma.set参数写入0x5120并返回成功应答。
 
 #### 发送步骤
 
@@ -574,28 +574,34 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-PLASMA",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "plasma.set",
+        "executed": true,
+        "applied": {
+          "enabled": true
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_PLASMA快照valid=1、updated=1。
+- 0x5120为1，0x5121至0x5123为0；V851_CONTROL_PLASMA快照valid=1、updated=1。
 
 ### V851-CTL-ANION — 负离子控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证anion.set控制类型。
+- 说明：验证anion.set参数写入0x5124并返回成功应答。
 
 #### 发送步骤
 
@@ -632,28 +638,34 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-ANION",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "anion.set",
+        "executed": true,
+        "applied": {
+          "enabled": true
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_ANION快照valid=1、updated=1。
+- 0x5124为1，0x5125至0x5127为0；V851_CONTROL_ANION快照valid=1、updated=1。
 
 ### V851-CTL-CLIMATE — 温控命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证climate.set参数写入0x3010并返回成功应答。
+- 说明：验证climate.set参数写入0x5118并返回成功应答。
 
 #### 发送步骤
 
@@ -717,13 +729,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3010为1、0x3011为24、0x3012开始为AUTO；控制快照updated=1。
+- 0x5118为1、0x5119为24，0x511A至0x511B为0；mode继续校验但不写VP，控制快照updated=1。
 
 ### V851-CTL-INLET — 进风风机控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证inlet_fan.set控制类型。
+- 说明：验证inlet_fan.set参数写入0x5104并返回成功应答。
 
 #### 发送步骤
 
@@ -762,28 +774,35 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-INLET",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "inlet_fan.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "level": 2
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_INLET_FAN快照valid=1、updated=1。
+- 0x5104为1、0x5105为2，0x5106至0x5107为0；V851_CONTROL_INLET_FAN快照valid=1、updated=1。
 
 ### V851-CTL-HUMIDIFIER — 加湿控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证humidifier.set参数写入0x3040并返回成功应答。
+- 说明：验证humidifier.set参数写入0x5110并返回成功应答。
 
 #### 发送步骤
 
@@ -845,13 +864,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3040为1、0x3041为55；V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。
+- 0x5110为1、0x5111为55，0x5112至0x5113为0；V851_CONTROL_HUMIDIFIER快照valid=1、updated=1。
 
 ### V851-CTL-UVB — UVB控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证uvb.set控制类型。
+- 说明：验证uvb.set参数写入0x510C并返回成功应答。
 
 #### 发送步骤
 
@@ -890,28 +909,35 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回UNSUPPORTED_CMD。
+- UART4返回SUCCESS及实际应用参数。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-UVB",
-      "status": "UNSUPPORTED",
-      "error_code": "UNSUPPORTED_CMD"
+      "status": "SUCCESS",
+      "result": {
+        "cmd": "uvb.set",
+        "executed": true,
+        "applied": {
+          "enabled": true,
+          "duration_minutes": 15
+        }
+      }
     }
   }
   ```
 
 #### Keil调试器检查
 
-- V851_CONTROL_UVB快照valid=1、updated=1。
+- 0x510C为1、0x510D为15，0x510E至0x510F为0；V851_CONTROL_UVB快照valid=1、updated=1。
 
 ### V851-CTL-LIGHT — 灯光控制命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证light.set参数写入0x3020并返回成功应答。
+- 说明：验证light.set参数写入0x5114并返回成功应答。
 
 #### 发送步骤
 
@@ -974,13 +1000,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3020为1、0x3021为80、0x3022为4500；控制快照updated=1。
+- 0x5114为1、0x5115为80、0x5116为4500、0x5117为0；控制快照updated=1。
 
 ### V851-CTL-SETTINGS — 设备设置命令
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：验证device_settings.set参数写入0x3030并返回成功应答。
+- 说明：验证device_settings.set因新VP规划无对应地址而返回不支持。
 
 #### 发送步骤
 
@@ -1021,36 +1047,28 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- UART4返回SUCCESS及实际应用参数。
+- UART4返回UNSUPPORTED_CMD。
 
   ```json
   {
     "msg_type": "device.command_ack",
     "data": {
       "command_id": "CMD-SETTINGS",
-      "status": "SUCCESS",
-      "result": {
-        "cmd": "device_settings.set",
-        "executed": true,
-        "applied": {
-          "language": "zh-CN",
-          "volume": 60,
-          "screen_brightness": 70
-        }
-      }
+      "status": "UNSUPPORTED",
+      "error_code": "UNSUPPORTED_CMD"
     }
   }
   ```
 
 #### Keil调试器检查
 
-- 0x3030为60、0x3031为70、0x3032开始为zh-CN；控制快照updated=1。
+- 不写入旧0x3030控制槽；V851_CONTROL_DEVICE_SETTINGS快照valid=1、updated=1。
 
 ### V851-CTL-INVALID-MISSING — 控制参数缺少必填字段
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：排风命令缺少level时拒绝执行且不改写0x3000。
+- 说明：排风命令缺少level时拒绝执行且不改写0x5100。
 
 #### 发送步骤
 
@@ -1103,13 +1121,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3000控制槽保持上一条有效排风控制值，不被缺字段命令清空。
+- 0x5100控制槽保持上一条有效排风控制值，不被缺字段命令清空。
 
 ### V851-CTL-INVALID-BOOL — 控制布尔字段类型错误
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：加湿enabled为字符串时拒绝执行且不改写0x3040。
+- 说明：加湿enabled为字符串时拒绝执行且不改写0x5110。
 
 #### 发送步骤
 
@@ -1163,13 +1181,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3040控制槽保持上一条有效加湿控制值。
+- 0x5110控制槽保持上一条有效加湿控制值。
 
 ### V851-CTL-INVALID-TEXT — 控制文本字段过长
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：设备语言超过8字节时拒绝执行且不改写0x3030。
+- 说明：温控mode超过8字节时拒绝执行且不改写0x5118。
 
 #### 发送步骤
 
@@ -1183,29 +1201,29 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
      "msg_type": "server.command",
      "data": {
        "command_id": "CMD-INVALID-TEXT",
-       "cmd": "device_settings.set",
+       "cmd": "climate.set",
        "expire_at": 0,
        "params": {
-         "language": "zh-CN-EXT",
-         "volume": 60,
-         "screen_brightness": 70
+         "enabled": true,
+         "mode": "AUTO-LONG",
+         "target_temperature": 24
        }
      }
    }
    ```
 
-   实际JSON长度：`209` 字节。
+   实际JSON长度：`201` 字节。
 
-   完整帧：`216` 字节，帧尾CRC字段 `3125`。
+   完整帧：`208` 字节，帧尾CRC字段 `16A6`。
 
    ```text
-   AA 55 00 D4 A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 54 45 58 54
+   AA 55 00 CC A1 7B 22 6D 73 67 5F 69 64 22 3A 22 4D 53 47 2D 49 4E 56 41 4C 49 44 2D 54 45 58 54
    22 2C 22 6D 73 67 5F 74 79 70 65 22 3A 22 73 65 72 76 65 72 2E 63 6F 6D 6D 61 6E 64 22 2C 22 64
    61 74 61 22 3A 7B 22 63 6F 6D 6D 61 6E 64 5F 69 64 22 3A 22 43 4D 44 2D 49 4E 56 41 4C 49 44 2D
-   54 45 58 54 22 2C 22 63 6D 64 22 3A 22 64 65 76 69 63 65 5F 73 65 74 74 69 6E 67 73 2E 73 65 74
-   22 2C 22 65 78 70 69 72 65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 6C 61 6E 67 75
-   61 67 65 22 3A 22 7A 68 2D 43 4E 2D 45 58 54 22 2C 22 76 6F 6C 75 6D 65 22 3A 36 30 2C 22 73 63
-   72 65 65 6E 5F 62 72 69 67 68 74 6E 65 73 73 22 3A 37 30 7D 7D 7D 31 25
+   54 45 58 54 22 2C 22 63 6D 64 22 3A 22 63 6C 69 6D 61 74 65 2E 73 65 74 22 2C 22 65 78 70 69 72
+   65 5F 61 74 22 3A 30 2C 22 70 61 72 61 6D 73 22 3A 7B 22 65 6E 61 62 6C 65 64 22 3A 74 72 75 65
+   2C 22 6D 6F 64 65 22 3A 22 41 55 54 4F 2D 4C 4F 4E 47 22 2C 22 74 61 72 67 65 74 5F 74 65 6D 70
+   65 72 61 74 75 72 65 22 3A 32 34 7D 7D 7D 16 A6
    ```
 
 #### 预期结果
@@ -1225,13 +1243,13 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3030控制槽保持上一条有效设备设置值。
+- 0x5118控制槽保持上一条有效温控值。
 
 ### V851-CTL-INVALID-RANGE — 控制数值超出VP范围
 
 - 分类：`v851_control`
 - 前置条件：身份与时间已缓存
-- 说明：灯光brightness超过65535时拒绝执行且不改写0x3020。
+- 说明：灯光brightness超过65535时拒绝执行且不改写0x5114。
 
 #### 发送步骤
 
@@ -1287,7 +1305,7 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### Keil调试器检查
 
-- 0x3020控制槽保持上一条有效灯光控制值。
+- 0x5114控制槽保持上一条有效灯光控制值。
 
 ### V851-CTL-PASSWORD — 设备密码命令脱敏
 
