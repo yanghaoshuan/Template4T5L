@@ -18,6 +18,12 @@ class V851ControlDgusTests(unittest.TestCase):
             REPO_ROOT / "modules" / "v851_control_info.c"
         ).read_text(encoding="utf-8")
         cls.main = (REPO_ROOT / "user" / "main.c").read_text(encoding="utf-8")
+        cls.mock_source = (
+            REPO_ROOT / "modules" / "v851_control_mock.c"
+        ).read_text(encoding="utf-8")
+        cls.config = (
+            REPO_ROOT / "include" / "T5L" / "T5LOSConfig.h"
+        ).read_text(encoding="utf-8")
         cls.vectors = json.loads(
             (REPO_ROOT / "tests" / "serial_bridge_vectors.json").read_text(
                 encoding="utf-8"
@@ -40,6 +46,10 @@ class V851ControlDgusTests(unittest.TestCase):
                 )
                 self.assertIn(address, self.header)
 
+    def test_control_info_includes_timer_for_get_sys_tick(self) -> None:
+        self.assertIn('#include "timer.h"', self.source)
+        self.assertIn("GetSysTick()", self.source)
+
     def test_five_handlers_are_registered_and_write_actual_fields(self) -> None:
         for control_type in (
             "V851_CONTROL_EXHAUST",
@@ -58,10 +68,23 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertIn('"INVALID_PARAMS"', self.source)
         self.assertIn("write_dgus_vp(address, record", self.source)
 
-    def test_handlers_are_registered_before_mock_injection(self) -> None:
+    def test_mock_is_enabled_but_injected_after_scheduler_starts(self) -> None:
         register_index = self.main.index("(void)V851ControlInfoDgusInit();")
-        mock_index = self.main.index("(void)V851ControlMockInjectAll();")
-        self.assertLess(register_index, mock_index)
+        mock_task_index = self.main.index(
+            "V851_CONTROL_MOCK_TASK_INTERVAL, V851ControlMockTask"
+        )
+        self.assertLess(register_index, mock_task_index)
+        self.assertIn(
+            "#define v851CONTROL_MOCK_ENABLED         1",
+            self.config,
+        )
+        self.assertNotIn("V851ControlMockInjectAll();", self.main)
+        self.assertIn("V851_CONTROL_MOCK_START_DELAY_MS", self.mock_source)
+        self.assertIn(
+            "V851ControlMockInject(v851_control_mock_task_case)",
+            self.mock_source,
+        )
+        self.assertIn("v851_control_mock_task_case++", self.mock_source)
         self.assertNotIn("V851ControlInfoDgusTask", self.main)
 
     def test_dgus_handler_has_a_c51_overlay_safe_direct_call(self) -> None:

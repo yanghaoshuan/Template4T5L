@@ -3,6 +3,7 @@
 #if bleV851_BRIDGE_ENABLED
 
 #include "core_json.h"
+#include "timer.h"
 
 #include <string.h>
 

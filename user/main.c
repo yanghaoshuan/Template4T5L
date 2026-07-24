@@ -61,9 +61,6 @@ void main(void)
 	V851ProtocolInit();
 	Pb03fBleInit();
 	(void)V851ControlInfoDgusInit();
-	#if v851CONTROL_MOCK_ENABLED
-	(void)V851ControlMockInjectAll();
-	#endif /* v851CONTROL_MOCK_ENABLED */
 	#endif /* bleV851_BRIDGE_ENABLED */
 
 	RtcInit();
@@ -78,6 +75,10 @@ void main(void)
 	#if bleV851_BRIDGE_ENABLED
 	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
 	#endif /* bleV851_BRIDGE_ENABLED */
+
+	#if bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED
+	SysTaskAdd(6, V851_CONTROL_MOCK_TASK_INTERVAL, V851ControlMockTask);
+	#endif /* bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED */
 
 	while(1)
 	{

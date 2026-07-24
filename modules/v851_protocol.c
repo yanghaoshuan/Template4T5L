@@ -6,6 +6,7 @@
 #include "core_json.h"
 #include "pb03f_ble.h"
 #include "timer.h"
+#include "uart.h"
 #include "v851_control_info.h"
 #if otaOTA_ENABLED
 #include "ota.h"
@@ -13,30 +14,10 @@
 
 #include <string.h>
 
-#define V851_MAGIC_AA                          0xAAU
-#define V851_MAGIC_55                          0x55U
-#define V851_MAGIC_AB                          0xABU
-#define V851_MAGIC_CD                          0xCDU
-#define V851_JSON_COMMAND                      0xA1U
-#define V851_JSON_FRAME_MAX                    (BRIDGE_JSON_MAX + 7U)
-#if otaOTA_ENABLED
-#define V851_OTA_FRAME_MAX                     4128U
-#define V851_RX_FRAME_MAX                      V851_OTA_FRAME_MAX
-#else
-#define V851_RX_FRAME_MAX                      V851_JSON_FRAME_MAX
-#endif
-#define V851_STREAM_TIMEOUT_MS                 5000UL
 #define V851_OTA_TX_MAX                        64U
 #define V851_JSON_TX_DEPTH                     2U
 #define V851_ERROR_CODE_MAX                    64U
 #define V851_DEDUP_DEPTH                       4U
-
-typedef enum
-{
-    V851_RX_NONE = 0,
-    V851_RX_JSON,
-    V851_RX_OTA
-} V851RxKind;
 
 typedef struct
 {
@@ -54,12 +35,6 @@ typedef struct
     V851ControlStatus status;
     char error_code[V851_ERROR_CODE_MAX + 1U];
 } V851DedupRecord;
-
-static uint8_t xdata v851_rx_frame[V851_RX_FRAME_MAX];
-static uint16_t v851_rx_len;
-static uint16_t v851_rx_expected;
-static uint32_t v851_rx_tick;
-static V851RxKind v851_rx_kind;
 
 static uint8_t xdata v851_tx_frame[V851_JSON_TX_DEPTH][V851_JSON_FRAME_MAX];
 static uint16_t v851_tx_len[V851_JSON_TX_DEPTH];
@@ -87,37 +62,15 @@ static V851OtaStage v851_ota_terminal_stage;
 static uint8_t v851_ota_terminal_progress;
 static char v851_ota_terminal_error[V851_ERROR_CODE_MAX + 1U];
 
-static uint16_t V851ReadBe16(const uint8_t *_data)
-{
-    return ((uint16_t)_data[0] << 8) | _data[1];
-}
-
 static void V851WriteBe16(uint8_t *_data, uint16_t value)
 {
     _data[0] = (uint8_t)(value >> 8);
     _data[1] = (uint8_t)value;
 }
 
-static uint8_t V851Elapsed(uint32_t start, uint32_t interval)
-{
-    return ((uint32_t)(GetSysTick() - start) >= interval) ? 1U : 0U;
-}
-
 static uint8_t V851UartIdle(void)
 {
     return ((Uart4.TxBusy == 0U) && (Uart4.TxHead == Uart4.TxTail)) ? 1U : 0U;
-}
-
-static void V851ResetRx(void)
-{
-    if((v851_rx_kind == V851_RX_JSON) && (v851_rx_len != 0U))
-    {
-        memset(v851_rx_frame, 0, v851_rx_len);
-    }
-    v851_rx_len = 0U;
-    v851_rx_expected = 0U;
-    v851_rx_tick = 0UL;
-    v851_rx_kind = V851_RX_NONE;
 }
 
 static void V851CopyText(char *out, uint16_t out_size,
@@ -712,9 +665,15 @@ static uint8_t V851BleReplyAllowed(const uint8_t *_data, uint16_t len)
             (strcmp(cmd, "network_status") == 0)) ? 1U : 0U;
 }
 
-static void V851DispatchJson(const uint8_t *_data, uint16_t len)
+void V851ProtocolReceiveJson(const uint8_t *_data, uint16_t len)
 {
     char msg_type[V851_COMMAND_NAME_MAX + 1U];
+
+    if((_data == NULL) || (len == 0U) || (len > BRIDGE_JSON_MAX) ||
+       (JSON_Validate((const char *)_data, len) != JSONSuccess))
+    {
+        return;
+    }
 
     if(JSONSearchToArray(_data, len,
                          "msg_type", sizeof("msg_type") - 1U,
@@ -742,39 +701,6 @@ static void V851DispatchJson(const uint8_t *_data, uint16_t len)
     }
 }
 
-static void V851ProcessJsonFrame(void)
-{
-    uint16_t body_len;
-    uint16_t json_len;
-    uint16_t crc_calc;
-    uint16_t crc_recv;
-
-    body_len = V851ReadBe16(&v851_rx_frame[2]);
-    if((body_len < 3U) || (v851_rx_frame[4] != V851_JSON_COMMAND))
-    {
-        return;
-    }
-
-    json_len = body_len - 3U;
-    crc_calc = crc_16(&v851_rx_frame[4], json_len + 1U);
-    crc_recv = V851ReadBe16(&v851_rx_frame[v851_rx_expected - 2U]);
-    if((crc_calc != crc_recv) ||
-       (JSON_Validate((const char *)&v851_rx_frame[5],
-                      json_len) != JSONSuccess))
-    {
-        return;
-    }
-
-    V851DispatchJson(&v851_rx_frame[5], json_len);
-}
-
-static void V851ProcessOtaFrame(void)
-{
-    #if otaOTA_ENABLED
-    OtaReceive(v851_rx_frame, v851_rx_expected);
-    #endif
-}
-
 uint8_t V851ProtocolSendJson(const uint8_t *_data, uint16_t len)
 {
     uint8_t slot;
@@ -791,8 +717,8 @@ uint8_t V851ProtocolSendJson(const uint8_t *_data, uint16_t len)
     slot = v851_tx_tail;
     body_len = len + 3U;
     frame_len = body_len + 4U;
-    v851_tx_frame[slot][0] = V851_MAGIC_AA;
-    v851_tx_frame[slot][1] = V851_MAGIC_55;
+    v851_tx_frame[slot][0] = V851_FRAME_MAGIC_HIGH;
+    v851_tx_frame[slot][1] = V851_FRAME_MAGIC_LOW;
     V851WriteBe16(&v851_tx_frame[slot][2], body_len);
     v851_tx_frame[slot][4] = V851_JSON_COMMAND;
     memcpy(&v851_tx_frame[slot][5], _data, len);
@@ -907,102 +833,9 @@ uint8_t V851ProtocolRegisterControlHandler(V851ControlType type,
     return 1U;
 }
 
-void V851ProtocolReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len)
-{
-    uint16_t i;
-    uint16_t body_len;
-
-    if((uart != &Uart4) || (_data == NULL) || (len == 0U))
-    {
-        return;
-    }
-
-    for(i = 0U; i < len; i++)
-    {
-        if(v851_rx_len == 0U)
-        {
-            if((_data[i] == V851_MAGIC_AA) || (_data[i] == V851_MAGIC_AB))
-            {
-                v851_rx_frame[0] = _data[i];
-                v851_rx_len = 1U;
-                v851_rx_tick = GetSysTick();
-            }
-            continue;
-        }
-
-        if(v851_rx_len == 1U)
-        {
-            if((v851_rx_frame[0] == V851_MAGIC_AA) && (_data[i] == V851_MAGIC_55))
-            {
-                v851_rx_kind = V851_RX_JSON;
-                v851_rx_frame[v851_rx_len++] = _data[i];
-            }
-            #if otaOTA_ENABLED
-            else if((v851_rx_frame[0] == V851_MAGIC_AB) && (_data[i] == V851_MAGIC_CD))
-            {
-                v851_rx_kind = V851_RX_OTA;
-                v851_rx_frame[v851_rx_len++] = _data[i];
-            }
-            #endif
-            else if(_data[i] == V851_MAGIC_AA)
-            {
-                v851_rx_frame[0] = _data[i];
-                v851_rx_tick = GetSysTick();
-            }else
-            {
-                V851ResetRx();
-            }
-            continue;
-        }
-
-        if(v851_rx_len >= V851_RX_FRAME_MAX)
-        {
-            V851ResetRx();
-            continue;
-        }
-        v851_rx_frame[v851_rx_len++] = _data[i];
-
-        if(v851_rx_len == 4U)
-        {
-            body_len = V851ReadBe16(&v851_rx_frame[2]);
-            if(((v851_rx_kind == V851_RX_JSON) &&
-                ((body_len < 3U) || (body_len > (BRIDGE_JSON_MAX + 3U))))
-               #if otaOTA_ENABLED
-               ||
-               ((v851_rx_kind == V851_RX_OTA) &&
-                ((body_len == 0U) || (body_len > (V851_OTA_FRAME_MAX - 4U))))
-               #endif
-               )
-            {
-                V851ResetRx();
-                continue;
-            }
-            v851_rx_expected = body_len + 4U;
-        }
-
-        if((v851_rx_expected != 0U) && (v851_rx_len == v851_rx_expected))
-        {
-            if(v851_rx_kind == V851_RX_JSON)
-            {
-                V851ProcessJsonFrame();
-            }else
-            {
-                V851ProcessOtaFrame();
-            }
-            V851ResetRx();
-        }
-    }
-}
-
 void V851ProtocolTask(void)
 {
     uint8_t slot;
-
-    if((v851_rx_len != 0U) &&
-       (V851Elapsed(v851_rx_tick, V851_STREAM_TIMEOUT_MS) != 0U))
-    {
-        V851ResetRx();
-    }
 
     if((v851_ota_terminal_pending != 0U) &&
        (v851_tx_count < V851_JSON_TX_DEPTH))
@@ -1042,7 +875,6 @@ void V851ProtocolTask(void)
 
 void V851ProtocolInit(void)
 {
-    memset(v851_rx_frame, 0, sizeof(v851_rx_frame));
     memset(v851_tx_frame, 0, sizeof(v851_tx_frame));
     memset(v851_ack_json, 0, sizeof(v851_ack_json));
     memset(&v851_device_info, 0, sizeof(v851_device_info));
@@ -1054,7 +886,6 @@ void V851ProtocolInit(void)
                  sizeof(v851_device_info.bind_status),
                  "UNBOUND", sizeof("UNBOUND") - 1U);
 
-    V851ResetRx();
     memset(v851_tx_len, 0, sizeof(v851_tx_len));
     v851_tx_head = 0U;
     v851_tx_tail = 0U;

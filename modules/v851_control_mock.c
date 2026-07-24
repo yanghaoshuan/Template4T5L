@@ -3,23 +3,18 @@
 #if bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED
 
 #include "bridge_json.h"
+#include "timer.h"
 
 #include <string.h>
 
-#define V851_CONTROL_MOCK_MAGIC_HIGH            0xAAU
-#define V851_CONTROL_MOCK_MAGIC_LOW             0x55U
-#define V851_CONTROL_MOCK_JSON_COMMAND           0xA1U
 #define V851_CONTROL_MOCK_JSON_MAX               512U
-#define V851_CONTROL_MOCK_FRAME_MAX              (V851_CONTROL_MOCK_JSON_MAX + 7U)
+#define V851_CONTROL_MOCK_START_DELAY_MS          1000UL
 
-static uint8_t xdata v851_control_mock_frame[V851_CONTROL_MOCK_FRAME_MAX];
+static uint8_t xdata v851_control_mock_json[V851_CONTROL_MOCK_JSON_MAX];
 static uint32_t v851_control_mock_sequence;
-
-static void V851ControlMockWriteBe16(uint8_t *_data, uint16_t value)
-{
-    _data[0] = (uint8_t)(value >> 8);
-    _data[1] = (uint8_t)value;
-}
+static V851ControlMockCase v851_control_mock_task_case;
+static uint32_t v851_control_mock_task_tick;
+static uint8_t v851_control_mock_task_started;
 
 static const char *V851ControlMockCommand(V851ControlMockCase mock_case)
 {
@@ -91,9 +86,6 @@ uint8_t V851ControlMockInject(V851ControlMockCase mock_case)
     const char *params;
     V851ControlType type;
     uint16_t json_len;
-    uint16_t body_len;
-    uint16_t frame_len;
-    uint16_t crc_value;
 
     command = V851ControlMockCommand(mock_case);
     params = V851ControlMockParams(mock_case);
@@ -110,7 +102,7 @@ uint8_t V851ControlMockInject(V851ControlMockCase mock_case)
         v851_control_mock_sequence = 1UL;
     }
 
-    BridgeJsonWriterInit(&writer, &v851_control_mock_frame[5],
+    BridgeJsonWriterInit(&writer, v851_control_mock_json,
                          V851_CONTROL_MOCK_JSON_MAX);
     BridgeJsonWriterText(&writer, "{\"msg_id\":\"MOCK-");
     BridgeJsonWriterUint32(&writer, v851_control_mock_sequence);
@@ -130,18 +122,8 @@ uint8_t V851ControlMockInject(V851ControlMockCase mock_case)
         return 0U;
     }
 
-    body_len = json_len + 3U;
-    frame_len = body_len + 4U;
-    v851_control_mock_frame[0] = V851_CONTROL_MOCK_MAGIC_HIGH;
-    v851_control_mock_frame[1] = V851_CONTROL_MOCK_MAGIC_LOW;
-    V851ControlMockWriteBe16(&v851_control_mock_frame[2], body_len);
-    v851_control_mock_frame[4] = V851_CONTROL_MOCK_JSON_COMMAND;
-    crc_value = crc_16(&v851_control_mock_frame[4], json_len + 1U);
-    V851ControlMockWriteBe16(&v851_control_mock_frame[frame_len - 2U],
-                             crc_value);
-
     (void)V851ControlInfoClearUpdated(type);
-    V851ProtocolReceive(&Uart4, v851_control_mock_frame, frame_len);
+    V851ProtocolReceiveJson(v851_control_mock_json, json_len);
     return V851ControlInfoIsUpdated(type);
 }
 
@@ -158,7 +140,34 @@ uint8_t V851ControlMockInjectAll(void)
             return 0U;
         }
     }
+    v851_control_mock_task_case = V851_CONTROL_MOCK_COUNT;
     return 1U;
+}
+
+void V851ControlMockTask(void)
+{
+    if(v851_control_mock_task_case >= V851_CONTROL_MOCK_COUNT)
+    {
+        return;
+    }
+
+    if(v851_control_mock_task_started == 0U)
+    {
+        v851_control_mock_task_tick = GetSysTick();
+        v851_control_mock_task_started = 1U;
+        return;
+    }
+
+    if((uint32_t)(GetSysTick() - v851_control_mock_task_tick) <
+       V851_CONTROL_MOCK_START_DELAY_MS)
+    {
+        return;
+    }
+
+    if(V851ControlMockInject(v851_control_mock_task_case) != 0U)
+    {
+        v851_control_mock_task_case++;
+    }
 }
 
 #endif /* bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED */

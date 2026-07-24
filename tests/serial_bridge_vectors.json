@@ -43,6 +43,7 @@
       "V851-LENGTH-001",
       "V851-OVERSIZE-HEADER",
       "V851-INCOMPLETE-001",
+      "V851-RECOVERY-001",
       "V851-BOUNDARY-2000",
       "V851-OVERSIZE-2001"
     ]
@@ -1609,7 +1610,7 @@
       "suite": "v851_negative",
       "title": "V851声明长度大于实收长度",
       "precondition": "V851接收状态空闲",
-      "description": "body_len增加1，等待超过5000ms验证半帧静默复位。",
+      "description": "body_len增加1，使当前UART读取批次不足一帧，验证本批数据被静默丢弃。",
       "actions": [
         {
           "port": "v851",
@@ -1622,10 +1623,6 @@
             "msg_type": "device.heartbeat",
             "data": {}
           }
-        },
-        {
-          "kind": "wait",
-          "ms": 5200
         }
       ],
       "expected": [
@@ -1633,7 +1630,7 @@
           "port": "v851",
           "kind": "no_frame",
           "timeout_ms": 500,
-          "description": "UART4无应答，接收状态在5秒后复位。"
+          "description": "UART4无应答，不完整帧随当前读取批次结束而丢弃。"
         }
       ]
     },
@@ -1642,7 +1639,7 @@
       "suite": "v851_negative",
       "title": "V851长度字段超过协议上限",
       "precondition": "V851接收状态空闲",
-      "description": "发送body_len=2004，超过允许的2003，接收器在读取长度后立即复位。",
+      "description": "发送body_len=2004，超过允许的2003，扫帧循环立即跳过非法帧头。",
       "actions": [
         {
           "port": "v851",
@@ -1662,18 +1659,14 @@
     {
       "id": "V851-INCOMPLETE-001",
       "suite": "v851_negative",
-      "title": "V851半帧接收超时",
+      "title": "V851半帧批次丢弃",
       "precondition": "V851接收状态空闲",
-      "description": "发送AA55头、合法长度和部分载荷，等待5秒后应静默复位。",
+      "description": "发送AA55头、合法长度和部分载荷，验证当前UART读取批次结束后静默丢弃。",
       "actions": [
         {
           "port": "v851",
           "kind": "raw_hex",
           "hex": "AA55000AA17B"
-        },
-        {
-          "kind": "wait",
-          "ms": 5200
         }
       ],
       "expected": [
@@ -1681,7 +1674,38 @@
           "port": "v851",
           "kind": "no_frame",
           "timeout_ms": 500,
-          "description": "UART4无应答，接收状态超时复位。"
+          "description": "UART4无应答，半帧不保留到下一读取批次。"
+        }
+      ]
+    },
+    {
+      "id": "V851-RECOVERY-001",
+      "suite": "v851_stream",
+      "title": "V851噪声与错误帧后恢复",
+      "precondition": "V851-TIME-001通过且接收状态空闲",
+      "description": "同一批数据包含前导噪声、CRC错误心跳帧和合法控制帧，验证解析器静默丢弃错误帧并继续处理下一帧。",
+      "actions": [
+        {
+          "port": "v851",
+          "kind": "raw_hex",
+          "hex": "00FF12AA550045A17B226D73675F6964223A224241442D5448454E2D474F4F44222C226D73675F74797065223A226465766963652E686561727462656174222C2264617461223A7B7D7D38DBAA5500A1A17B226D73675F6964223A224D53472D5245434F564552222C226D73675F74797065223A227365727665722E636F6D6D616E64222C2264617461223A7B22636F6D6D616E645F6964223A22434D442D5245434F564552222C22636D64223A22657868617573742E736574222C226578706972655F6174223A302C22706172616D73223A7B22656E61626C6564223A747275652C226C6576656C223A317D7D7DC14C"
+        }
+      ],
+      "expected": [
+        {
+          "port": "v851",
+          "kind": "json",
+          "match": {
+            "msg_type": "device.command_ack",
+            "device_sn": "SN-TEST-0001",
+            "ble_id": "ABC234",
+            "data": {
+              "command_id": "CMD-RECOVER",
+              "server_msg_id": "MSG-RECOVER",
+              "status": "SUCCESS"
+            }
+          },
+          "description": "UART4只响应后续合法控制帧并返回SUCCESS。"
         }
       ]
     },

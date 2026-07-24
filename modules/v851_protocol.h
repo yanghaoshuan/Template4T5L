@@ -1,13 +1,18 @@
 #ifndef V851_PROTOCOL_H
 #define V851_PROTOCOL_H
 
+#include "bridge_json.h"
 #include "sys.h"
-#include "uart.h"
-#include "timer.h"
 
 #if bleV851_BRIDGE_ENABLED
 
 #define V851_PROTOCOL_TASK_INTERVAL              1U
+#define V851_FRAME_MAGIC_HIGH                    0xAAU
+#define V851_FRAME_MAGIC_LOW                     0x55U
+#define V851_JSON_COMMAND                        0xA1U
+#define V851_JSON_BODY_OVERHEAD                  3U
+#define V851_JSON_FRAME_OVERHEAD                 7U
+#define V851_JSON_FRAME_MAX                      (BRIDGE_JSON_MAX + V851_JSON_FRAME_OVERHEAD)
 #define V851_DEVICE_SN_MAX                       64U
 #define V851_PRODUCT_KEY_MAX                     32U
 #define V851_BLE_ID_MAX                          6U
@@ -19,14 +24,8 @@
 #error "UART4 TX buffer is too small for a maximum AA55 JSON frame."
 #endif
 
-#if otaOTA_ENABLED
-    #if uartUART4_RXBUF_SIZE < 4128U
-    #error "UART4 RX buffer is too small for a maximum AB CD OTA frame."
-    #endif
-#else
-    #if uartUART4_RXBUF_SIZE < 2008U
-    #error "UART4 RX buffer is too small for a maximum AA55 JSON frame."
-    #endif
+#if uartUART4_RXBUF_SIZE < 2008U
+#error "UART4 RX buffer is too small for a maximum AA55 JSON frame."
 #endif
 
 #if uartUART_COMMON_FRAME_SIZE < uartUART4_RXBUF_SIZE
@@ -113,7 +112,7 @@ typedef enum
 
 void V851ProtocolInit(void);
 void V851ProtocolTask(void);
-void V851ProtocolReceive(UART_TYPE *uart, const uint8_t *_data, uint16_t len);
+void V851ProtocolReceiveJson(const uint8_t *_data, uint16_t len);
 uint8_t V851ProtocolSendJson(const uint8_t *_data, uint16_t len);
 uint8_t V851ProtocolSendOtaFrame(const uint8_t *_data, uint16_t len);
 uint8_t V851ProtocolRegisterControlHandler(V851ControlType type,

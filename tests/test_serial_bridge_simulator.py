@@ -133,7 +133,6 @@ class V851FrameTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulator.encode_v851(b"X" * 2001)
 
-
 class PeerSimulationTests(unittest.TestCase):
     def test_ble_timeout_diagnostic_distinguishes_no_data(self) -> None:
         peer = simulator.BlePeer(FakeSerial())
@@ -290,6 +289,22 @@ class DatasetTests(unittest.TestCase):
         v851_frames, v851_payload = simulator.materialize_action(v851_action)
         self.assertEqual(len(v851_payload or b""), 2000)
         self.assertEqual(len(v851_frames[0]), 2007)
+
+    def test_recovery_vector_contains_noise_bad_frame_and_valid_frame(self) -> None:
+        by_id = {case["id"]: case for case in self.vectors["cases"]}
+        action = by_id["V851-RECOVERY-001"]["actions"][0]
+        wire = simulator.materialize_action(action)[0][0]
+        self.assertEqual(wire[:3], b"\x00\xff\x12")
+
+        bad_offset = 3
+        bad_len = int.from_bytes(wire[bad_offset + 2 : bad_offset + 4], "big") + 4
+        with self.assertRaises(simulator.ProtocolError):
+            simulator.decode_v851_frame(
+                wire[bad_offset : bad_offset + bad_len]
+            )
+
+        good = simulator.decode_v851_frame(wire[bad_offset + bad_len :])
+        self.assertEqual(good.json_value["data"]["command_id"], "CMD-RECOVER")
 
     def test_generated_markdown_is_current(self) -> None:
         expected = simulator.render_markdown(self.vectors)

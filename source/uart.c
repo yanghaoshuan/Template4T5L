@@ -657,7 +657,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 
 #if bleV851_BRIDGE_ENABLED
 /**
- * @brief 将桥接串口中的非DGUS数据交给对应协议解析器
+ * @brief 将PB-03F串口中的非DGUS数据交给蓝牙协议解析器
  * @param[in] uart UART通信接口指针
  * @param[in] frame 待处理数据
  * @param[in] len 数据长度
@@ -671,10 +671,7 @@ static void UartBridgeReceive(UART_TYPE *uart,
         return;
     }
 
-    if(uart == &Uart4)
-    {
-        V851ProtocolReceive(uart, frame, len);
-    }else if(uart == &PB03F_BLE_UART)
+    if(uart == &PB03F_BLE_UART)
     {
         Pb03fBleReceive(uart, frame, len);
     }
@@ -683,7 +680,7 @@ static void UartBridgeReceive(UART_TYPE *uart,
 /**
  * @brief 分流桥接协议与标准迪文82/83协议
  * @details 完整82/83帧直接交给DGUS处理，其余数据仍按原顺序交给
- *          PB-03F AT/透传协议或V851协议，避免AT解析器误吞二进制帧。
+ *          PB-03F AT/透传协议，避免AT解析器误吞二进制帧。
  * @param[in] uart UART通信接口指针
  * @param[in,out] frame 接收数据缓冲区
  * @param[in] len 数据长度
@@ -739,6 +736,9 @@ void UartReadFrame(UART_TYPE *uart)
 {
     static uint8_t xdata frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
+    #if bleV851_BRIDGE_ENABLED
+    uint16_t body_len,json_len,crc_calc,crc_recv;
+    #endif /* bleV851_BRIDGE_ENABLED */
     if(uart->RxFlag == UART_NON_REC)
         return;
     if(uart->RxTimeout == 0)
@@ -785,7 +785,7 @@ void UartReadFrame(UART_TYPE *uart)
         total_frame_len = i;
 
         #if bleV851_BRIDGE_ENABLED
-        if((uart == &Uart4) || (uart == &PB03F_BLE_UART))
+        if(uart == &PB03F_BLE_UART)
         {
             UartBridgeDwin8283Route(uart, frame, total_frame_len);
             return;
@@ -825,27 +825,71 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
+
+                #if bleV851_BRIDGE_ENABLED
+                if(uart == &Uart4)
                 {
-                    break;
+                    body_len = ((uint16_t)frame[frame_offset + 2U] << 8) |
+                               frame[frame_offset + 3U];
+                    if((body_len < V851_JSON_BODY_OVERHEAD) ||
+                       (body_len > (BRIDGE_JSON_MAX +
+                                    V851_JSON_BODY_OVERHEAD)))
+                    {
+                        i--;
+                        continue;
+                    }
+
+                    one_frame_len = body_len + 4U;
+                    if(i < one_frame_len)
+                    {
+                        break;
+                    }
+
+                    if(frame[frame_offset + 4U] == V851_JSON_COMMAND)
+                    {
+                        crc_calc = crc_16(&frame[frame_offset + 4U],
+                                          body_len - 2U);
+                        crc_recv =
+                            ((uint16_t)frame[frame_offset +
+                                             one_frame_len - 2U] << 8) |
+                            frame[frame_offset + one_frame_len - 1U];
+                        if(crc_calc == crc_recv)
+                        {
+                            json_len =
+                                body_len - V851_JSON_BODY_OVERHEAD;
+                            V851ProtocolReceiveJson(
+                                &frame[frame_offset + 5U], json_len);
+                        }
+                    }
+                    i -= one_frame_len;
                 }
-                #if R11_WIFI_ENABLED
-                UartR11UserWifiProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* R11_WIFI_ENABLED */
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                #if sysN5CAMERA_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysN5CAMERA_MODE_ENABLED */
-                #if sysADVERTISE_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysADVERTISE_MODE_ENABLED */
-                i -= one_frame_len;
+                else
+                #endif /* bleV851_BRIDGE_ENABLED */
+                {
+                    one_frame_len =
+                        ((uint16_t)frame[frame_offset + 2U] << 8 |
+                         frame[frame_offset + 3U]) + 4U;
+                    if(i < one_frame_len)
+                    {
+                        break;
+                    }
+                    #if R11_WIFI_ENABLED
+                    UartR11UserWifiProtocol(uart, &frame[frame_offset], one_frame_len);
+                    #endif /* R11_WIFI_ENABLED */
+                    #if sysBEAUTY_MODE_ENABLED
+                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+                    UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
+                    #endif /* sysBEAUTY_MODE_ENABLED */
+                    #if sysN5CAMERA_MODE_ENABLED
+                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+                    UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
+                    #endif /* sysN5CAMERA_MODE_ENABLED */
+                    #if sysADVERTISE_MODE_ENABLED
+                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
+                    UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
+                    #endif /* sysADVERTISE_MODE_ENABLED */
+                    i -= one_frame_len;
+                }
             }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0xCC)
             {
                 if(i < 4U)
