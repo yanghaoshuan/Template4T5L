@@ -125,11 +125,11 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 - V851ProtocolGetDeviceInfo()中的device_sn、ble_id、product_key、model及版本字段与发送值一致。
 
-### V851-TIME-001 — 缓存服务器时间与绑定状态
+### V851-TIME-001 — 缓存服务器时间并触发上电全量上报
 
 - 分类：`bridge`
 - 前置条件：V851-ID-001通过
-- 说明：server.hello_ack只更新本地时间基准、国家码和绑定状态，不产生串口应答。
+- 说明：server.hello_ack更新本地时间、国家码和绑定状态，并在身份可用后触发device.snapshot。
 
 #### 发送步骤
 
@@ -165,11 +165,31 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
 
 #### 预期结果
 
-- server.hello_ack不产生UART4应答。
+- UART4收到包含蓝牙身份、绑定态和T5L控制状态的device.snapshot。
+
+  ```json
+  {
+    "msg_type": "device.snapshot",
+    "protocol_version": "1.0",
+    "device_sn": "SN-TEST-0001",
+    "ble_id": "ABC234",
+    "product_key": "PK-TEST",
+    "timestamp": "$INT",
+    "seq": "$INT",
+    "data": {
+      "state": {
+        "device": {
+          "bind_status": "BOUND"
+        }
+      },
+      "reported_at": "$INT"
+    }
+  }
+  ```
 
 #### Keil调试器检查
 
-- V851ProtocolGetTimestamp()不小于2000000000，bind_status为BOUND。
+- V851ProtocolGetTimestamp()不小于2000000000，bind_status为BOUND；快照不包含network/camera等V851负责字段。
 
 ### BLE-INFO-001 — 蓝牙查询设备信息
 
@@ -525,6 +545,35 @@ T5L应依次发出：`AT`、`AT+BLEMODE=9`、服务UUID、TX UUID、RX UUID、`A
           "level": 3
         }
       }
+    }
+  }
+  ```
+- 控制槽变化后UART4收到白名单字段组成的device.property_report。
+
+  ```json
+  {
+    "msg_type": "device.property_report",
+    "protocol_version": "1.0",
+    "device_sn": "SN-TEST-0001",
+    "ble_id": "ABC234",
+    "product_key": "PK-TEST",
+    "timestamp": "$INT",
+    "seq": "$INT",
+    "data": {
+      "properties": [
+        {
+          "path": "actuators.exhaust.enabled",
+          "value": true,
+          "value_type": "boolean",
+          "reported_at": "$INT"
+        },
+        {
+          "path": "actuators.exhaust.speed_level",
+          "value": 3,
+          "value_type": "number",
+          "reported_at": "$INT"
+        }
+      ]
     }
   }
   ```

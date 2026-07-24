@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#pragma optimize(8, size)
+
 static V851ControlDetails xdata v851_control_details[V851_CONTROL_COUNT];
 
 static void V851ControlInfoWriteBe16(uint8_t *_data, uint16_t value)

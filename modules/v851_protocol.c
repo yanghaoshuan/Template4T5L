@@ -14,10 +14,14 @@
 
 #include <string.h>
 
+#pragma optimize(8,size)
+
 #define V851_OTA_TX_MAX                        64U
 #define V851_JSON_TX_DEPTH                     2U
 #define V851_ERROR_CODE_MAX                    64U
 #define V851_DEDUP_DEPTH                       4U
+#define V851_STATE_MIN_REPORT_INTERVAL_MS       5000UL
+#define V851_STATE_CONTROL_SCAN_INTERVAL_MS      500UL
 
 typedef struct
 {
@@ -61,6 +65,16 @@ static uint8_t v851_ota_terminal_pending;
 static V851OtaStage v851_ota_terminal_stage;
 static uint8_t v851_ota_terminal_progress;
 static char v851_ota_terminal_error[V851_ERROR_CODE_MAX + 1U];
+static uint8_t xdata v851_state_report_json[BRIDGE_JSON_MAX + 1U];
+static uint32_t v851_state_report_seq;
+static uint32_t v851_state_last_report_tick;
+static uint16_t v851_state_pending_mask;
+static uint8_t v851_state_snapshot_pending;
+static uint8_t v851_state_snapshot_sent;
+static uint8_t v851_state_report_started;
+static uint8_t xdata v851_state_control_shadow
+    [V851_CONTROL_DEVICE_SETTINGS][4U];
+static uint32_t v851_state_control_scan_tick;
 
 static void V851WriteBe16(uint8_t *_data, uint16_t value)
 {
@@ -104,6 +118,15 @@ static void V851CopyJsonStringIfPresent(const uint8_t *_data,
        (value_type == JSONString) && (value_len < out_size))
     {
         V851CopyText(out, out_size, value, value_len);
+    }
+}
+
+static void V851StateRequestSnapshot(void)
+{
+    if((v851_device_info.device_sn[0] != '\0') &&
+       (v851_device_info.product_key[0] != '\0'))
+    {
+        v851_state_snapshot_pending = 1U;
     }
 }
 
@@ -163,6 +186,7 @@ static void V851CacheDeviceHello(const uint8_t *_data, uint16_t len)
         Pb03fBleSetProvisionedIdentity((const uint8_t *)v851_device_info.ble_id,
                                       (uint16_t)strlen(v851_device_info.ble_id));
     }
+    V851StateRequestSnapshot();
 }
 
 static void V851CacheHelloAck(const uint8_t *_data, uint16_t len)
@@ -188,6 +212,7 @@ static void V851CacheHelloAck(const uint8_t *_data, uint16_t len)
         v851_server_tick = GetSysTick();
         v851_time_valid = 1U;
     }
+    V851StateRequestSnapshot();
 }
 
 static V851ControlType V851MapControlType(const char *cmd)
@@ -231,6 +256,362 @@ static void V851WriterIdentity(BridgeJsonWriter *writer)
     BridgeJsonWriterText(writer, ",\"product_key\":");
     BridgeJsonWriterQuoted(writer, v851_device_info.product_key,
                            (uint16_t)strlen(v851_device_info.product_key));
+}
+
+static uint16_t V851StateTypeMask(V851ControlType type)
+{
+    return (uint16_t)((uint16_t)1U << (uint8_t)type);
+}
+
+static uint16_t V851StateReadWord(const uint8_t *record, uint8_t index)
+{
+    index = (uint8_t)(index * 2U);
+    return ((uint16_t)record[index] << 8) | record[index + 1U];
+}
+
+static uint8_t V851StateReadControl(V851ControlType type,
+                                    uint8_t *record,
+                                    const char **group,
+                                    const char **value_name,
+                                    uint16_t *value_max)
+{
+    uint32_t address;
+
+    *value_name = NULL;
+    *value_max = 0U;
+    switch(type)
+    {
+        case V851_CONTROL_EXHAUST:
+            address = V851_CONTROL_DGUS_EXHAUST_ADDR;
+            *group = "exhaust";
+            *value_name = "speed_level";
+            *value_max = 6U;
+            break;
+
+        case V851_CONTROL_LIGHT:
+            address = V851_CONTROL_DGUS_LIGHT_ADDR;
+            *group = "light";
+            *value_name = "brightness_level";
+            *value_max = 4U;
+            break;
+
+        case V851_CONTROL_UVB:
+            address = V851_CONTROL_DGUS_UVB_ADDR;
+            *group = "uvb";
+            break;
+
+        case V851_CONTROL_ANION:
+            address = V851_CONTROL_DGUS_ANION_ADDR;
+            *group = "anion";
+            break;
+
+        case V851_CONTROL_PLASMA:
+            address = V851_CONTROL_DGUS_PLASMA_ADDR;
+            *group = "plasma";
+            break;
+
+        case V851_CONTROL_CLIMATE:
+            address = V851_CONTROL_DGUS_CLIMATE_ADDR;
+            *group = "climate";
+            *value_name = "target_celsius";
+            *value_max = 100U;
+            break;
+
+        case V851_CONTROL_HUMIDIFIER:
+            address = V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
+            *group = "humidifier";
+            break;
+
+        case V851_CONTROL_INLET_FAN:
+            address = V851_CONTROL_DGUS_INLET_FAN_ADDR;
+            *group = "inlet_fan";
+            *value_name = "speed_level";
+            *value_max = 4U;
+            break;
+
+        default:
+            return 0U;
+    }
+
+    memset(record, 0, V851_CONTROL_DGUS_SLOT_BYTES);
+    read_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+    return 1U;
+}
+
+static uint32_t V851StateNextSequence(void)
+{
+    v851_state_report_seq++;
+    if((v851_state_report_seq == 0UL) ||
+       (v851_state_report_seq > 2147483647UL))
+    {
+        v851_state_report_seq = 1UL;
+    }
+    return v851_state_report_seq;
+}
+
+static void V851StateWriterBool(BridgeJsonWriter *writer, uint16_t value)
+{
+    BridgeJsonWriterText(writer, (value != 0U) ? "true" : "false");
+}
+
+static void V851StateWriterReportHeader(BridgeJsonWriter *writer,
+                                        const char *msg_type,
+                                        uint32_t timestamp,
+                                        uint32_t sequence)
+{
+    BridgeJsonWriterText(writer, "{\"msg_id\":\"");
+    BridgeJsonWriterUint32(writer, timestamp);
+    BridgeJsonWriterText(writer, "-");
+    BridgeJsonWriterUint32(writer, sequence);
+    BridgeJsonWriterText(writer, "\",\"msg_type\":");
+    BridgeJsonWriterQuoted(writer, msg_type, (uint16_t)strlen(msg_type));
+    BridgeJsonWriterText(writer, ",\"protocol_version\":\"1.0\",");
+    V851WriterIdentity(writer);
+    BridgeJsonWriterText(writer, ",\"timestamp\":");
+    BridgeJsonWriterUint32(writer, timestamp);
+    BridgeJsonWriterText(writer, ",\"seq\":");
+    BridgeJsonWriterUint32(writer, sequence);
+}
+
+static void V851StateWriterProperty(BridgeJsonWriter *writer,
+                                    const char *group,
+                                    const char *field,
+                                    uint16_t value,
+                                    uint8_t boolean_value,
+                                    uint32_t timestamp,
+                                    uint8_t *first)
+{
+    if(*first == 0U)
+    {
+        BridgeJsonWriterText(writer, ",");
+    }
+    *first = 0U;
+    BridgeJsonWriterText(writer, "{\"path\":\"actuators.");
+    BridgeJsonWriterText(writer, group);
+    BridgeJsonWriterText(writer, ".");
+    BridgeJsonWriterText(writer, field);
+    BridgeJsonWriterText(writer, "\",\"value\":");
+    if(boolean_value != 0U)
+    {
+        V851StateWriterBool(writer, value);
+        BridgeJsonWriterText(writer, ",\"value_type\":\"boolean\",");
+    }else
+    {
+        BridgeJsonWriterUint32(writer, value);
+        BridgeJsonWriterText(writer, ",\"value_type\":\"number\",");
+    }
+    BridgeJsonWriterText(writer, "\"reported_at\":");
+    BridgeJsonWriterUint32(writer, timestamp);
+    BridgeJsonWriterText(writer, "}");
+}
+
+static uint8_t V851StateWriterActuator(BridgeJsonWriter *writer,
+                                      V851ControlType type,
+                                      uint8_t property_mode,
+                                      uint32_t timestamp,
+                                      uint8_t *first)
+{
+    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    const char *group;
+    const char *value_name;
+    uint16_t enabled;
+    uint16_t value;
+    uint16_t value_max;
+
+    if(V851StateReadControl(type, record, &group,
+                            &value_name, &value_max) == 0U)
+    {
+        return 0U;
+    }
+    memcpy(v851_state_control_shadow[type], record,
+           (value_name != NULL) ? 4U : 2U);
+    enabled = V851StateReadWord(record, 0U);
+    value = V851StateReadWord(record, 1U);
+    if(property_mode != 0U)
+    {
+        V851StateWriterProperty(writer, group, "enabled",
+                                enabled, 1U, timestamp, first);
+        if((value_name != NULL) &&
+           (value >= 1U) && (value <= value_max))
+        {
+            V851StateWriterProperty(writer, group, value_name,
+                                    value, 0U, timestamp, first);
+        }
+    }else
+    {
+        if(*first == 0U)
+        {
+            BridgeJsonWriterText(writer, ",");
+        }
+        *first = 0U;
+        BridgeJsonWriterQuoted(writer, group, (uint16_t)strlen(group));
+        BridgeJsonWriterText(writer, ":{\"enabled\":");
+        V851StateWriterBool(writer, enabled);
+        if((value_name != NULL) &&
+           (value >= 1U) && (value <= value_max))
+        {
+            BridgeJsonWriterText(writer, ",");
+            BridgeJsonWriterQuoted(writer, value_name,
+                                   (uint16_t)strlen(value_name));
+            BridgeJsonWriterText(writer, ":");
+            BridgeJsonWriterUint32(writer, value);
+        }
+        BridgeJsonWriterText(writer, "}");
+    }
+    return 1U;
+}
+
+static uint16_t V851StateBuildSnapshot(void)
+{
+    BridgeJsonWriter writer;
+    V851ControlType type;
+    uint32_t timestamp;
+    uint8_t first;
+
+    timestamp = V851ProtocolGetTimestamp();
+    BridgeJsonWriterInit(&writer, v851_state_report_json, BRIDGE_JSON_MAX);
+    V851StateWriterReportHeader(&writer, "device.snapshot", timestamp,
+                                V851StateNextSequence());
+    BridgeJsonWriterText(&writer, ",\"data\":{\"state\":{\"device\":{"
+                         "\"bind_status\":");
+    BridgeJsonWriterQuoted(&writer, v851_device_info.bind_status,
+                           (uint16_t)strlen(v851_device_info.bind_status));
+    BridgeJsonWriterText(&writer, "},\"actuators\":{");
+    first = 1U;
+    for(type = V851_CONTROL_EXHAUST;
+        type < V851_CONTROL_DEVICE_SETTINGS;
+        type++)
+    {
+        (void)V851StateWriterActuator(
+            &writer, type, 0U, timestamp, &first);
+    }
+    BridgeJsonWriterText(&writer, "}},\"reported_at\":");
+    BridgeJsonWriterUint32(&writer, timestamp);
+    BridgeJsonWriterText(&writer, "}}");
+    return BridgeJsonWriterFinish(&writer);
+}
+
+static uint16_t V851StateBuildPropertyReport(uint16_t pending_mask)
+{
+    BridgeJsonWriter writer;
+    V851ControlType type;
+    uint32_t timestamp;
+    uint8_t first;
+
+    timestamp = V851ProtocolGetTimestamp();
+    BridgeJsonWriterInit(&writer, v851_state_report_json, BRIDGE_JSON_MAX);
+    V851StateWriterReportHeader(&writer, "device.property_report",
+                                timestamp, V851StateNextSequence());
+    BridgeJsonWriterText(&writer, ",\"data\":{\"properties\":[");
+    first = 1U;
+    for(type = V851_CONTROL_EXHAUST;
+        type < V851_CONTROL_DEVICE_SETTINGS;
+        type++)
+    {
+        if((pending_mask & V851StateTypeMask(type)) != 0U)
+        {
+            (void)V851StateWriterActuator(
+                &writer, type, 1U, timestamp, &first);
+        }
+    }
+    if(first != 0U)
+    {
+        return 0U;
+    }
+    BridgeJsonWriterText(&writer, "]}}");
+    return BridgeJsonWriterFinish(&writer);
+}
+
+static void V851StateMarkControlChanged(V851ControlType type)
+{
+    if(type < V851_CONTROL_DEVICE_SETTINGS)
+    {
+        v851_state_pending_mask |= V851StateTypeMask(type);
+    }
+}
+
+static void V851StateScanControls(void)
+{
+    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    const char *group;
+    const char *value_name;
+    uint16_t value_max;
+    uint32_t tick;
+    V851ControlType type;
+    uint8_t compare_len;
+
+    if(v851_state_snapshot_sent == 0U)
+    {
+        return;
+    }
+    tick = GetSysTick();
+    if((uint32_t)(tick - v851_state_control_scan_tick) <
+       V851_STATE_CONTROL_SCAN_INTERVAL_MS)
+    {
+        return;
+    }
+    v851_state_control_scan_tick = tick;
+    for(type = V851_CONTROL_EXHAUST;
+        type < V851_CONTROL_DEVICE_SETTINGS;
+        type++)
+    {
+        (void)V851StateReadControl(type, record, &group,
+                                   &value_name, &value_max);
+        compare_len = (value_name != NULL) ? 4U : 2U;
+        if(memcmp(v851_state_control_shadow[type],
+                  record, compare_len) != 0)
+        {
+            memcpy(v851_state_control_shadow[type],
+                   record, compare_len);
+            V851StateMarkControlChanged(type);
+        }
+    }
+}
+
+static void V851StateServiceReports(void)
+{
+    uint16_t json_len;
+
+    V851StateScanControls();
+    if((v851_time_valid == 0U) ||
+       (v851_device_info.device_sn[0] == '\0') ||
+       (v851_device_info.product_key[0] == '\0') ||
+       (v851_tx_count >= V851_JSON_TX_DEPTH))
+    {
+        return;
+    }
+    if(v851_state_snapshot_pending != 0U)
+    {
+        json_len = V851StateBuildSnapshot();
+    }else
+    {
+        if((v851_state_snapshot_sent == 0U) ||
+           (v851_state_pending_mask == 0U) ||
+           ((v851_state_report_started != 0U) &&
+            ((uint32_t)(GetSysTick() - v851_state_last_report_tick) <
+             V851_STATE_MIN_REPORT_INTERVAL_MS)))
+        {
+            return;
+        }
+        json_len = V851StateBuildPropertyReport(v851_state_pending_mask);
+    }
+    if((json_len == 0U) ||
+       (V851ProtocolSendJson(v851_state_report_json, json_len) == 0U))
+    {
+        return;
+    }
+    if(v851_state_snapshot_pending != 0U)
+    {
+        v851_state_snapshot_pending = 0U;
+        v851_state_snapshot_sent = 1U;
+        v851_state_pending_mask = 0U;
+        v851_state_report_started = 0U;
+    }else
+    {
+        v851_state_pending_mask = 0U;
+        v851_state_last_report_tick = GetSysTick();
+        v851_state_report_started = 1U;
+    }
 }
 
 static uint8_t V851SendCommandAck(const V851CommandContext *context,
@@ -854,6 +1235,8 @@ void V851ProtocolTask(void)
         }
     }
 
+    V851StateServiceReports();
+
     if((Uart4.TxBusy != 0U) || (Uart4.TxHead != Uart4.TxTail))
     {
         return;
@@ -897,6 +1280,7 @@ void V851ProtocolInit(void)
     V851ControlInfoInit();
     memset(v851_dedup, 0, sizeof(v851_dedup));
     memset(&v851_ota_command, 0, sizeof(v851_ota_command));
+    memset(v851_state_report_json, 0, sizeof(v851_state_report_json));
     V851CopyText(v851_device_info.bind_status,
                  sizeof(v851_device_info.bind_status),
                  "UNBOUND", sizeof("UNBOUND") - 1U);
@@ -917,6 +1301,14 @@ void V851ProtocolInit(void)
     v851_ota_terminal_stage = V851_OTA_STAGE_FAILED;
     v851_ota_terminal_progress = 0U;
     memset(v851_ota_terminal_error, 0, sizeof(v851_ota_terminal_error));
+    v851_state_report_seq = 0UL;
+    v851_state_last_report_tick = 0UL;
+    v851_state_pending_mask = 0U;
+    v851_state_snapshot_pending = 0U;
+    v851_state_snapshot_sent = 0U;
+    v851_state_report_started = 0U;
+    memset(v851_state_control_shadow, 0,
+           sizeof(v851_state_control_shadow));
 }
 
 #endif /* bleV851_BRIDGE_ENABLED */

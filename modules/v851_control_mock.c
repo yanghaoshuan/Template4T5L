@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#pragma optimize(8,size)
+
 #define V851_CONTROL_MOCK_JSON_MAX               512U
 #define V851_CONTROL_MOCK_START_DELAY_MS          1000UL
 

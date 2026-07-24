@@ -738,8 +738,16 @@ def _match_subset(actual: Any, expected: Any, path: str = "$") -> list[str]:
             else:
                 errors.extend(_match_subset(actual[key], value, f"{path}.{key}"))
     elif isinstance(expected, list):
-        if actual != expected:
-            errors.append(f"{path}: expected {expected!r}, got {actual!r}")
+        if not isinstance(actual, list):
+            return [f"{path}: expected array, got {type(actual).__name__}"]
+        if len(actual) != len(expected):
+            return [
+                f"{path}: expected {len(expected)} items, got {len(actual)}"
+            ]
+        for index, value in enumerate(expected):
+            errors.extend(
+                _match_subset(actual[index], value, f"{path}[{index}]")
+            )
     elif expected == "$INT":
         if not isinstance(actual, int):
             errors.append(f"{path}: expected integer, got {actual!r}")
