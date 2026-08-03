@@ -174,23 +174,25 @@ extern uint32_t sysFCLK;
 
 
 #define uartTA_PROTOCOL_ENABLED          0
-#define bleV851_BRIDGE_ENABLED           1      /**< PB-03F与UART4 V851分层协议 */
-#define blePB03F_UART_ID                 2      /**< 测试使用UART2；生产硬件恢复时改为5 */
-#define v851CONTROL_MOCK_ENABLED         1      /**< 生产配置关闭Mock；本地测试时可临时置1 */
+#define v851PROTOCOL_ENABLED             1      /**< UART4 V851 TLV/Wi-Fi协议 */
+#define pb03fBLE_ENABLED                 0      /**< PB-03F源码保留，当前产品禁用 */
+#define blePB03F_UART_ID                 5      /**< 仅在重新启用PB-03F时选择UART */
+#define v851CONTROL_MOCK_ENABLED         0      /**< 旧JSON控制模拟器停用 */
 
-#if (blePB03F_UART_ID != 2) && (blePB03F_UART_ID != 5)
+#if pb03fBLE_ENABLED && !v851PROTOCOL_ENABLED
+#error "PB-03F compatibility requires the V851 protocol module."
+#endif
+
+#if pb03fBLE_ENABLED && \
+    ((blePB03F_UART_ID != 2) && (blePB03F_UART_ID != 5))
 #error "blePB03F_UART_ID must be 2 or 5."
 #endif
 
-#if bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2) && uartTA_PROTOCOL_ENABLED
-#error "TA protocol cannot share UART2 with the PB-03F test transport."
+#if pb03fBLE_ENABLED && (blePB03F_UART_ID == 2) && uartTA_PROTOCOL_ENABLED
+#error "TA protocol cannot share UART2 with PB-03F."
 #endif
 
-#if bleV851_BRIDGE_ENABLED && (blePB03F_UART_ID == 2)
-#define sysDGUS_AUTO_UPLOAD_ENABLED      0      /**< UART2测试蓝牙时禁止混入DGUS自动上传数据 */
-#else
-#define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
-#endif /* bleV851_BRIDGE_ENABLED && UART2 PB-03F test */
+#define sysDGUS_AUTO_UPLOAD_ENABLED      0      /**< V851配网直接轮询0x0600，不占用UART2 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
@@ -204,9 +206,9 @@ extern uint32_t sysFCLK;
 
 /**
  * @brief OTA升级功能配置
- * @details 当前升级由Bootloader负责，应用固件不接收AB CD升级数据帧。
+ * @details 应用固件通过UART4接收AB CD升级数据帧并写入NAND。
  */
-#define otaOTA_ENABLED                 0              /**< 应用层OTA关闭；升级由Bootloader负责 */
+#define otaOTA_ENABLED                 1              /**< 启用V851应用层OTA */
 #define otaCRC32_CHECK_ENABLED         1              /**< OTA整文件CRC32校验使能标志 */
 #define otaDEBUG_ENABLED               0              /**< OTA调试输出使能标志，当前默认关闭 */
 #define otaTASK_INTERVAL               2              /**< OTA周期任务执行间隔，单位为系统任务节拍 */
@@ -223,7 +225,7 @@ extern uint32_t sysFCLK;
 #define otaUPDATE_INFO_ADDR            0x4100         /**< OTA版本号、时间段等信息起始VP地址 */
 #define otaCHARGE_STATUS_ADDR          0x1000         /**< 参考项目保留的充电状态VP地址 */
 
-#if otaOTA_ENABLED && !bleV851_BRIDGE_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
+#if otaOTA_ENABLED && !v851PROTOCOL_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
 #error "OTA requires the V851 bridge or one legacy R11 mode."
 #endif /* otaOTA_ENABLED && no transport */
 
@@ -275,7 +277,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     2048
+#define uartUART_COMMON_FRAME_SIZE     4160
 
 /**
  * @brief Modbus协议支持使能标志
@@ -290,7 +292,7 @@ extern uint32_t sysFCLK;
  * @brief UART2使能标志
  * @details 1: 启用UART2接口, 0: 禁用UART2接口
  */
-#define uartUART2_ENABLED               1
+#define uartUART2_ENABLED               0
 
 #if uartUART2_ENABLED
     /**
@@ -338,8 +340,8 @@ extern uint32_t sysFCLK;
 #define uartUART4_ENABLED               1
 
 #if uartUART4_ENABLED
-    #define uartUART4_TXBUF_SIZE         2048
-    #define uartUART4_RXBUF_SIZE         2048
+    #define uartUART4_TXBUF_SIZE         2112
+    #define uartUART4_RXBUF_SIZE         4160
     #define uartUART4_TIMEOUT_ENABLED    uartUART4_ENABLED
     
     #if uartUART4_TIMEOUT_ENABLED
@@ -353,8 +355,24 @@ extern uint32_t sysFCLK;
     #endif  /* uartUART4_485_ENABLED */
 #endif  /* uartUART4_ENABLED */
 
+#if v851PROTOCOL_ENABLED && !uartUART4_ENABLED
+#error "V851 protocol requires UART4."
+#endif
+
+#if v851PROTOCOL_ENABLED && (uartUART_COMMON_FRAME_SIZE < 4160U)
+#error "V851 UART scratch buffer must be at least 4160 bytes."
+#endif
+
+#if v851PROTOCOL_ENABLED && \
+    ((uartUART4_RXBUF_SIZE < 4160U) || (uartUART4_TXBUF_SIZE <= 2048U))
+#error "V851 UART4 buffers do not meet TLV/OTA limits."
+#endif
+
 /* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               1
+#define uartUART5_ENABLED               (sysBEAUTY_MODE_ENABLED || \
+                                         sysADVERTISE_MODE_ENABLED || \
+                                         (pb03fBLE_ENABLED && \
+                                          (blePB03F_UART_ID == 5)))
 
 #if uartUART5_ENABLED
     #define uartUART5_TXBUF_SIZE         256

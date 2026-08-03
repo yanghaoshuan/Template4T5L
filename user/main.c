@@ -1,16 +1,15 @@
 #include "sys.h"
 #include "uart.h"
 #include "timer.h"
-#include "core_json.h"
 
-#if bleV851_BRIDGE_ENABLED
+#if pb03fBLE_ENABLED
 #include "pb03f_ble.h"
-#include "v851_control_info.h"
-#if v851CONTROL_MOCK_ENABLED
-#include "v851_control_mock.h"
-#endif /* v851CONTROL_MOCK_ENABLED */
+#endif /* pb03fBLE_ENABLED */
+
+#if v851PROTOCOL_ENABLED
 #include "v851_protocol.h"
-#endif /* bleV851_BRIDGE_ENABLED */
+#include "v851_wifi.h"
+#endif /* v851PROTOCOL_ENABLED */
 
 #if otaOTA_ENABLED
 #include "ota.h"
@@ -57,28 +56,40 @@ void main(void)
 	T5LCpuInit();
 
 
-	#if bleV851_BRIDGE_ENABLED
+	#if otaOTA_ENABLED
+	OtaInit();
+	OtaDataInit();
+	#endif /* otaOTA_ENABLED */
+
+	#if v851PROTOCOL_ENABLED
 	V851ProtocolInit();
+	V851WifiInit();
+	#endif /* v851PROTOCOL_ENABLED */
+
+	#if pb03fBLE_ENABLED
 	Pb03fBleInit();
-	(void)V851ControlInfoDgusInit();
-	#endif /* bleV851_BRIDGE_ENABLED */
+	#endif /* pb03fBLE_ENABLED */
 
 	RtcInit();
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
 	SysTaskAdd(2, UART_TASK_INTERVAL, UartProtocalHandleTask);
 
-	#if bleV851_BRIDGE_ENABLED
-	SysTaskAdd(3, PB03F_BLE_TASK_INTERVAL, Pb03fBleTask);
-	#endif /* bleV851_BRIDGE_ENABLED */
+	#if v851PROTOCOL_ENABLED
+	SysTaskAdd(3, V851_WIFI_TASK_INTERVAL, V851WifiTask);
+	#endif /* v851PROTOCOL_ENABLED */
 
-	#if bleV851_BRIDGE_ENABLED
+	#if pb03fBLE_ENABLED
+	SysTaskAdd(4, PB03F_BLE_TASK_INTERVAL, Pb03fBleTask);
+	#endif /* pb03fBLE_ENABLED */
+
+	#if v851PROTOCOL_ENABLED
 	SysTaskAdd(5, V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask);
-	#endif /* bleV851_BRIDGE_ENABLED */
+	#endif /* v851PROTOCOL_ENABLED */
 
-	#if bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED
-	SysTaskAdd(6, V851_CONTROL_MOCK_TASK_INTERVAL, V851ControlMockTask);
-	#endif /* bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED */
+	#if otaOTA_ENABLED
+	SysTaskAdd(6, otaTASK_INTERVAL, OtaTask);
+	#endif /* otaOTA_ENABLED */
 
 	while(1)
 	{

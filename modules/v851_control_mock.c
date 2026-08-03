@@ -1,6 +1,6 @@
 #include "v851_control_mock.h"
 
-#if bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED
+#if pb03fBLE_ENABLED && v851CONTROL_MOCK_ENABLED
 
 #include "bridge_json.h"
 #include "timer.h"
@@ -208,4 +208,4 @@ void V851ControlMockTask(void)
     }
 }
 
-#endif /* bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED */
+#endif /* pb03fBLE_ENABLED && v851CONTROL_MOCK_ENABLED */

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import unittest
 from pathlib import Path
 
@@ -11,32 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 class V851ControlDgusTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.header = (
-            REPO_ROOT / "modules" / "v851_control_info.h"
-        ).read_text(encoding="utf-8")
-        cls.source = (
-            REPO_ROOT / "modules" / "v851_control_info.c"
-        ).read_text(encoding="utf-8")
-        cls.main = (REPO_ROOT / "user" / "main.c").read_text(encoding="utf-8")
-        cls.mock_source = (
-            REPO_ROOT / "modules" / "v851_control_mock.c"
-        ).read_text(encoding="utf-8")
-        cls.mock_header = (
-            REPO_ROOT / "modules" / "v851_control_mock.h"
-        ).read_text(encoding="utf-8")
-        cls.pb_source = (
-            REPO_ROOT / "modules" / "pb03f_ble.c"
-        ).read_text(encoding="utf-8")
-        cls.config = (
-            REPO_ROOT / "include" / "T5L" / "T5LOSConfig.h"
-        ).read_text(encoding="utf-8")
-        cls.vectors = json.loads(
-            (REPO_ROOT / "tests" / "serial_bridge_vectors.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        cls.header = (REPO_ROOT / "modules/v851_control_info.h").read_text(encoding="utf-8")
+        cls.source = (REPO_ROOT / "modules/v851_control_info.c").read_text(encoding="utf-8")
+        cls.protocol = (REPO_ROOT / "modules/v851_protocol.c").read_text(encoding="utf-8")
+        cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
 
-    def test_dgus_address_layout_matches_vp_plan(self) -> None:
+    def test_dgus_address_layout(self) -> None:
         expected = {
             "EXHAUST": "0x5100UL",
             "INLET_FAN": "0x5104UL",
@@ -47,136 +26,60 @@ class V851ControlDgusTests(unittest.TestCase):
             "PLASMA": "0x5120UL",
             "ANION": "0x5124UL",
         }
-        self.assertIn(
-            "#define V851_CONTROL_DGUS_SLOT_WORDS             0x0004U",
-            self.header,
-        )
         for name, address in expected.items():
-            with self.subTest(name=name):
-                self.assertIn(
-                    f"#define V851_CONTROL_DGUS_{name}_ADDR",
-                    self.header,
-                )
-                self.assertIn(address, self.header)
+            self.assertIn(f"V851_CONTROL_DGUS_{name}_ADDR", self.header)
+            self.assertIn(address, self.header)
 
-    def test_control_info_includes_timer_for_get_sys_tick(self) -> None:
-        self.assertIn('#include "timer.h"', self.source)
-        self.assertIn("GetSysTick()", self.source)
-
-    def test_eight_handlers_are_registered_and_write_actual_fields(self) -> None:
-        for control_type in (
-            "V851_CONTROL_EXHAUST",
-            "V851_CONTROL_INLET_FAN",
-            "V851_CONTROL_UVB",
-            "V851_CONTROL_HUMIDIFIER",
-            "V851_CONTROL_CLIMATE",
-            "V851_CONTROL_LIGHT",
-            "V851_CONTROL_PLASMA",
-            "V851_CONTROL_ANION",
+    def test_only_semantically_compatible_fields_are_mapped(self) -> None:
+        self.assertIn("V851ControlInfoIsEnabledTag", self.source)
+        self.assertIn("V851ControlInfoIsLevelTag", self.source)
+        self.assertIn("V851_TLV_STRUCT_CLIMATE", self.source)
+        self.assertIn("V851TlvReadBinary64Uint16", self.source)
+        for obsolete in (
+            "target_humidity",
+            "duration_minutes",
+            "color_temperature",
+            "core_json",
         ):
-            with self.subTest(control_type=control_type):
-                self.assertIn(
-                    f"{control_type}, V851ControlInfoDgusHandler",
-                    self.source,
-                )
-        self.assertIn('"target_humidity"', self.source)
-        self.assertIn('"duration_minutes"', self.source)
-        self.assertIn("V851_CONTROL_STATUS_SUCCESS", self.source)
-        self.assertIn('"INVALID_PARAMS"', self.source)
-        self.assertIn("write_dgus_vp(address, record", self.source)
-        self.assertNotIn(
-            "V851_CONTROL_DEVICE_SETTINGS, V851ControlInfoDgusHandler",
-            self.source,
-        )
+            self.assertNotIn(obsolete, self.source)
 
-    def test_mock_is_enabled_but_injected_after_scheduler_starts(self) -> None:
-        register_index = self.main.index("(void)V851ControlInfoDgusInit();")
-        mock_task_index = self.main.index(
-            "V851_CONTROL_MOCK_TASK_INTERVAL, V851ControlMockTask"
-        )
-        self.assertLess(register_index, mock_task_index)
-        self.assertIn(
-            "#define v851CONTROL_MOCK_ENABLED         1",
-            self.config,
-        )
-        self.assertNotIn("V851ControlMockInjectAll();", self.main)
-        self.assertIn("V851_CONTROL_MOCK_START_DELAY_MS", self.mock_source)
-        self.assertIn(
-            "V851ControlMockInject(v851_control_mock_task_case)",
-            self.mock_source,
-        )
-        self.assertIn("v851_control_mock_task_case++", self.mock_source)
-        for mock_case in (
-            "V851_CONTROL_MOCK_EXHAUST",
-            "V851_CONTROL_MOCK_INLET_FAN",
-            "V851_CONTROL_MOCK_UVB",
-            "V851_CONTROL_MOCK_HUMIDIFIER",
-            "V851_CONTROL_MOCK_LIGHT",
-            "V851_CONTROL_MOCK_CLIMATE",
-            "V851_CONTROL_MOCK_PLASMA",
-            "V851_CONTROL_MOCK_ANION",
+    def test_whole_frame_validation_precedes_any_apply(self) -> None:
+        first_pass = self.protocol.index("First pass: reject the complete frame")
+        second_pass = self.protocol.index("Second pass: the complete frame")
+        apply = self.protocol.index("V851ControlInfoApplySegment", second_pass)
+        self.assertLess(first_pass, second_pass)
+        self.assertLess(second_pass, apply)
+        self.assertNotIn("V851ControlInfoApplySegment", self.protocol[first_pass:second_pass])
+
+    def test_remote_write_updates_shadow_without_ack(self) -> None:
+        self.assertIn("memcpy(v851_control_shadow[index], record", self.source)
+        self.assertNotIn("ACK", self.protocol)
+        self.assertNotIn("ack", self.protocol)
+
+    def test_binary64_uses_words_not_native_double(self) -> None:
+        self.assertIn("uint32_t high_word", self.protocol)
+        self.assertIn("uint32_t low_word", self.protocol)
+        self.assertIn("exponent_bits", self.protocol)
+        self.assertNotIn("double", self.protocol)
+
+    def test_all_documented_types_and_tags_are_public(self) -> None:
+        for value in range(0x01, 0x0B):
+            self.assertIn(f"0x{value:02X}U", self.protocol_h)
+        for value in range(0x61, 0x6C):
+            self.assertIn(f"0x{value:02X}U", self.protocol_h)
+        for name in (
+            "POWER_MODE", "LAST_OPEN_TIME", "CO2", "EXH_INTERVAL_HOURS",
+            "LIGHT_RUNNING", "UVB_DAILY_HOURS", "ANION_RUNNING",
+            "PLASMA_RUNNING", "CLIMATE_CTRL_STATUS", "HUMI_LIQUID_STATUS",
+            "INLET_RUNNING", "FILTER_NEED_REPLACE", "LAST_ERROR_CODE",
+            "DISP_SCREEN_MODE", "LOCAL_PASSWORD", "CONFIG_VERSION",
+            "STORAGE_FREE", "FACTORY_FW_VERSION", "FACTORY_REJECT_REASON",
         ):
-            with self.subTest(mock_case=mock_case):
-                self.assertIn(mock_case, self.mock_header)
-                self.assertIn(mock_case, self.mock_source)
-        self.assertNotIn("V851_CONTROL_MOCK_DEVICE_SETTINGS", self.mock_header)
-        self.assertNotIn('"device_settings.set"', self.mock_source)
-        self.assertNotIn("V851ControlInfoDgusTask", self.main)
+            self.assertIn(f"V851_TLV_TAG_{name}", self.protocol_h)
 
-    def test_pb_binding_qr_uses_planned_address(self) -> None:
-        self.assertIn("#define PB_QR_VP_ADDR", self.pb_source)
-        self.assertIn("0x5500U", self.pb_source)
-        self.assertNotIn("#define PB_QR_VP_ADDR                         0x05ADU", self.pb_source)
-
-    def test_dgus_handler_has_a_c51_overlay_safe_direct_call(self) -> None:
-        protocol = (
-            REPO_ROOT / "modules" / "v851_protocol.c"
-        ).read_text(encoding="utf-8")
-        self.assertIn(
-            "v851_handlers[command.type] == V851ControlInfoDgusHandler",
-            protocol,
-        )
-        self.assertIn(
-            "V851ControlInfoDgusHandler(&handler_context);",
-            protocol,
-        )
-
-    def test_selected_control_vectors_expect_success(self) -> None:
-        selected = {
-            "V851-CTL-EXHAUST",
-            "V851-CTL-PLASMA",
-            "V851-CTL-ANION",
-            "V851-CTL-CLIMATE",
-            "V851-CTL-INLET",
-            "V851-CTL-HUMIDIFIER",
-            "V851-CTL-UVB",
-            "V851-CTL-LIGHT",
-        }
-        by_id = {case["id"]: case for case in self.vectors["cases"]}
-        for case_id in selected:
-            with self.subTest(case_id=case_id):
-                match = by_id[case_id]["expected"][0]["match"]["data"]
-                self.assertEqual(match["status"], "SUCCESS")
-                self.assertNotIn("error_code", match)
-
-    def test_device_settings_now_expects_unsupported(self) -> None:
-        by_id = {case["id"]: case for case in self.vectors["cases"]}
-        match = by_id["V851-CTL-SETTINGS"]["expected"][0]["match"]["data"]
-        self.assertEqual(match["status"], "UNSUPPORTED")
-        self.assertEqual(match["error_code"], "UNSUPPORTED_CMD")
-
-    def test_invalid_control_vectors_expect_invalid_params(self) -> None:
-        by_id = {case["id"]: case for case in self.vectors["cases"]}
-        for case_id in (
-            "V851-CTL-INVALID-MISSING",
-            "V851-CTL-INVALID-BOOL",
-            "V851-CTL-INVALID-TEXT",
-            "V851-CTL-INVALID-RANGE",
-        ):
-            with self.subTest(case_id=case_id):
-                match = by_id[case_id]["expected"][0]["match"]["data"]
-                self.assertEqual(match["status"], "FAILED")
-                self.assertEqual(match["error_code"], "INVALID_PARAMS")
+    def test_single_direct_project_hook(self) -> None:
+        self.assertEqual(self.protocol.count("V851TlvApplicationSegment(command, &segment)"), 1)
+        self.assertNotIn("V851ControlHandler", self.protocol)
 
 
 if __name__ == "__main__":

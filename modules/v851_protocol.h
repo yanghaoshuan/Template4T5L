@@ -1,105 +1,165 @@
 #ifndef V851_PROTOCOL_H
 #define V851_PROTOCOL_H
 
-#include "bridge_json.h"
 #include "sys.h"
 
-#if bleV851_BRIDGE_ENABLED
+#if v851PROTOCOL_ENABLED
 
 #define V851_PROTOCOL_TASK_INTERVAL              1U
+
 #define V851_FRAME_MAGIC_HIGH                    0xAAU
 #define V851_FRAME_MAGIC_LOW                     0x55U
-#define V851_JSON_COMMAND                        0xA1U
-#define V851_JSON_BODY_OVERHEAD                  3U
-#define V851_JSON_FRAME_OVERHEAD                 7U
-#define V851_JSON_FRAME_MAX                      (BRIDGE_JSON_MAX + V851_JSON_FRAME_OVERHEAD)
-#define V851_DEVICE_SN_MAX                       64U
-#define V851_PRODUCT_KEY_MAX                     32U
-#define V851_BLE_ID_MAX                          6U
-#define V851_SHORT_TEXT_MAX                      32U
-#define V851_COMMAND_ID_MAX                      64U
-#define V851_COMMAND_NAME_MAX                    32U
+#define V851_TLV_CMD_PROPERTY                    0x35U
+#define V851_TLV_CMD_FACTORY                     0x36U
+#define V851_TLV_CMD_OTA_STATUS                  0x37U
 
-#if uartUART4_TXBUF_SIZE < 2008U
-#error "UART4 TX buffer is too small for a maximum AA55 JSON frame."
-#endif
+#define V851_TLV_FRAME_MAX                       2048U
+#define V851_TLV_FRAME_FIXED_SIZE                5U
+#define V851_TLV_SEGMENT_HEADER_SIZE             3U
+#define V851_TLV_FIELD_HEADER_SIZE               3U
+#define V851_OTA_FRAME_MAX                       4124U
 
-#if uartUART4_RXBUF_SIZE < 2008U
-#error "UART4 RX buffer is too small for a maximum AA55 JSON frame."
-#endif
+/* Documented structure identifiers. */
+#define V851_TLV_STRUCT_DEVICE                   0x01U
+#define V851_TLV_STRUCT_NETWORK                  0x02U
+#define V851_TLV_STRUCT_POWER                    0x03U
+#define V851_TLV_STRUCT_DOOR                     0x04U
+#define V851_TLV_STRUCT_ENVIRONMENT              0x05U
+#define V851_TLV_STRUCT_ACTUATORS                0x06U
+#define V851_TLV_STRUCT_CAMERA                   0x07U
+#define V851_TLV_STRUCT_SETTINGS                 0x08U
+#define V851_TLV_STRUCT_FIRMWARE                 0x09U
+#define V851_TLV_STRUCT_STORAGE                  0x0AU
+#define V851_TLV_STRUCT_EXHAUST                  0x61U
+#define V851_TLV_STRUCT_LIGHT                    0x62U
+#define V851_TLV_STRUCT_UVB                      0x63U
+#define V851_TLV_STRUCT_ANION                    0x64U
+#define V851_TLV_STRUCT_PLASMA                   0x65U
+#define V851_TLV_STRUCT_CLIMATE                  0x66U
+#define V851_TLV_STRUCT_HUMIDIFIER               0x67U
+#define V851_TLV_STRUCT_INLET_FAN                0x68U
+#define V851_TLV_STRUCT_FILTER                   0x69U
+#define V851_TLV_STRUCT_FACTORY_DEVICE           0x6AU
+#define V851_TLV_STRUCT_FACTORY_REJECTION        0x6BU
+#define V851_TLV_STRUCT_OTA_STATUS               0x6CU
 
-#if uartUART_COMMON_FRAME_SIZE < uartUART4_RXBUF_SIZE
-#error "The common UART scratch buffer must hold the UART4 receive ring."
-#endif
+/* PowerState. */
+#define V851_TLV_TAG_POWER_MODE                  0x01U
+#define V851_TLV_TAG_BATTERY_PERCENT             0x02U
+#define V851_TLV_TAG_CHARGING                    0x03U
+/* DoorState. */
+#define V851_TLV_TAG_DOOR_STATUS                 0x01U
+#define V851_TLV_TAG_LOCK_STATUS                 0x02U
+#define V851_TLV_TAG_LAST_OPEN_TIME              0x03U
+/* EnvironmentState. */
+#define V851_TLV_TAG_TEMPERATURE                 0x01U
+#define V851_TLV_TAG_HUMIDITY                    0x02U
+#define V851_TLV_TAG_PM25                        0x03U
+#define V851_TLV_TAG_CO2                         0x04U
+/* ActuatorExhaust. */
+#define V851_TLV_TAG_EXH_ENABLED                 0x01U
+#define V851_TLV_TAG_EXH_SPEED_LEVEL             0x02U
+#define V851_TLV_TAG_EXH_INTERVAL_HOURS          0x03U
+#define V851_TLV_TAG_EXH_RUNNING                 0x04U
+/* ActuatorLight. */
+#define V851_TLV_TAG_LIGHT_ENABLED               0x01U
+#define V851_TLV_TAG_LIGHT_BRIGHTNESS            0x02U
+#define V851_TLV_TAG_LIGHT_RUNNING               0x03U
+/* ActuatorUvb. */
+#define V851_TLV_TAG_UVB_ENABLED                 0x01U
+#define V851_TLV_TAG_UVB_LEVEL                   0x02U
+#define V851_TLV_TAG_UVB_DAILY_HOURS             0x03U
+#define V851_TLV_TAG_UVB_RUNNING                 0x04U
+/* ActuatorAnion. */
+#define V851_TLV_TAG_ANION_ENABLED               0x01U
+#define V851_TLV_TAG_ANION_RUNNING               0x02U
+/* ActuatorPlasma. */
+#define V851_TLV_TAG_PLASMA_ENABLED              0x01U
+#define V851_TLV_TAG_PLASMA_RUNNING              0x02U
+/* ActuatorClimate. */
+#define V851_TLV_TAG_CLIMATE_ENABLED             0x01U
+#define V851_TLV_TAG_CLIMATE_TARGET              0x02U
+#define V851_TLV_TAG_CLIMATE_CTRL_STATUS         0x03U
+#define V851_TLV_TAG_CLIMATE_RUNNING             0x04U
+/* ActuatorHumidifier. */
+#define V851_TLV_TAG_HUMI_ENABLED                0x01U
+#define V851_TLV_TAG_HUMI_INTERVAL_HOURS         0x02U
+#define V851_TLV_TAG_HUMI_RUNNING_HOURS          0x03U
+#define V851_TLV_TAG_HUMI_RUNNING                0x04U
+#define V851_TLV_TAG_HUMI_LIQUID_STATUS          0x05U
+/* ActuatorInletFan. */
+#define V851_TLV_TAG_INLET_ENABLED               0x01U
+#define V851_TLV_TAG_INLET_SPEED_LEVEL           0x02U
+#define V851_TLV_TAG_INLET_RUNNING               0x03U
+/* ActuatorFilter. */
+#define V851_TLV_TAG_FILTER_LIFE_PERCENT         0x01U
+#define V851_TLV_TAG_FILTER_NEED_REPLACE         0x02U
+/* CameraState. */
+#define V851_TLV_TAG_CAMERA_STATUS               0x01U
+#define V851_TLV_TAG_STREAM_STATUS               0x02U
+#define V851_TLV_TAG_PROVIDER                    0x03U
+#define V851_TLV_TAG_VIDEO_CODEC                 0x04U
+#define V851_TLV_TAG_RESOLUTION                  0x05U
+#define V851_TLV_TAG_FPS                         0x06U
+#define V851_TLV_TAG_AUDIO_ENABLED               0x07U
+#define V851_TLV_TAG_PRIVACY_MODE                0x08U
+#define V851_TLV_TAG_LAST_SESSION_ID             0x09U
+#define V851_TLV_TAG_LAST_ERROR_CODE             0x0AU
+/* DisplaySettings and SettingsState. */
+#define V851_TLV_TAG_DISP_BRIGHTNESS             0x01U
+#define V851_TLV_TAG_DISP_SCREEN_TIMEOUT         0x02U
+#define V851_TLV_TAG_DISP_SCREEN_MODE            0x03U
+#define V851_TLV_TAG_TEMP_UNIT                   0x01U
+#define V851_TLV_TAG_DISPLAY                     0x02U
+#define V851_TLV_TAG_VOLUME_PERCENT              0x03U
+#define V851_TLV_TAG_LANGUAGE                    0x04U
+#define V851_TLV_TAG_LOCAL_PASSWORD              0x05U
+/* FirmwareState and StorageState. */
+#define V851_TLV_TAG_FW_VERSION                  0x01U
+#define V851_TLV_TAG_HW_VERSION                  0x02U
+#define V851_TLV_TAG_CONFIG_VERSION              0x03U
+#define V851_TLV_TAG_STORAGE_TOTAL               0x01U
+#define V851_TLV_TAG_STORAGE_FREE                0x02U
+/* Factory data. */
+#define V851_TLV_TAG_FACTORY_SALES_COUNTRY       0x01U
+#define V851_TLV_TAG_FACTORY_PRODUCT_KEY         0x03U
+#define V851_TLV_TAG_FACTORY_MODEL               0x04U
+#define V851_TLV_TAG_FACTORY_HW_VERSION          0x05U
+#define V851_TLV_TAG_FACTORY_FW_VERSION          0x06U
+#define V851_TLV_TAG_FACTORY_REJECT_MAC          0x01U
+#define V851_TLV_TAG_FACTORY_REJECT_REASON       0x02U
+/* T5L OTA status extension. */
+#define V851_TLV_TAG_OTA_STAGE                   0x01U
+#define V851_TLV_TAG_OTA_PROGRESS                0x02U
+#define V851_TLV_TAG_OTA_ERROR_CODE              0x03U
 
 typedef struct
 {
-    char device_sn[V851_DEVICE_SN_MAX + 1U];
-    char ble_id[V851_BLE_ID_MAX + 1U];
-    char ble_name[V851_SHORT_TEXT_MAX + 1U];
-    char product_key[V851_PRODUCT_KEY_MAX + 1U];
-    char model[V851_SHORT_TEXT_MAX + 1U];
-    char hardware_version[V851_SHORT_TEXT_MAX + 1U];
-    char firmware_version[V851_SHORT_TEXT_MAX + 1U];
-    char sales_country_code[4];
-    char bind_status[16];
-} V851DeviceInfo;
+    uint8_t struct_type;
+    const uint8_t *payload;
+    uint16_t length;
+} V851TlvSegment;
+
+typedef struct
+{
+    uint8_t tag;
+    const uint8_t *value;
+    uint16_t length;
+} V851TlvField;
+
+typedef struct
+{
+    const uint8_t *bytes;
+    uint16_t length;
+    uint16_t offset;
+} V851TlvFieldCursor;
 
 typedef enum
 {
-    V851_CONTROL_EXHAUST = 0,
-    V851_CONTROL_PLASMA,
-    V851_CONTROL_ANION,
-    V851_CONTROL_CLIMATE,
-    V851_CONTROL_INLET_FAN,
-    V851_CONTROL_HUMIDIFIER,
-    V851_CONTROL_UVB,
-    V851_CONTROL_LIGHT,
-    V851_CONTROL_DEVICE_SETTINGS,
-    V851_CONTROL_DEVICE_PASSWORD,
-    V851_CONTROL_OTA,
-    V851_CONTROL_COUNT,
-    V851_CONTROL_INVALID = 0xFF
-} V851ControlType;
-
-typedef enum
-{
-    V851_CONTROL_STATUS_SUCCESS = 0,
-    V851_CONTROL_STATUS_FAILED,
-    V851_CONTROL_STATUS_BUSY,
-    V851_CONTROL_STATUS_UNSUPPORTED
-} V851ControlStatus;
-
-typedef struct
-{
-    V851ControlType type;
-    const char *command_id;
-    uint16_t command_id_len;
-    const char *server_msg_id;
-    uint16_t server_msg_id_len;
-    const char *cmd;
-    uint16_t cmd_len;
-    const uint8_t *params_json;
-    uint16_t params_len;
-    uint32_t expire_at;
-} V851ControlCommand;
-
-typedef struct
-{
-    V851ControlStatus status;
-    const char *error_code;
-    const char *error_message;
-    const uint8_t *applied_json;
-    uint16_t applied_len;
-} V851ControlResult;
-
-typedef struct
-{
-    const V851ControlCommand *command;
-    V851ControlResult *result;
-} V851ControlHandlerContext;
-
-typedef void (*V851ControlHandler)(V851ControlHandlerContext *context);
+    V851_TLV_ITER_END = 0,
+    V851_TLV_ITER_FIELD = 1,
+    V851_TLV_ITER_INVALID = 2
+} V851TlvIterResult;
 
 typedef enum
 {
@@ -112,17 +172,39 @@ typedef enum
 
 void V851ProtocolInit(void);
 void V851ProtocolTask(void);
-void V851ProtocolReceiveJson(const uint8_t *_data, uint16_t len);
-uint8_t V851ProtocolSendJson(const uint8_t *_data, uint16_t len);
-uint8_t V851ProtocolSendOtaFrame(const uint8_t *_data, uint16_t len);
-uint8_t V851ProtocolRegisterControlHandler(V851ControlType type,
-                                           V851ControlHandler handler);
-const V851DeviceInfo *V851ProtocolGetDeviceInfo(void);
-uint32_t V851ProtocolGetTimestamp(void);
+void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len);
+uint8_t V851ProtocolSendSegments(uint8_t command,
+                                 const V851TlvSegment *segments,
+                                 uint8_t count);
+uint8_t V851ProtocolSendWifiFrame(const uint8_t *frame, uint16_t len);
+uint8_t V851ProtocolSendOtaFrame(const uint8_t *frame, uint16_t len);
 void V851ProtocolNotifyOtaState(V851OtaStage stage,
                                 uint8_t progress,
                                 const char *error_code);
 
-#endif /* bleV851_BRIDGE_ENABLED */
+void V851TlvFieldCursorInit(V851TlvFieldCursor *cursor,
+                            const uint8_t *bytes,
+                            uint16_t length);
+V851TlvIterResult V851TlvFieldNext(V851TlvFieldCursor *cursor,
+                                   V851TlvField *field);
+uint8_t V851TlvWriteU8(uint8_t *buffer, uint16_t capacity,
+                       uint16_t *offset, uint8_t tag, uint8_t value);
+uint8_t V851TlvWriteU32(uint8_t *buffer, uint16_t capacity,
+                        uint16_t *offset, uint8_t tag, uint32_t value);
+uint8_t V851TlvWriteBytes(uint8_t *buffer, uint16_t capacity,
+                          uint16_t *offset, uint8_t tag,
+                          const uint8_t *value, uint16_t length);
+uint8_t V851TlvWriteBinary64Uint16(uint8_t *buffer, uint16_t capacity,
+                                   uint16_t *offset, uint8_t tag,
+                                   uint16_t value);
+uint8_t V851TlvReadBinary64Uint16(const uint8_t *value,
+                                  uint16_t length,
+                                  uint16_t *result);
+
+/* Project-level extension hook. The default implementation is a no-op. */
+void V851TlvApplicationSegment(uint8_t command,
+                               const V851TlvSegment *segment);
+
+#endif /* v851PROTOCOL_ENABLED */
 
 #endif /* V851_PROTOCOL_H */

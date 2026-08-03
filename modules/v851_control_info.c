@@ -1,451 +1,308 @@
 #include "v851_control_info.h"
 
-#if bleV851_BRIDGE_ENABLED
-
-#include "core_json.h"
-#include "timer.h"
+#if v851PROTOCOL_ENABLED
 
 #include <string.h>
 
 #pragma optimize(8, size)
 
-static V851ControlDetails xdata v851_control_details[V851_CONTROL_COUNT];
+static uint8_t xdata v851_control_shadow[V851_CONTROL_COUNT]
+                                         [V851_CONTROL_DGUS_SLOT_BYTES];
 
-static void V851ControlInfoWriteBe16(uint8_t *_data, uint16_t value)
+static uint16_t V851ControlInfoReadBe16(const uint8_t *bytes)
 {
-    _data[0] = (uint8_t)(value >> 8);
-    _data[1] = (uint8_t)value;
+    return (uint16_t)(((uint16_t)bytes[0] << 8) | bytes[1]);
 }
 
-static uint8_t V851ControlInfoReadBool(const V851ControlCommand *command,
-                                       const char *name,
-                                       uint16_t name_len,
-                                       uint16_t *value)
+static void V851ControlInfoWriteBe16(uint8_t *bytes, uint16_t value)
 {
-    const char *json_value;
-    json_size_t json_value_len;
-    JSONTypes_t json_type;
-
-    if((command == NULL) || (name == NULL) || (value == NULL) ||
-       (command->params_json == NULL) || (command->params_len == 0U))
-    {
-        return 0U;
-    }
-
-    if(JSON_SearchConst((const char *)command->params_json,
-                        command->params_len,
-                        name, name_len,
-                        &json_value, &json_value_len,
-                        &json_type) != JSONSuccess)
-    {
-        return 0U;
-    }
-
-    if(json_type == JSONTrue)
-    {
-        *value = 1U;
-        return 1U;
-    }
-    if(json_type == JSONFalse)
-    {
-        *value = 0U;
-        return 1U;
-    }
-    return 0U;
+    bytes[0] = (uint8_t)(value >> 8);
+    bytes[1] = (uint8_t)value;
 }
 
-static uint8_t V851ControlInfoReadUint16(const V851ControlCommand *command,
-                                         const char *name,
-                                         uint16_t name_len,
-                                         uint16_t *value)
+static uint8_t V851ControlInfoIndex(uint8_t struct_type)
 {
-    uint32_t number;
-
-    if((command == NULL) || (name == NULL) || (value == NULL) ||
-       (command->params_json == NULL) || (command->params_len == 0U) ||
-       (JSONSearchToNumber(command->params_json,
-                           command->params_len,
-                           name, name_len,
-                           &number) != JSONSuccess) ||
-       (number > 0xFFFFUL))
+    if((struct_type < V851_TLV_STRUCT_EXHAUST) ||
+       (struct_type > V851_TLV_STRUCT_INLET_FAN))
     {
-        return 0U;
+        return 0xFFU;
     }
-
-    *value = (uint16_t)number;
-    return 1U;
+    return (uint8_t)(struct_type - V851_TLV_STRUCT_EXHAUST);
 }
 
-static uint8_t V851ControlInfoReadText(const V851ControlCommand *command,
-                                       const char *name,
-                                       uint16_t name_len,
-                                       uint8_t *out)
+static uint32_t V851ControlInfoAddress(uint8_t struct_type)
 {
-    char text[V851_CONTROL_DGUS_TEXT_BYTES + 1U];
-    uint16_t text_len;
-
-    if((command == NULL) || (name == NULL) ||
-       (command->params_json == NULL) || (command->params_len == 0U) ||
-       (JSONSearchToArray(command->params_json,
-                          command->params_len,
-                          name, name_len,
-                          text, sizeof(text)) != JSONSuccess))
+    switch(struct_type)
     {
-        return 0U;
-    }
-
-    text_len = (uint16_t)strlen(text);
-    if(text_len == 0U)
-    {
-        return 0U;
-    }
-    if(out != NULL)
-    {
-        memcpy(out, text, text_len);
-    }
-    return 1U;
-}
-
-static void V851ControlInfoDgusInvalid(V851ControlHandlerContext *context)
-{
-    context->result->status = V851_CONTROL_STATUS_FAILED;
-    context->result->error_code = "INVALID_PARAMS";
-    context->result->error_message = "invalid control parameters";
-    context->result->applied_json = NULL;
-    context->result->applied_len = 0U;
-}
-
-void V851ControlInfoDgusHandler(V851ControlHandlerContext *context)
-{
-    const V851ControlCommand *command;
-    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
-    uint16_t value0;
-    uint16_t value1;
-    uint16_t value2;
-    uint32_t address;
-    uint8_t valid = 0U;
-
-    if((context == NULL) || (context->command == NULL) ||
-       (context->result == NULL))
-    {
-        return;
-    }
-
-    command = context->command;
-    memset(record, 0, sizeof(record));
-    address = 0UL;
-
-    switch(command->type)
-    {
-        case V851_CONTROL_EXHAUST:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "level", sizeof("level") - 1U, &value1);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_EXHAUST_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_PLASMA:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                address = V851_CONTROL_DGUS_PLASMA_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_ANION:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                address = V851_CONTROL_DGUS_ANION_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_CLIMATE:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "target_temperature",
-                sizeof("target_temperature") - 1U, &value1);
-            valid &= V851ControlInfoReadText(
-                command, "mode", sizeof("mode") - 1U, NULL);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_CLIMATE_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_INLET_FAN:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "level", sizeof("level") - 1U, &value1);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_INLET_FAN_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_HUMIDIFIER:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "target_humidity",
-                sizeof("target_humidity") - 1U, &value1);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_UVB:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "duration_minutes",
-                sizeof("duration_minutes") - 1U, &value1);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                address = V851_CONTROL_DGUS_UVB_ADDR;
-            }
-            break;
-
-        case V851_CONTROL_LIGHT:
-            valid = V851ControlInfoReadBool(
-                command, "enabled", sizeof("enabled") - 1U, &value0);
-            valid &= V851ControlInfoReadUint16(
-                command, "brightness", sizeof("brightness") - 1U, &value1);
-            valid &= V851ControlInfoReadUint16(
-                command, "color_temperature",
-                sizeof("color_temperature") - 1U, &value2);
-            if(valid != 0U)
-            {
-                V851ControlInfoWriteBe16(&record[0], value0);
-                V851ControlInfoWriteBe16(&record[2], value1);
-                V851ControlInfoWriteBe16(&record[4], value2);
-                address = V851_CONTROL_DGUS_LIGHT_ADDR;
-            }
-            break;
-
+        case V851_TLV_STRUCT_EXHAUST:
+            return V851_CONTROL_DGUS_EXHAUST_ADDR;
+        case V851_TLV_STRUCT_LIGHT:
+            return V851_CONTROL_DGUS_LIGHT_ADDR;
+        case V851_TLV_STRUCT_UVB:
+            return V851_CONTROL_DGUS_UVB_ADDR;
+        case V851_TLV_STRUCT_ANION:
+            return V851_CONTROL_DGUS_ANION_ADDR;
+        case V851_TLV_STRUCT_PLASMA:
+            return V851_CONTROL_DGUS_PLASMA_ADDR;
+        case V851_TLV_STRUCT_CLIMATE:
+            return V851_CONTROL_DGUS_CLIMATE_ADDR;
+        case V851_TLV_STRUCT_HUMIDIFIER:
+            return V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
+        case V851_TLV_STRUCT_INLET_FAN:
+            return V851_CONTROL_DGUS_INLET_FAN_ADDR;
         default:
-            break;
+            return 0UL;
     }
-
-    if((valid == 0U) || (address == 0UL))
-    {
-        V851ControlInfoDgusInvalid(context);
-        return;
-    }
-
-    write_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
-    context->result->status = V851_CONTROL_STATUS_SUCCESS;
-    context->result->error_code = NULL;
-    context->result->error_message = NULL;
-    context->result->applied_json = NULL;
-    context->result->applied_len = 0U;
 }
 
-static void V851ControlInfoCopyText(char *out,
-                                    uint16_t out_size,
-                                    const char *text,
-                                    uint16_t text_len)
+static uint8_t V851ControlInfoRelevantBytes(uint8_t struct_type)
 {
-    if((out == NULL) || (out_size == 0U))
+    switch(struct_type)
     {
-        return;
+        case V851_TLV_STRUCT_EXHAUST:
+        case V851_TLV_STRUCT_LIGHT:
+        case V851_TLV_STRUCT_CLIMATE:
+        case V851_TLV_STRUCT_INLET_FAN:
+            return 4U;
+        case V851_TLV_STRUCT_UVB:
+        case V851_TLV_STRUCT_ANION:
+        case V851_TLV_STRUCT_PLASMA:
+        case V851_TLV_STRUCT_HUMIDIFIER:
+            return 2U;
+        default:
+            return 0U;
     }
+}
 
-    if(text == NULL)
+static uint8_t V851ControlInfoIsEnabledTag(uint8_t struct_type, uint8_t tag)
+{
+    if(tag != 0x01U)
     {
-        out[0] = '\0';
-        return;
+        return 0U;
     }
+    return (uint8_t)(V851ControlInfoIndex(struct_type) != 0xFFU);
+}
 
-    if(text_len >= out_size)
+static uint8_t V851ControlInfoIsLevelTag(uint8_t struct_type, uint8_t tag)
+{
+    if(tag != 0x02U)
     {
-        text_len = out_size - 1U;
+        return 0U;
     }
-    if(text_len != 0U)
-    {
-        memcpy(out, text, text_len);
-    }
-    out[text_len] = '\0';
+    return (uint8_t)((struct_type == V851_TLV_STRUCT_EXHAUST) ||
+                     (struct_type == V851_TLV_STRUCT_LIGHT) ||
+                     (struct_type == V851_TLV_STRUCT_INLET_FAN));
 }
 
 void V851ControlInfoInit(void)
 {
-    memset(v851_control_details, 0, sizeof(v851_control_details));
+    uint8_t index;
+    uint8_t struct_type;
+
+    memset(v851_control_shadow, 0, sizeof(v851_control_shadow));
+    for(index = 0U; index < V851_CONTROL_COUNT; ++index)
+    {
+        struct_type = (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
+        read_dgus_vp(V851ControlInfoAddress(struct_type),
+                     v851_control_shadow[index],
+                     V851_CONTROL_DGUS_SLOT_WORDS);
+    }
 }
 
-uint8_t V851ControlInfoUpdate(const V851ControlCommand *command)
+uint8_t V851ControlInfoValidateSegment(uint8_t struct_type,
+                                       const uint8_t *field_bytes,
+                                       uint16_t length)
 {
-    V851ControlDetails *details;
-    uint16_t stored_len;
-    uint32_t revision;
+    V851TlvFieldCursor cursor;
+    V851TlvField field;
+    V851TlvIterResult result;
+    uint8_t mapped_mask;
+    uint8_t mapped_bit;
+    uint16_t target;
 
-    if((command == NULL) || (command->type >= V851_CONTROL_COUNT) ||
-       (command->type == V851_CONTROL_INVALID) ||
-       ((command->params_json == NULL) && (command->params_len != 0U)))
+    if((field_bytes == NULL) ||
+       (V851ControlInfoIndex(struct_type) == 0xFFU))
     {
         return 0U;
     }
 
-    details = &v851_control_details[command->type];
-    revision = details->revision + 1UL;
-    if(revision == 0UL)
+    mapped_mask = 0U;
+    V851TlvFieldCursorInit(&cursor, field_bytes, length);
+    for(;;)
     {
-        revision = 1UL;
-    }
-
-    memset(details, 0, sizeof(*details));
-    details->type = command->type;
-    details->valid = 1U;
-    details->updated = 1U;
-    details->revision = revision;
-    details->received_tick = GetSysTick();
-    details->expire_at = command->expire_at;
-    details->params_len = command->params_len;
-
-    V851ControlInfoCopyText(details->command_id,
-                            sizeof(details->command_id),
-                            command->command_id,
-                            command->command_id_len);
-    V851ControlInfoCopyText(details->server_msg_id,
-                            sizeof(details->server_msg_id),
-                            command->server_msg_id,
-                            command->server_msg_id_len);
-    V851ControlInfoCopyText(details->cmd,
-                            sizeof(details->cmd),
-                            command->cmd,
-                            command->cmd_len);
-
-    if(command->type == V851_CONTROL_DEVICE_PASSWORD)
-    {
-        details->params_redacted = 1U;
-        return 1U;
-    }
-
-    stored_len = command->params_len;
-    if(stored_len > V851_CONTROL_PARAMS_SNAPSHOT_MAX)
-    {
-        stored_len = V851_CONTROL_PARAMS_SNAPSHOT_MAX;
-        details->params_truncated = 1U;
-    }
-    if(stored_len != 0U)
-    {
-        memcpy(details->params_json, command->params_json, stored_len);
-    }
-    details->params_json[stored_len] = '\0';
-    details->stored_len = stored_len;
-    return 1U;
-}
-
-uint8_t V851ControlInfoAnyUpdated(void)
-{
-    uint8_t i;
-
-    for(i = 0U; i < V851_CONTROL_COUNT; i++)
-    {
-        if((v851_control_details[i].valid != 0U) &&
-           (v851_control_details[i].updated != 0U))
+        result = V851TlvFieldNext(&cursor, &field);
+        if(result == V851_TLV_ITER_END)
         {
             return 1U;
         }
+        if(result != V851_TLV_ITER_FIELD)
+        {
+            return 0U;
+        }
+
+        mapped_bit = 0U;
+        if(V851ControlInfoIsEnabledTag(struct_type, field.tag) != 0U)
+        {
+            mapped_bit = 0x01U;
+            if((field.length != 1U) || (field.value[0] > 1U))
+            {
+                return 0U;
+            }
+        }
+        else if(V851ControlInfoIsLevelTag(struct_type, field.tag) != 0U)
+        {
+            mapped_bit = 0x02U;
+            if(field.length != 1U)
+            {
+                return 0U;
+            }
+        }
+        else if((struct_type == V851_TLV_STRUCT_CLIMATE) &&
+                (field.tag == V851_TLV_TAG_CLIMATE_TARGET))
+        {
+            mapped_bit = 0x02U;
+            if(V851TlvReadBinary64Uint16(field.value, field.length,
+                                         &target) == 0U)
+            {
+                return 0U;
+            }
+        }
+
+        if(mapped_bit != 0U)
+        {
+            if((mapped_mask & mapped_bit) != 0U)
+            {
+                return 0U;
+            }
+            mapped_mask |= mapped_bit;
+        }
     }
-    return 0U;
 }
 
-uint8_t V851ControlInfoIsUpdated(V851ControlType type)
+void V851ControlInfoApplySegment(uint8_t struct_type,
+                                 const uint8_t *field_bytes,
+                                 uint16_t length)
 {
-    if((type >= V851_CONTROL_COUNT) || (type == V851_CONTROL_INVALID))
+    V851TlvFieldCursor cursor;
+    V851TlvField field;
+    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    uint8_t index;
+    uint8_t changed;
+    uint16_t target;
+    uint32_t address;
+
+    index = V851ControlInfoIndex(struct_type);
+    if((index == 0xFFU) || (field_bytes == NULL))
     {
-        return 0U;
+        return;
     }
-    return ((v851_control_details[type].valid != 0U) &&
-            (v851_control_details[type].updated != 0U)) ? 1U : 0U;
+
+    address = V851ControlInfoAddress(struct_type);
+    read_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+    changed = 0U;
+    V851TlvFieldCursorInit(&cursor, field_bytes, length);
+    while(V851TlvFieldNext(&cursor, &field) == V851_TLV_ITER_FIELD)
+    {
+        if(V851ControlInfoIsEnabledTag(struct_type, field.tag) != 0U)
+        {
+            V851ControlInfoWriteBe16(&record[0], field.value[0]);
+            changed = 1U;
+        }
+        else if(V851ControlInfoIsLevelTag(struct_type, field.tag) != 0U)
+        {
+            V851ControlInfoWriteBe16(&record[2], field.value[0]);
+            changed = 1U;
+        }
+        else if((struct_type == V851_TLV_STRUCT_CLIMATE) &&
+                (field.tag == V851_TLV_TAG_CLIMATE_TARGET) &&
+                (V851TlvReadBinary64Uint16(field.value, field.length,
+                                            &target) != 0U))
+        {
+            V851ControlInfoWriteBe16(&record[2], target);
+            changed = 1U;
+        }
+    }
+
+    if(changed != 0U)
+    {
+        write_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+        memcpy(v851_control_shadow[index], record,
+               V851_CONTROL_DGUS_SLOT_BYTES);
+    }
 }
 
-const V851ControlDetails *V851ControlInfoGet(V851ControlType type)
+uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
+                                    uint8_t *field_buffer,
+                                    uint16_t capacity)
 {
-    if((type >= V851_CONTROL_COUNT) || (type == V851_CONTROL_INVALID) ||
-       (v851_control_details[type].valid == 0U))
+    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    uint16_t offset;
+    uint16_t value;
+    uint32_t address;
+
+    address = V851ControlInfoAddress(struct_type);
+    if((address == 0UL) || (field_buffer == NULL))
     {
-        return NULL;
+        return 0U;
     }
-    return &v851_control_details[type];
+
+    read_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+    offset = 0U;
+    value = V851ControlInfoReadBe16(&record[0]);
+    if(value <= 1U)
+    {
+        if(V851TlvWriteU8(field_buffer, capacity, &offset, 0x01U,
+                           (uint8_t)value) == 0U)
+        {
+            return 0U;
+        }
+    }
+
+    value = V851ControlInfoReadBe16(&record[2]);
+    if(V851ControlInfoIsLevelTag(struct_type, 0x02U) != 0U)
+    {
+        if((value <= 0xFFU) &&
+           (V851TlvWriteU8(field_buffer, capacity, &offset, 0x02U,
+                            (uint8_t)value) == 0U))
+        {
+            return 0U;
+        }
+    }
+    else if(struct_type == V851_TLV_STRUCT_CLIMATE)
+    {
+        if(V851TlvWriteBinary64Uint16(field_buffer, capacity, &offset,
+                                      V851_TLV_TAG_CLIMATE_TARGET,
+                                      value) == 0U)
+        {
+            return 0U;
+        }
+    }
+    return offset;
 }
 
-uint8_t V851ControlInfoClearUpdated(V851ControlType type)
+uint16_t V851ControlInfoScanChanged(void)
 {
-    if((type >= V851_CONTROL_COUNT) || (type == V851_CONTROL_INVALID) ||
-       (v851_control_details[type].valid == 0U))
+    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    uint8_t index;
+    uint8_t bytes;
+    uint8_t struct_type;
+    uint16_t changed_mask;
+
+    changed_mask = 0U;
+    for(index = 0U; index < V851_CONTROL_COUNT; ++index)
     {
-        return 0U;
+        struct_type = (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
+        bytes = V851ControlInfoRelevantBytes(struct_type);
+        read_dgus_vp(V851ControlInfoAddress(struct_type), record,
+                     V851_CONTROL_DGUS_SLOT_WORDS);
+        if(memcmp(record, v851_control_shadow[index], bytes) != 0)
+        {
+            changed_mask |= (uint16_t)(1U << index);
+            memcpy(v851_control_shadow[index], record,
+                   V851_CONTROL_DGUS_SLOT_BYTES);
+        }
     }
-    v851_control_details[type].updated = 0U;
-    return 1U;
+    return changed_mask;
 }
 
-uint8_t V851ControlInfoDgusInit(void)
-{
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_EXHAUST, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_PLASMA, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_ANION, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_CLIMATE, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_INLET_FAN, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_HUMIDIFIER, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_UVB, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    if(V851ProtocolRegisterControlHandler(
-           V851_CONTROL_LIGHT, V851ControlInfoDgusHandler) == 0U)
-    {
-        return 0U;
-    }
-    return 1U;
-}
-
-#endif /* bleV851_BRIDGE_ENABLED */
+#endif /* v851PROTOCOL_ENABLED */

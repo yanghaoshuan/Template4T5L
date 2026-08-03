@@ -3,7 +3,7 @@
 
 #include "v851_control_info.h"
 
-#if bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED
+#if pb03fBLE_ENABLED && v851CONTROL_MOCK_ENABLED
 
 #define V851_CONTROL_MOCK_TASK_INTERVAL          50U
 
@@ -37,6 +37,6 @@ uint8_t V851ControlMockInjectAll(void);
  */
 void V851ControlMockTask(void);
 
-#endif /* bleV851_BRIDGE_ENABLED && v851CONTROL_MOCK_ENABLED */
+#endif /* pb03fBLE_ENABLED && v851CONTROL_MOCK_ENABLED */
 
 #endif /* V851_CONTROL_MOCK_H */

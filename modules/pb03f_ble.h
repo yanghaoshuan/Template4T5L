@@ -4,7 +4,7 @@
 #include "sys.h"
 #include "uart.h"
 
-#if bleV851_BRIDGE_ENABLED
+#if pb03fBLE_ENABLED
 
 #define PB03F_BLE_TASK_INTERVAL                 1U
 #define PB03F_BLE_MTU                           240U
@@ -58,6 +58,6 @@ uint8_t Pb03fBleSendJson(const uint8_t *_data, uint16_t len);
 uint8_t Pb03fBleSetProvisionedIdentity(const uint8_t *ble_id, uint16_t len);
 const char *Pb03fBleGetMac(void);
 
-#endif /* bleV851_BRIDGE_ENABLED */
+#endif /* pb03fBLE_ENABLED */
 
 #endif /* PB03F_BLE_H */

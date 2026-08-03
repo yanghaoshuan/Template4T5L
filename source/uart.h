@@ -28,6 +28,7 @@ typedef struct UartxDefine
 
     uint8_t RxFlag:2;                                           /**< 接收状态标志位(2位) */
     uint8_t TxBusy:1;                                           /**< 发送忙碌标志位(1位) */
+    uint8_t RxOverflow:1;                                       /**< 接收环溢出，整批丢弃 */
 }UART_TYPE;
 
 /* UART接收状态定义 */

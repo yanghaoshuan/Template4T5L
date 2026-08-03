@@ -766,7 +766,8 @@ static void R11ConnectWifi(void)
     r11_send_buf[now_len+1] = now_len2 - now_len - 2;
 
     r11_send_buf[3] = now_len2 - 4;
-    UartSendData(&Uart_R11,r11_send_buf,now_len2 + 4);
+    /* len字段已经包含命令和载荷，总发送长度固定为4 + len。 */
+    UartSendData(&Uart_R11, r11_send_buf, now_len2);
 }
 
 

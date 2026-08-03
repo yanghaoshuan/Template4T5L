@@ -1,6 +1,6 @@
 #include "pb03f_ble.h"
 
-#if bleV851_BRIDGE_ENABLED
+#if pb03fBLE_ENABLED
 
 #include "bridge_json.h"
 #include "core_json.h"
@@ -1116,4 +1116,4 @@ void Pb03fBleInit(void)
     PbStartConfiguration(PB_POWER_DELAY_MS);
 }
 
-#endif /* bleV851_BRIDGE_ENABLED */
+#endif /* pb03fBLE_ENABLED */

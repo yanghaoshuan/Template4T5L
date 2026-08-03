@@ -24,10 +24,14 @@
 #include "ota.h"
 #endif /* otaOTA_ENABLED */
 
-#if bleV851_BRIDGE_ENABLED
+#if pb03fBLE_ENABLED
 #include "pb03f_ble.h"
+#endif /* pb03fBLE_ENABLED */
+
+#if v851PROTOCOL_ENABLED
 #include "v851_protocol.h"
-#endif /* bleV851_BRIDGE_ENABLED */
+#include "v851_wifi.h"
+#endif /* v851PROTOCOL_ENABLED */
 
 #if sysSET_FROM_LIB
 uint16_t sys_2k_ratio;
@@ -256,10 +260,21 @@ void Uart4Init(const uint32_t bdt)
  */
 void Uart4RxIsr()   interrupt 11
 {
+    uint16_t next_head;
+
     if((SCON2R&0x01) == 0x01)
     {
-        Uart4RxBuffer[Uart4.RxHead++] = SBUF2_RX;
-        Uart4.RxHead %= uartUART4_RXBUF_SIZE;
+        next_head = (uint16_t)(Uart4.RxHead + 1U);
+        next_head %= uartUART4_RXBUF_SIZE;
+        if(next_head == Uart4.RxTail)
+        {
+            Uart4.RxOverflow = 1U;
+        }
+        else
+        {
+            Uart4RxBuffer[Uart4.RxHead] = SBUF2_RX;
+            Uart4.RxHead = next_head;
+        }
         Uart4.RxFlag = UART_RECING;
         #if uartUART4_TIMEOUT_ENABLED
         Uart4.RxTimeout = uartUART4_TIMEOUTSET;
@@ -659,14 +674,25 @@ void UartReadFrame(UART_TYPE *uart)
 {
     static uint8_t xdata frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
-    #if bleV851_BRIDGE_ENABLED
-    uint16_t body_len,json_len,payload_len,msg_id,raw_len;
+    #if v851PROTOCOL_ENABLED
+    uint16_t body_len;
+    uint8_t command;
+    #endif /* v851PROTOCOL_ENABLED */
+    #if pb03fBLE_ENABLED
+    uint16_t payload_len,msg_id,raw_len;
     uint16_t crc_calc,crc_recv;
-    #endif /* bleV851_BRIDGE_ENABLED */
+    #endif /* pb03fBLE_ENABLED */
     if(uart->RxFlag == UART_NON_REC)
         return;
     if(uart->RxTimeout == 0)
     {
+        if(uart->RxOverflow != 0U)
+        {
+            uart->RxTail = uart->RxHead;
+            uart->RxOverflow = 0U;
+            uart->RxFlag = UART_NON_REC;
+            return;
+        }
         rx_head_bak = uart->RxHead;
         uart->RxFlag = UART_NON_REC;
         /**
@@ -713,13 +739,13 @@ void UartReadFrame(UART_TYPE *uart)
             frame_offset = total_frame_len - i;
             if(i < 2U)
             {
-                #if bleV851_BRIDGE_ENABLED
+                #if pb03fBLE_ENABLED
                 if(uart == &PB03F_BLE_UART)
                 {
                     Pb03fBleReceive(&frame[frame_offset], i);
                     i = 0U;
                 }
-                #endif /* bleV851_BRIDGE_ENABLED */
+                #endif /* pb03fBLE_ENABLED */
                 break;
             }
 
@@ -743,7 +769,7 @@ void UartReadFrame(UART_TYPE *uart)
                 #endif /* sysN5CAMERA_MODE_ENABLED */
                 i -= one_frame_len;
             }
-            #if bleV851_BRIDGE_ENABLED
+            #if pb03fBLE_ENABLED
             else if((uart == &PB03F_BLE_UART) &&
                     (Pb03fBleIsTransparent() != 0U) &&
                     (frame[frame_offset] == PB03F_BLE_FRAME_MAGIC_HIGH) &&
@@ -802,7 +828,7 @@ void UartReadFrame(UART_TYPE *uart)
                 Pb03fBleReceive(&frame[frame_offset], one_frame_len);
                 i -= one_frame_len;
             }
-            #endif /* bleV851_BRIDGE_ENABLED */
+            #endif /* pb03fBLE_ENABLED */
             else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
             {
                 if(i < 4U)
@@ -810,45 +836,67 @@ void UartReadFrame(UART_TYPE *uart)
                     break;
                 }
 
-                #if bleV851_BRIDGE_ENABLED
+                #if v851PROTOCOL_ENABLED
                 if(uart == &Uart4)
                 {
+                    if(i < 5U)
+                    {
+                        break;
+                    }
                     body_len = ((uint16_t)frame[frame_offset + 2U] << 8) |
                                frame[frame_offset + 3U];
-                    if((body_len < V851_JSON_BODY_OVERHEAD) ||
-                       (body_len > (BRIDGE_JSON_MAX +
-                                    V851_JSON_BODY_OVERHEAD)))
+                    command = frame[frame_offset + 4U];
+                    if((command == V851_TLV_CMD_PROPERTY) ||
+                       (command == V851_TLV_CMD_FACTORY) ||
+                       (command == V851_TLV_CMD_OTA_STATUS))
+                    {
+                        if((body_len < V851_TLV_SEGMENT_HEADER_SIZE) ||
+                           (body_len > (V851_TLV_FRAME_MAX -
+                                        V851_TLV_FRAME_FIXED_SIZE)))
+                        {
+                            i--;
+                            continue;
+                        }
+                        one_frame_len = (uint16_t)(body_len +
+                                                  V851_TLV_FRAME_FIXED_SIZE);
+                    }
+                    else if((command == V851_WIFI_CMD_SCAN) ||
+                            (command == V851_WIFI_CMD_CONNECT) ||
+                            (command == V851_WIFI_CMD_STATUS))
+                    {
+                        if((body_len < 1U) ||
+                           (body_len > (V851_TLV_FRAME_MAX - 4U)))
+                        {
+                            i--;
+                            continue;
+                        }
+                        one_frame_len = (uint16_t)(body_len + 4U);
+                    }
+                    else
                     {
                         i--;
                         continue;
                     }
-
-                    one_frame_len = body_len + 4U;
                     if(i < one_frame_len)
                     {
                         break;
                     }
-
-                    if(frame[frame_offset + 4U] == V851_JSON_COMMAND)
+                    if((command == V851_TLV_CMD_PROPERTY) ||
+                       (command == V851_TLV_CMD_FACTORY) ||
+                       (command == V851_TLV_CMD_OTA_STATUS))
                     {
-                        crc_calc = crc_16(&frame[frame_offset + 4U],
-                                          body_len - 2U);
-                        crc_recv =
-                            ((uint16_t)frame[frame_offset +
-                                             one_frame_len - 2U] << 8) |
-                            frame[frame_offset + one_frame_len - 1U];
-                        if(crc_calc == crc_recv)
-                        {
-                            json_len =
-                                body_len - V851_JSON_BODY_OVERHEAD;
-                            V851ProtocolReceiveJson(
-                                &frame[frame_offset + 5U], json_len);
-                        }
+                        V851ProtocolReceiveFrame(&frame[frame_offset],
+                                                 one_frame_len);
+                    }
+                    else
+                    {
+                        V851WifiReceiveFrame(&frame[frame_offset],
+                                             one_frame_len);
                     }
                     i -= one_frame_len;
                 }
                 else
-                #endif /* bleV851_BRIDGE_ENABLED */
+                #endif /* v851PROTOCOL_ENABLED */
                 {
                     one_frame_len =
                         ((uint16_t)frame[frame_offset + 2U] << 8 |
@@ -890,6 +938,32 @@ void UartReadFrame(UART_TYPE *uart)
                 #endif /* sysBEAUTY_MODE_ENABLED */
                 i -= one_frame_len;
             }
+            #if otaOTA_ENABLED && v851PROTOCOL_ENABLED
+            else if((uart == &Uart4) &&
+                    (frame[frame_offset] == 0xAB) &&
+                    (frame[frame_offset + 1U] == 0xCD))
+            {
+                if(i < 5U)
+                {
+                    break;
+                }
+                body_len = ((uint16_t)frame[frame_offset + 2U] << 8) |
+                           frame[frame_offset + 3U];
+                if((body_len < 1U) ||
+                   (body_len > (V851_OTA_FRAME_MAX - 4U)))
+                {
+                    i--;
+                    continue;
+                }
+                one_frame_len = (uint16_t)(body_len + 4U);
+                if(i < one_frame_len)
+                {
+                    break;
+                }
+                OtaReceive(&frame[frame_offset], one_frame_len);
+                i -= one_frame_len;
+            }
+            #endif /* otaOTA_ENABLED && v851PROTOCOL_ENABLED */
             #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
             else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
             {
@@ -955,7 +1029,7 @@ void UartReadFrame(UART_TYPE *uart)
             #endif /* uartTA_PROTOCOL_ENABLED */
             else
             {
-                #if bleV851_BRIDGE_ENABLED
+                #if pb03fBLE_ENABLED
                 if(uart == &PB03F_BLE_UART)
                 {
                     raw_len = 1U;
@@ -977,7 +1051,7 @@ void UartReadFrame(UART_TYPE *uart)
                     Pb03fBleReceive(&frame[frame_offset], raw_len);
                     i -= raw_len;
                 }else
-                #endif /* bleV851_BRIDGE_ENABLED */
+                #endif /* pb03fBLE_ENABLED */
                 {
                     i--;
                 }
@@ -989,14 +1063,20 @@ void UartReadFrame(UART_TYPE *uart)
 
 void UartProtocalHandleTask(void)
 {
+    #if uartUART2_ENABLED
     UartReadFrame(&Uart2);
+    #endif /* uartUART2_ENABLED */
+    #if uartUART4_ENABLED
     UartReadFrame(&Uart4);
+    #endif /* uartUART4_ENABLED */
     #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     UartReadFrame(&Uart_R11);
     #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #if uartTA_PROTOCOL_ENABLED
     TAProtocolUpload(&Uart2);
     #endif /* uartTA_PROTOCOL_ENABLED */
+    #if uartUART5_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
     UartReadFrame(&Uart5);
+    #endif /* standalone UART5 */
 }
 

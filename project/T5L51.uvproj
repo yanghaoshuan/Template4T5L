@@ -607,6 +607,21 @@
               <FilePath>..\modules\v851_control_info.h</FilePath>
             </File>
             <File>
+              <FileName>v851_tlv_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\v851_tlv_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>v851_wifi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\v851_wifi.c</FilePath>
+            </File>
+            <File>
+              <FileName>v851_wifi.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\v851_wifi.h</FilePath>
+            </File>
+            <File>
               <FileName>v851_control_mock.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\modules\v851_control_mock.c</FilePath>

@@ -13,7 +13,7 @@
 #if otaOTA_ENABLED
 
 #include "uart.h"
-#if bleV851_BRIDGE_ENABLED
+#if v851PROTOCOL_ENABLED
 #include "v851_protocol.h"
 #endif
 #include <string.h>
@@ -53,7 +53,7 @@ uint8_t OtaCompleteFlag;             /**< OTA完成标志 */
 static uint16_t xdata OtaTimeoutReload;             /**< OTA超时重装值 */
 static uint8_t xdata OtaHeaderBuffer[OTA_HEADER_BYTES]; /**< OTA 4KB头文件缓存 */
 static uint8_t OtaLastResult = 2U;                  /**< 06命令最近一次回复结果，用于超时重发 */
-static uint8_t OtaLastReportedProgress;             /**< UART4 JSON进度限频 */
+static uint8_t OtaLastReportedProgress;             /**< UART4 TLV进度限频 */
 
 /**
  * @brief 读取大端16位整数
@@ -192,7 +192,7 @@ static void OtaSetTimeout(uint8_t step)
 static void OtaSendFrame(uint8_t *buf, uint16_t len)
 {
     OtaWriteBe16(&buf[2], len - 4U);
-    #if bleV851_BRIDGE_ENABLED
+    #if v851PROTOCOL_ENABLED
     (void)V851ProtocolSendOtaFrame(buf, len);
     #else
     UartSendData(&Uart_R11, buf, len);
@@ -424,7 +424,7 @@ static void OtaHandleFileInfo(uint8_t *frame, uint16_t len)
     {
         OtaInit();
         OtaClearNandHeader();
-        #if bleV851_BRIDGE_ENABLED
+        #if v851PROTOCOL_ENABLED
         V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING, 0U, NULL);
         #endif
     }
@@ -508,7 +508,7 @@ static void OtaWritePacketToNand(uint8_t *frame, uint16_t packet_len)
             progress = 100UL;
         }
         OtaSpeedShow((uint8_t)progress);
-        #if bleV851_BRIDGE_ENABLED
+        #if v851PROTOCOL_ENABLED
         if(((uint8_t)progress >= (uint8_t)(OtaLastReportedProgress + 5U)) ||
            ((uint8_t)progress == 100U))
         {
@@ -543,7 +543,7 @@ static uint8_t OtaFileCrcOk(void)
     blocks = OtaCeilDiv32(file->size, OTA_PACKET_BYTES);
     nand_addr = otaNAND_START_ADDR + ((uint32_t)file->flash_start * OTA_PACKET_BYTES);
 
-    #if bleV851_BRIDGE_ENABLED
+    #if v851PROTOCOL_ENABLED
     V851ProtocolNotifyOtaState(V851_OTA_STAGE_VERIFYING,
                                OtaLastReportedProgress, NULL);
     #endif
@@ -607,7 +607,7 @@ static void OtaHandlePacketData(uint8_t *frame, uint16_t len)
             {
                 OtaStatus.download_end_flag = 0x01U;
                 OtaLastReportedProgress = 100U;
-                #if bleV851_BRIDGE_ENABLED
+                #if v851PROTOCOL_ENABLED
                 V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING,
                                            100U, NULL);
                 #endif
@@ -616,7 +616,7 @@ static void OtaHandlePacketData(uint8_t *frame, uint16_t len)
         {
             OtaSendData06(3U);
             OtaSetTimeout(OTA_STEP_WAIT_RESULT_ACK);
-            #if bleV851_BRIDGE_ENABLED
+            #if v851PROTOCOL_ENABLED
             V851ProtocolNotifyOtaState(V851_OTA_STAGE_FAILED,
                                        OtaLastReportedProgress,
                                        "HARDWARE_FAULT");
@@ -741,14 +741,18 @@ static void OtaBuildHeader(void)
 static void OtaFinishUpgrade(void)
 {
     uint8_t boot_cmd[4];
+    uint8_t report_try;
     uint16_t complete_flag_word = 1U;
 
-    #if bleV851_BRIDGE_ENABLED
+    #if v851PROTOCOL_ENABLED
     V851ProtocolNotifyOtaState(V851_OTA_STAGE_REBOOTING, 100U, NULL);
-    V851ProtocolTask();
-    delay_ms(30);
-    V851ProtocolTask();
-    delay_ms(30);
+    for(report_try = 0U; report_try < 4U; ++report_try)
+    {
+        V851ProtocolTask();
+        delay_ms(30);
+    }
+    #else
+    (void)report_try;
     #endif
 
     OtaBuildHeader();
@@ -782,13 +786,15 @@ static void OtaFinishUpgrade(void)
 static void OtaTestTrigger(void)
 {
     uint16_t trigger;
+    #if !v851PROTOCOL_ENABLED
     uint8_t cmd[5];
+    #endif
     uint16_t zero = 0U;
 
     read_dgus_vp(otaTEST_TRIGGER_ADDR, (uint8_t *)&trigger, 1);
     if(trigger == 0x5AA5U)
     {
-        #if !bleV851_BRIDGE_ENABLED
+        #if !v851PROTOCOL_ENABLED
         cmd[0] = 0xAA;
         cmd[1] = 0x55;
         cmd[2] = 0x00;
@@ -826,12 +832,20 @@ void OtaInit(void)
  */
 void OtaReceive(uint8_t *frame, uint16_t len)
 {
+    uint16_t body_length;
+
     if((frame == NULL) || (len < 5U))
     {
         return;
     }
 
     if((frame[0] != OTA_FRAME_HEAD_0) || (frame[1] != OTA_FRAME_HEAD_1))
+    {
+        return;
+    }
+    body_length = OtaReadBe16(&frame[2]);
+    if((body_length < 1U) || ((uint16_t)(body_length + 4U) != len) ||
+       (len > 4124U))
     {
         return;
     }
