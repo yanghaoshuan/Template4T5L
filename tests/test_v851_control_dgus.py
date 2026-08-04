@@ -14,6 +14,7 @@ class V851ControlDgusTests(unittest.TestCase):
         cls.source = (REPO_ROOT / "modules/v851_control_info.c").read_text(encoding="utf-8")
         cls.protocol = (REPO_ROOT / "modules/v851_protocol.c").read_text(encoding="utf-8")
         cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
+        cls.tlv_app = (REPO_ROOT / "modules/v851_tlv_app.c").read_text(encoding="utf-8")
 
     def test_dgus_address_layout(self) -> None:
         expected = {
@@ -65,7 +66,7 @@ class V851ControlDgusTests(unittest.TestCase):
     def test_all_documented_types_and_tags_are_public(self) -> None:
         for value in range(0x01, 0x0B):
             self.assertIn(f"0x{value:02X}U", self.protocol_h)
-        for value in range(0x61, 0x6C):
+        for value in range(0x61, 0x6E):
             self.assertIn(f"0x{value:02X}U", self.protocol_h)
         for name in (
             "POWER_MODE", "LAST_OPEN_TIME", "CO2", "EXH_INTERVAL_HOURS",
@@ -74,12 +75,22 @@ class V851ControlDgusTests(unittest.TestCase):
             "INLET_RUNNING", "FILTER_NEED_REPLACE", "LAST_ERROR_CODE",
             "DISP_SCREEN_MODE", "LOCAL_PASSWORD", "CONFIG_VERSION",
             "STORAGE_FREE", "FACTORY_FW_VERSION", "FACTORY_REJECT_REASON",
+            "BOOT_DEVICE_SN", "BOOT_BLE_ID", "BOOT_API_ENDPOINT",
+            "BOOT_BIND_STATUS", "BOOT_QR_URL",
         ):
             self.assertIn(f"V851_TLV_TAG_{name}", self.protocol_h)
 
     def test_single_direct_project_hook(self) -> None:
         self.assertEqual(self.protocol.count("V851TlvApplicationSegment(command, &segment)"), 1)
         self.assertNotIn("V851ControlHandler", self.protocol)
+        self.assertEqual(self.tlv_app.count("void V851TlvApplicationSegment("), 1)
+
+    def test_bootstrap_cache_revalidates_before_writing(self) -> None:
+        validate = self.tlv_app.index("Validate again locally")
+        clear = self.tlv_app.index("memset(&v851_bootstrap_result")
+        valid = self.tlv_app.index("v851_bootstrap_result_valid = 1U")
+        self.assertLess(validate, clear)
+        self.assertLess(clear, valid)
 
 
 if __name__ == "__main__":

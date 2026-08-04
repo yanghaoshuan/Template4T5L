@@ -293,7 +293,7 @@
  * FactoryDeviceTlv 编码示例 (出厂烧录上报, mac 由本机 WiFi 获取, secret 内部生成)
  * 消息格式: AA 55 | lenH lenL | TLV_CMD_FACTORY_DEVICE (0x36) | struct_type[1B] seg_len[2B] | tlv_payload
  * ============================================================================
- * 输入: sales_country="JP", product_key="MQXQ_PET_CABIN", model="MCQX-PET-CABIN-V1",
+ * 输入: sales_country="JP", product_key="MCQX_PET_CABIN", model="MCQX-PET-CABIN-V1",
  *       hardware_version="HW-V2.0", firmware_version="FW-V1.0.0"
  *
  * ---- 逐字段 TLV 编码 ----
@@ -303,9 +303,9 @@
  *   │  └─ len = 0x0002
  *   └─ tag = 0x01
  *
- * product_key = "MQXQ_PET_CABIN" (14B):
- *   03 00 0E 4D 51 58 51 5F 50 45 54 5F 43 41 42 49 4E
- *   │  │     └─ "MQXQ_PET_CABIN"
+ * product_key = "MCQX_PET_CABIN" (14B):
+ *   03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E
+ *   │  │     └─ "MCQX_PET_CABIN"
  *   │  └─ len = 0x000E = 14
  *   └─ tag = 0x03
  *
@@ -335,7 +335,7 @@
  * └─ struct_type = 0x6A (FactoryDeviceTlv)
  *
  * 01 00 02 4A 50
- * 03 00 0E 4D 51 58 51 5F 50 45 54 5F 43 41 42 49 4E
+ * 03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E
  * 04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31
  * 05 00 07 48 57 2D 56 32 2E 30
  * 06 00 09 46 57 2D 56 31 2E 30 2E 30
@@ -351,7 +351,7 @@
  * + 64 字节 TLV payload (同上) → 共 72 字节
  *
  * 一行 hex:
- * AA 55 00 43 36 6A 00 40 01 00 02 4A 50 03 00 0E 4D 51 58 51 5F 50 45 54 5F 43 41 42 49 4E 04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31 05 00 07 48 57 2D 56 32 2E 30 06 00 09 46 57 2D 56 31 2E 30 2E 30
+ * AA 55 00 43 36 6A 00 40 01 00 02 4A 50 03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E 04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31 05 00 07 48 57 2D 56 32 2E 30 06 00 09 46 57 2D 56 31 2E 30 2E 30
  *
  * ============================================================================
  * FactoryDeviceTlv 解码与打印示例
@@ -367,8 +367,8 @@
  *  │  └─ len = 2
  *  └─ tag = 0x01 → TLV_TAG_FACTORY_SALES_COUNTRY
  *
- * 03 00 0E 4D 51 58 51 5F 50 45 54 5F 43 41 42 49 4E
- *  │  │     └─ "MQXQ_PET_CABIN" → product_key = "MQXQ_PET_CABIN"
+ * 03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E
+ *  │  │     └─ "MCQX_PET_CABIN" → product_key = "MCQX_PET_CABIN"
  *  │  └─ len = 14
  *  └─ tag = 0x03 → TLV_TAG_FACTORY_PRODUCT_KEY
  *
@@ -388,7 +388,7 @@
  *  └─ tag = 0x06 → TLV_TAG_FACTORY_FW_VERSION
  *
  * ---- 诊断打印 (print_factory_device_tlv) ----
- * [TLV] FactoryDevice: country=JP product_key=MQXQ_PET_CABIN model=MCQX-PET-CABIN-V1 hw=HW-V2.0 fw=FW-V1.0.0
+ * [TLV] FactoryDevice: country=JP product_key=MCQX_PET_CABIN model=MCQX-PET-CABIN-V1 hw=HW-V2.0 fw=FW-V1.0.0
  *
  * ---- 业务处理 (handle_factory_device_tlv) ----
  * mac         = get_wifi_mac() (本机 WiFi MAC, 12 位大写 hex, 例: "28AD3E13D940")
@@ -609,6 +609,13 @@ int tlv_generic_unpack(void *dst, const TlvFieldDesc *fields,
 #define TLV_TAG_FACTORY_REJECT_MAC      0x01
 #define TLV_TAG_FACTORY_REJECT_REASON   0x02
 
+/* ---- BootstrapResultTlv (自举结果下发, V851 → D5/LCD) ---- */
+#define TLV_TAG_BOOT_DEVICE_SN          0x01
+#define TLV_TAG_BOOT_BLE_ID             0x02
+#define TLV_TAG_BOOT_API_ENDPOINT       0x03
+#define TLV_TAG_BOOT_BIND_STATUS        0x04
+#define TLV_TAG_BOOT_QR_URL             0x05
+
 /* ============================================================================
  * TLV pack/unpack — 各结构体 (向后兼容的函数签名)
  *
@@ -702,6 +709,10 @@ int factory_device_tlv_unpack(FactoryDeviceTlv *s, const uint8_t *buf, int buf_s
 
 /* ---- FactoryDeviceRejectionTlv (被拒结果下发) ---- */
 int factory_device_rejection_tlv_pack(const FactoryDeviceRejectionTlv *s, uint8_t *buf, int buf_size);
+
+/* ---- BootstrapResultTlv (自举结果下发) ---- */
+int bootstrap_result_tlv_pack(const BootstrapResultTlv *s, uint8_t *buf, int buf_size);
+int bootstrap_result_tlv_unpack(BootstrapResultTlv *s, const uint8_t *buf, int buf_size);
 
 #ifdef __cplusplus
 }

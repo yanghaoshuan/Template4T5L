@@ -11,6 +11,8 @@ class V851StateAndWifiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.protocol = (REPO_ROOT / "modules/v851_protocol.c").read_text(encoding="utf-8")
+        cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
+        cls.tlv_app = (REPO_ROOT / "modules/v851_tlv_app.c").read_text(encoding="utf-8")
         cls.wifi = (REPO_ROOT / "modules/v851_wifi.c").read_text(encoding="utf-8")
         cls.wifi_h = (REPO_ROOT / "modules/v851_wifi.h").read_text(encoding="utf-8")
         cls.ota = (REPO_ROOT / "modules/ota.c").read_text(encoding="utf-8")
@@ -32,7 +34,11 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertLess(ota, wifi)
         self.assertLess(wifi, tlv)
 
-    def test_ota_status_is_37_6c_tlv(self) -> None:
+    def test_bootstrap_is_37_6c_and_ota_status_is_38_6d(self) -> None:
+        self.assertIn("V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U", self.protocol_h)
+        self.assertIn("V851_TLV_STRUCT_BOOTSTRAP_RESULT         0x6CU", self.protocol_h)
+        self.assertIn("V851_TLV_CMD_OTA_STATUS                  0x38U", self.protocol_h)
+        self.assertIn("V851_TLV_STRUCT_OTA_STATUS               0x6DU", self.protocol_h)
         self.assertIn("V851_TLV_CMD_OTA_STATUS", self.protocol)
         self.assertIn("V851_TLV_STRUCT_OTA_STATUS", self.protocol)
         self.assertIn("V851_TLV_TAG_OTA_STAGE", self.protocol)
@@ -40,6 +46,15 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("V851_TLV_TAG_OTA_ERROR_CODE", self.protocol)
         self.assertIn("v851_post_ota_success_remaining = (OtaCompleteFlag != 0U) ? 3U : 0U", self.protocol)
         self.assertIn("OtaAcknowledgeComplete();", self.protocol)
+
+    def test_bootstrap_cache_has_all_fields_and_no_dgus_writes(self) -> None:
+        for name in ("device_sn", "ble_id", "api_endpoint", "bind_status", "qr_url"):
+            self.assertIn(name, self.protocol_h)
+            self.assertIn(f"v851_bootstrap_result.{name}", self.tlv_app)
+        self.assertIn("const V851BootstrapResult *V851BootstrapResultGet(void)", self.tlv_app)
+        self.assertIn("return NULL;", self.tlv_app)
+        self.assertIn("V851BootstrapApplySegment(segment);", self.tlv_app)
+        self.assertNotIn("write_dgus_vp", self.tlv_app)
 
     def test_ota_reports_install_verify_reboot_and_failure(self) -> None:
         for stage in (

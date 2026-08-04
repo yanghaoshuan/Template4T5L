@@ -15,6 +15,7 @@ class UartRoutingTests(unittest.TestCase):
         cls.uart_h = (REPO_ROOT / "source/uart.h").read_text(encoding="utf-8")
         cls.main = (REPO_ROOT / "user/main.c").read_text(encoding="utf-8")
         cls.protocol = (REPO_ROOT / "modules/v851_protocol.c").read_text(encoding="utf-8")
+        cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
         cls.project = (REPO_ROOT / "project/T5L51.uvproj").read_text(encoding="utf-8")
 
     def test_feature_switches_and_uart_sizes(self) -> None:
@@ -48,6 +49,13 @@ class UartRoutingTests(unittest.TestCase):
         self.assertIn("OtaReceive(&frame[frame_offset], one_frame_len)", self.uart)
         for obsolete in ("V851_JSON", "ReceiveJson", "BRIDGE_JSON_MAX"):
             self.assertNotIn(obsolete, self.uart)
+        for command in (
+            "V851_TLV_CMD_PROPERTY",
+            "V851_TLV_CMD_FACTORY",
+            "V851_TLV_CMD_BOOTSTRAP_RESULT",
+            "V851_TLV_CMD_OTA_STATUS",
+        ):
+            self.assertIn(command, self.uart)
 
     def test_uart4_overflow_discards_batch(self) -> None:
         self.assertIn("uint8_t RxOverflow:1", self.uart_h)

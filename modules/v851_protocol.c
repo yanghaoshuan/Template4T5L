@@ -427,6 +427,7 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
     if((declared_length != (uint16_t)(len - V851_TLV_FRAME_FIXED_SIZE)) ||
        ((command != V851_TLV_CMD_PROPERTY) &&
         (command != V851_TLV_CMD_FACTORY) &&
+        (command != V851_TLV_CMD_BOOTSTRAP_RESULT) &&
         (command != V851_TLV_CMD_OTA_STATUS)))
     {
         return;

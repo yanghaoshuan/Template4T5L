@@ -11,7 +11,9 @@
 #define V851_FRAME_MAGIC_LOW                     0x55U
 #define V851_TLV_CMD_PROPERTY                    0x35U
 #define V851_TLV_CMD_FACTORY                     0x36U
-#define V851_TLV_CMD_OTA_STATUS                  0x37U
+#define V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U
+/* Project-private OTA status command; synchronized with the V851 firmware. */
+#define V851_TLV_CMD_OTA_STATUS                  0x38U
 
 #define V851_TLV_FRAME_MAX                       2048U
 #define V851_TLV_FRAME_FIXED_SIZE                5U
@@ -41,7 +43,9 @@
 #define V851_TLV_STRUCT_FILTER                   0x69U
 #define V851_TLV_STRUCT_FACTORY_DEVICE           0x6AU
 #define V851_TLV_STRUCT_FACTORY_REJECTION        0x6BU
-#define V851_TLV_STRUCT_OTA_STATUS               0x6CU
+#define V851_TLV_STRUCT_BOOTSTRAP_RESULT         0x6CU
+/* Project-private OTA status structure. */
+#define V851_TLV_STRUCT_OTA_STATUS               0x6DU
 
 /* PowerState. */
 #define V851_TLV_TAG_POWER_MODE                  0x01U
@@ -128,10 +132,32 @@
 #define V851_TLV_TAG_FACTORY_FW_VERSION          0x06U
 #define V851_TLV_TAG_FACTORY_REJECT_MAC          0x01U
 #define V851_TLV_TAG_FACTORY_REJECT_REASON       0x02U
+/* BootstrapResult. */
+#define V851_TLV_TAG_BOOT_DEVICE_SN              0x01U
+#define V851_TLV_TAG_BOOT_BLE_ID                 0x02U
+#define V851_TLV_TAG_BOOT_API_ENDPOINT           0x03U
+#define V851_TLV_TAG_BOOT_BIND_STATUS            0x04U
+#define V851_TLV_TAG_BOOT_QR_URL                 0x05U
 /* T5L OTA status extension. */
 #define V851_TLV_TAG_OTA_STAGE                   0x01U
 #define V851_TLV_TAG_OTA_PROGRESS                0x02U
 #define V851_TLV_TAG_OTA_ERROR_CODE              0x03U
+
+#define V851_BOOTSTRAP_DEVICE_SN_SIZE            64U
+#define V851_BOOTSTRAP_BLE_ID_SIZE               32U
+#define V851_BOOTSTRAP_API_ENDPOINT_SIZE         256U
+#define V851_BOOTSTRAP_BIND_STATUS_SIZE          32U
+#define V851_BOOTSTRAP_QR_URL_SIZE               256U
+
+typedef struct
+{
+    uint8_t struct_type;
+    char device_sn[V851_BOOTSTRAP_DEVICE_SN_SIZE];
+    char ble_id[V851_BOOTSTRAP_BLE_ID_SIZE];
+    char api_endpoint[V851_BOOTSTRAP_API_ENDPOINT_SIZE];
+    char bind_status[V851_BOOTSTRAP_BIND_STATUS_SIZE];
+    char qr_url[V851_BOOTSTRAP_QR_URL_SIZE];
+} V851BootstrapResult;
 
 typedef struct
 {
@@ -201,7 +227,10 @@ uint8_t V851TlvReadBinary64Uint16(const uint8_t *value,
                                   uint16_t length,
                                   uint16_t *result);
 
-/* Project-level extension hook. The default implementation is a no-op. */
+/* Returns NULL until a complete 0x37/0x6C result has been received. */
+const V851BootstrapResult *V851BootstrapResultGet(void);
+
+/* Single project-level extension hook; Bootstrap is cached by its implementation. */
 void V851TlvApplicationSegment(uint8_t command,
                                const V851TlvSegment *segment);
 

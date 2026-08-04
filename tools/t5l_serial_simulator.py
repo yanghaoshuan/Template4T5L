@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V851 UART4 AA55 TLV/Wi-Fi and ABCD OTA protocol simulator."""
+"""V851 UART4 AA55 property/Bootstrap TLV, Wi-Fi and ABCD OTA simulator."""
 
 from __future__ import annotations
 
@@ -21,8 +21,24 @@ ABCD_MAGIC = b"\xAB\xCD"
 
 TLV_CMD_PROPERTY = 0x35
 TLV_CMD_FACTORY = 0x36
-TLV_CMD_OTA_STATUS = 0x37
-TLV_COMMANDS = {TLV_CMD_PROPERTY, TLV_CMD_FACTORY, TLV_CMD_OTA_STATUS}
+TLV_CMD_BOOTSTRAP_RESULT = 0x37
+TLV_CMD_OTA_STATUS = 0x38
+TLV_COMMANDS = {
+    TLV_CMD_PROPERTY,
+    TLV_CMD_FACTORY,
+    TLV_CMD_BOOTSTRAP_RESULT,
+    TLV_CMD_OTA_STATUS,
+}
+
+TLV_STRUCT_BOOTSTRAP_RESULT = 0x6C
+TLV_STRUCT_OTA_STATUS = 0x6D
+BOOTSTRAP_FIELD_LIMITS = {
+    0x01: ("device_sn", 64),
+    0x02: ("ble_id", 32),
+    0x03: ("api_endpoint", 256),
+    0x04: ("bind_status", 32),
+    0x05: ("qr_url", 256),
+}
 
 WIFI_CMD_SCAN = 0xC0
 WIFI_CMD_CONNECT = 0xC1
@@ -64,6 +80,31 @@ class DecodedFrame:
     raw: bytes
     payload: bytes
     segments: tuple[TlvSegment, ...] = ()
+
+
+@dataclasses.dataclass(frozen=True)
+class BootstrapResult:
+    struct_type: int = TLV_STRUCT_BOOTSTRAP_RESULT
+    device_sn: bytes = b""
+    ble_id: bytes = b""
+    api_endpoint: bytes = b""
+    bind_status: bytes = b""
+    qr_url: bytes = b""
+
+
+class BootstrapResultCache:
+    """Models the firmware's atomic, last-valid-result Bootstrap cache."""
+
+    def __init__(self) -> None:
+        self._result: BootstrapResult | None = None
+
+    def get(self) -> BootstrapResult | None:
+        return self._result
+
+    def receive(self, frame: bytes) -> BootstrapResult:
+        result = decode_bootstrap_result(frame)
+        self._result = result
+        return result
 
 
 def crc16_modbus(data: bytes) -> int:
@@ -165,6 +206,33 @@ def decode_tlv_frame(frame: bytes) -> DecodedFrame:
     if not segments:
         raise ProtocolError("empty TLV frame")
     return DecodedFrame("tlv", command, frame, frame[5:], tuple(segments))
+
+
+def decode_bootstrap_result(frame: bytes) -> BootstrapResult:
+    decoded = decode_tlv_frame(frame)
+    if decoded.command != TLV_CMD_BOOTSTRAP_RESULT:
+        raise ProtocolError("not a BootstrapResult frame")
+
+    result: BootstrapResult | None = None
+    for segment in decoded.segments:
+        if segment.struct_type != TLV_STRUCT_BOOTSTRAP_RESULT:
+            continue
+        values = {
+            "device_sn": b"",
+            "ble_id": b"",
+            "api_endpoint": b"",
+            "bind_status": b"",
+            "qr_url": b"",
+        }
+        for field in segment.fields:
+            descriptor = BOOTSTRAP_FIELD_LIMITS.get(field.tag)
+            if descriptor is not None:
+                name, capacity = descriptor
+                values[name] = field.value[: capacity - 1]
+        result = BootstrapResult(**values)
+    if result is None:
+        raise ProtocolError("BootstrapResult segment is missing")
+    return result
 
 
 def encode_wifi_scan(page: int, count: int = 5) -> bytes:
