@@ -12,20 +12,23 @@ class V851StateAndWifiTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.protocol = (REPO_ROOT / "modules/v851_protocol.c").read_text(encoding="utf-8")
         cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
+        cls.control_h = (REPO_ROOT / "modules/v851_control_info.h").read_text(encoding="utf-8")
         cls.tlv_app = (REPO_ROOT / "modules/v851_tlv_app.c").read_text(encoding="utf-8")
         cls.wifi = (REPO_ROOT / "modules/v851_wifi.c").read_text(encoding="utf-8")
         cls.wifi_h = (REPO_ROOT / "modules/v851_wifi.h").read_text(encoding="utf-8")
         cls.ota = (REPO_ROOT / "modules/ota.c").read_text(encoding="utf-8")
         cls.r11 = (REPO_ROOT / "modules/r11_common.c").read_text(encoding="utf-8")
 
-    def test_full_snapshot_waits_ten_seconds_and_retries_until_queued(self) -> None:
+    def test_full_snapshot_waits_sixty_seconds_and_retries_until_queued(self) -> None:
         self.assertIn("V851_TLV_CMD_SNAPSHOT                    0x37U", self.protocol_h)
-        self.assertIn("V851_STATE_FULL_INTERVAL_MS               10000UL", self.protocol)
+        self.assertIn("V851_STATE_FULL_INTERVAL_MS               60000UL", self.protocol)
         self.assertIn(
-            "V851ProtocolQueueStateMask(V851_TLV_CMD_SNAPSHOT, 0x00FFU)",
+            "V851ProtocolQueueStateMask(V851_TLV_CMD_SNAPSHOT,\n"
+            "                                                V851_CONTROL_FULL_MASK)",
             self.protocol,
         )
-        self.assertIn("if(sent_mask == 0x00FFU)", self.protocol)
+        self.assertIn("V851_CONTROL_FULL_MASK                   0x01FFU", self.control_h)
+        self.assertIn("if(sent_mask == V851_CONTROL_FULL_MASK)", self.protocol)
         self.assertIn("v851_state_full_tick = tick", self.protocol)
         self.assertNotIn("v851_state_snapshot_pending", self.protocol)
 
@@ -40,7 +43,7 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("v851_state_dirty_mask &= (uint16_t)~sent_mask", self.protocol)
         self.assertNotIn("V851_STATE_REPORT_INTERVAL_MS", self.protocol)
 
-    def test_remote_updates_wait_for_actual_state_scan(self) -> None:
+    def test_remote_updates_use_shared_actual_state_scan(self) -> None:
         for removed in (
             "V851_REMOTE_CONFIRM_DEPTH",
             "v851_remote_confirm_masks",
@@ -62,7 +65,7 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("command != V851_TLV_CMD_SNAPSHOT", self.protocol)
         self.assertIn("command == V851_TLV_CMD_SNAPSHOT", self.protocol)
         self.assertIn("segments[index].struct_type < V851_TLV_STRUCT_EXHAUST", self.protocol)
-        self.assertIn("segments[index].struct_type > V851_TLV_STRUCT_INLET_FAN", self.protocol)
+        self.assertIn("segments[index].struct_type > V851_TLV_STRUCT_FILTER", self.protocol)
 
     def test_two_slot_tlv_queue_and_priority_order(self) -> None:
         self.assertIn("#define V851_TLV_TX_DEPTH                         2U", self.protocol)

@@ -49,6 +49,14 @@ WIFI_COMMANDS = {WIFI_CMD_SCAN, WIFI_CMD_CONNECT, WIFI_CMD_STATUS}
 TLV_FRAME_MAX = 2048
 OTA_FRAME_MAX = 4124
 
+ACTUATOR_STRUCT_TYPES = tuple(range(0x61, 0x6A))
+VP_HOUR_TABLES = {
+    "exhaust_interval": {1: 0.5, 2: 1.0, 3: 2.0, 4: 4.0, 5: 8.0},
+    "humidifier_interval": {1: 2.0, 2: 4.0, 3: 8.0, 4: 12.0},
+    "humidifier_running": {1: 0.5, 2: 1.0, 3: 2.0},
+    "uvb_daily": {1: 2, 2: 4, 3: 6, 4: 8},
+}
+
 
 class ProtocolError(ValueError):
     """The supplied bytes do not form a valid supported wire frame."""
@@ -137,6 +145,32 @@ def field_text(tag: int, value: str) -> TlvField:
     return TlvField(tag, value.encode("utf-8"))
 
 
+def vp_code_to_protocol_value(mapping: str, code: int) -> float | int:
+    """Convert one documented VP option code to its wire-protocol value."""
+    try:
+        return VP_HOUR_TABLES[mapping][code]
+    except KeyError as exc:
+        raise ValueError(f"invalid {mapping} VP code: {code}") from exc
+
+
+def protocol_value_to_vp_code(mapping: str, value: float | int) -> int:
+    """Convert only an exact documented wire value back to its VP option code."""
+    table = VP_HOUR_TABLES.get(mapping)
+    if table is None:
+        raise ValueError(f"unknown VP mapping: {mapping}")
+    for code, protocol_value in table.items():
+        if value == protocol_value:
+            return code
+    raise ValueError(f"unrepresentable {mapping} protocol value: {value}")
+
+
+def climate_target_to_vp(value: float) -> int:
+    """Apply the firmware's exact integer 20..35 Celsius policy."""
+    if not 20.0 <= value <= 35.0 or not value.is_integer():
+        raise ValueError("climate target must be an integer from 20 to 35")
+    return int(value)
+
+
 def encode_segment(struct_type: int, fields: Iterable[TlvField] | bytes) -> bytes:
     if not 0 <= struct_type <= 0xFF:
         raise ValueError("struct_type must fit in one byte")
@@ -170,10 +204,10 @@ def encode_tlv_frame(
 def encode_snapshot(
     segments: Iterable[tuple[int, Iterable[TlvField] | bytes]],
 ) -> bytes:
-    """Encode one full T5L-to-V851 snapshot with actuator types 0x61-0x68."""
+    """Encode one full T5L-to-V851 snapshot with actuator types 0x61-0x69."""
     materialized = list(segments)
-    if [struct_type for struct_type, _ in materialized] != list(range(0x61, 0x69)):
-        raise ValueError("a snapshot needs exactly one ordered segment for 0x61-0x68")
+    if tuple(struct_type for struct_type, _ in materialized) != ACTUATOR_STRUCT_TYPES:
+        raise ValueError("a snapshot needs exactly one ordered segment for 0x61-0x69")
     return encode_tlv_frame(TLV_CMD_SNAPSHOT, materialized)
 
 

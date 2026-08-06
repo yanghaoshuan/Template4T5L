@@ -30,6 +30,34 @@
 #define ANION_VP (0x5124)
 #define LOCK_VP (0x5128)
 
+/* V851/DGUS report VPs for the mapped actuator state. */
+#define T5L_STC_REPORT_EXHAUST_VP       0x301A
+#define T5L_STC_REPORT_LIGHT_VP         0x301F
+#define T5L_STC_REPORT_UVB_VP           0x3024
+#define T5L_STC_REPORT_ANION_VP         0x3029
+#define T5L_STC_REPORT_PLASMA_VP        0x302E
+#define T5L_STC_REPORT_CLIMATE_VP       0x3033
+#define T5L_STC_REPORT_HUMIDIFIER_VP    0x3038
+#define T5L_STC_REPORT_INLET_FAN_VP     0x303D
+#define T5L_STC_REPORT_FILTER_VP        0x3042
+
+#define T5L_STC_MAPPED_FIELD_ENABLED    0x01U
+#define T5L_STC_MAPPED_FIELD_SECONDARY  0x02U
+#define T5L_STC_MAPPED_FIELD_TERTIARY   0x04U
+
+typedef enum
+{
+    T5L_STC_MAPPED_EXHAUST = 0,
+    T5L_STC_MAPPED_LIGHT,
+    T5L_STC_MAPPED_UVB,
+    T5L_STC_MAPPED_ANION,
+    T5L_STC_MAPPED_PLASMA,
+    T5L_STC_MAPPED_CLIMATE,
+    T5L_STC_MAPPED_HUMIDIFIER,
+    T5L_STC_MAPPED_INLET_FAN,
+    T5L_STC_MAPPED_CONTROL_COUNT
+} T5lStcMappedControl;
+
 #define DATALEN (64)
 #define MAIN_ADDR 0x4000
 #define BACK_ADDR 0x4800
@@ -75,7 +103,7 @@ typedef enum
 #define OutWind_TIMER_1H (0x2)
 #define OutWind_TIMER_2H (0x3)
 #define OutWind_TIMER_4H (0x4)
-#define OutWind_TIMER_6H (0x5)
+#define OutWind_TIMER_8H (0x5)
 
 #define UVB_TIMER_2H (0x1)
 #define UVB_TIMER_4H (0x2)
@@ -89,7 +117,7 @@ typedef enum
 #define MIST_INTERVAL_TIMER_2H (0x1)
 #define MIST_INTERVAL_TIMER_4H (0x2)
 #define MIST_INTERVAL_TIMER_8H (0x3)
-#define MIST_INTERVAL_TIMER_12H (0x3)
+#define MIST_INTERVAL_TIMER_12H (0x4)
 
 #define UVC_TIMER_15M (0x1)
 #define UVC_TIMER_30M (0x2)
@@ -110,13 +138,13 @@ typedef struct
     uint16_t enable; // 总开关 0关1开
 
     uint16_t speed;           // 风速 1~6档
-    uint16_t interval_time_h; // 定时间隔 1:0.5h  2:1h  3:2h  4:4h  5:6h
+    uint16_t interval_time_h; // 定时间隔 1:0.5h  2:1h  3:2h  4:4h  5:8h
 
     uint16_t target_speed;      // 风速 1~6档
-    uint16_t interval_time_sec; // 定时时长（秒）
+    uint32_t interval_time_sec; // 定时时长（秒）
 
     uint8_t running_min;       // 单次自动通风时长 固定10分钟（参数固化，可保留配置位）
-    uint16_t running_time_sec; // 定时时长（秒）
+    uint32_t running_time_sec; // 定时时长（秒）
 
     uint8_t auto_vent_en; //自动通风使能 0关闭  1开启
     uint8_t run_status;   // 1关闭运行 2开启运行
@@ -156,11 +184,11 @@ typedef struct
 typedef struct
 {
     uint16_t enable;         // 雾化开关 0关1开
-    uint16_t running_time_h; // 单次运行时长h 1:0.5h  2:1h  3:2h  4:4h  5:6h
-    uint16_t interval_time_h;     // 循环间隔时长h 1:0.5h  2:1h  3:2h  4:4h  5:6h
+    uint16_t running_time_h; // 单次运行时长 1:0.5h  2:1h  3:2h
+    uint16_t interval_time_h; // 循环间隔 1:2h  2:4h  3:8h  4:12h
 
-    uint16_t running_time_s; // 单次运行时长s
-    uint16_t interval_time_s;     // 循环间隔时长s
+    uint32_t running_time_s; // 单次运行时长s
+    uint32_t interval_time_s;     // 循环间隔时长s
 
     uint8_t auto_mist_en;       // 自动加湿使能
     uint8_t run_status;         // 运行状态  1待机 2运行
@@ -187,7 +215,7 @@ typedef struct
 {
     uint16_t enable;    // UVC紫外线消杀总开关0关1开
     uint16_t running_time_h;   // 单次运行时长h
-    uint16_t running_time_s;
+    uint32_t running_time_s;
     uint8_t passwd[4];
     uint8_t run_status; // 1关闭运行 2开启运行
     uint8_t running;
@@ -212,8 +240,8 @@ typedef struct
     uint16_t interval_time_h;     // 循环间隔时长h 24-running_time_h
 
     uint16_t target_brightness; // 1~4档亮度
-    uint16_t running_time_s; // 单次运行时长s
-    uint16_t interval_time_s;     // 循环间隔时长s
+    uint32_t running_time_s; // 单次运行时长s
+    uint32_t interval_time_s;     // 循环间隔时长s
 
     uint8_t auto_UVB_en; 
     uint8_t run_status;     // 1关闭运行 2开启运行
@@ -299,6 +327,12 @@ typedef struct
 
 extern DeviceCtrl G_Device_Ctrl;
 
+uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
+                                uint8_t field_mask,
+                                uint16_t enabled,
+                                uint16_t secondary,
+                                uint16_t tertiary);
+
 extern void T5l_Stc_Init(void);
 extern void Queue_Time_Check(void);
 extern void T5L_Stc_Poll(void);
@@ -316,7 +350,7 @@ uint8_t check_passwd_format(uint8_t *u8buf );
 void set_filter_month();
 void Exhaust_On();
 void Exhaust_Off(uint8_t auto_flag);
-void InWind_On();
+void InWind_On(uint16_t speed);
 void InWind_Off();
 void Heater_On(int16_t target_tmp);
 void Heater_Off(uint8_t auto_flag);

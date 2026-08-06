@@ -9,6 +9,7 @@
 
 #include "timer.h"
 #include "uart.h"
+#include "t5l_stc.h"
 
 #if otaOTA_ENABLED
 #include "ota.h"

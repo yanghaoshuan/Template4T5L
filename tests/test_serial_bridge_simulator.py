@@ -59,14 +59,14 @@ class TlvCodecTests(unittest.TestCase):
         snapshot = sim.encode_snapshot(
             [
                 (struct_type, [sim.field_u8(0x01, struct_type & 1)])
-                for struct_type in range(0x61, 0x69)
+                for struct_type in range(0x61, 0x6A)
             ]
         )
         decoded = sim.decode_tlv_frame(snapshot)
         self.assertEqual(decoded.command, sim.TLV_CMD_SNAPSHOT)
         self.assertEqual(
             [segment.struct_type for segment in decoded.segments],
-            list(range(0x61, 0x69)),
+            list(range(0x61, 0x6A)),
         )
         with self.assertRaises(sim.ProtocolError):
             sim.decode_bootstrap_result(snapshot)

@@ -24,7 +24,7 @@ class UartRoutingTests(unittest.TestCase):
             "#define v851PROTOCOL_ENABLED             1",
             "#define pb03fBLE_ENABLED                 0",
             "#define otaOTA_ENABLED                 1",
-            "#define uartUART2_ENABLED               0",
+            "#define uartUART2_ENABLED               1",
             "#define uartUART5_ENABLED               (sysBEAUTY_MODE_ENABLED ||",
             "#define uartUART_COMMON_FRAME_SIZE     4160",
             "#define uartUART4_RXBUF_SIZE         4160",

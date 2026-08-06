@@ -5,11 +5,13 @@
 
 #if v851PROTOCOL_ENABLED
 
-#define V851_CONTROL_COUNT                       8U
-#define V851_CONTROL_COMMAND_SLOT_WORDS          4U
-#define V851_CONTROL_COMMAND_SLOT_BYTES          8U
-#define V851_CONTROL_REPORT_MAX_WORDS            2U
-#define V851_CONTROL_REPORT_MAX_BYTES            4U
+#define V851_CONTROL_COUNT                       9U
+#define V851_CONTROL_FULL_MASK                   0x01FFU
+#define V851_CONTROL_COMMAND_MAX_WORDS           3U
+#define V851_CONTROL_COMMAND_MAX_BYTES           6U
+#define V851_CONTROL_REPORT_MAX_WORDS            5U
+#define V851_CONTROL_REPORT_MAX_BYTES            10U
+#define V851_CONTROL_FIELD_MAX_BYTES             34U
 
 /* Server command VPs: V851 -> T5L. */
 #define V851_CONTROL_COMMAND_EXHAUST_ADDR        0x5100UL
@@ -30,6 +32,7 @@
 #define V851_CONTROL_REPORT_CLIMATE_ADDR         0x3033UL
 #define V851_CONTROL_REPORT_HUMIDIFIER_ADDR      0x3038UL
 #define V851_CONTROL_REPORT_INLET_FAN_ADDR       0x303DUL
+#define V851_CONTROL_REPORT_FILTER_ADDR          0x3042UL
 
 /* Validate one segment without changing DGUS state. */
 uint8_t V851ControlInfoValidateSegment(uint8_t struct_type,
@@ -41,12 +44,12 @@ uint8_t V851ControlInfoApplySegment(uint8_t struct_type,
                                     const uint8_t *field_bytes,
                                     uint16_t length);
 
-/* Encode the compatible fields of one actuator into field_buffer. */
+/* Encode all documented report fields of one actuator into field_buffer. */
 uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
                                     uint8_t *field_buffer,
                                     uint16_t capacity);
 
-/* Return one bit per 0x61..0x68 actuator whose compatible VP fields changed. */
+/* Return one bit per 0x61..0x69 actuator whose report VP fields changed. */
 uint16_t V851ControlInfoScanChanged(void);
 
 #endif /* v851PROTOCOL_ENABLED */

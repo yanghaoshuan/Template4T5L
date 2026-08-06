@@ -77,7 +77,7 @@ uvb：（单独控制或单独连接端子）
 3.后台可帮客户解绑二维码
 4.二维码只可绑定一人，功能控制权管理，由绑定人分享它人
 
-    *禁止屏本地直接刷新 UI，必须等待主控应答再更新界面，防止屏和主控状态不一致。
+    *服务器与本地控制立即同步 UI；主控应答只更新运行、联动和队列状态。
 */
 #include "sys.h"
 #include "t5l_stc.h"
@@ -125,6 +125,223 @@ void Dev_Init(void)
 {
     memset(&G_Device_Ctrl, 0, sizeof(G_Device_Ctrl));
 }
+
+/* Keep G_Device_Ctrl and the mapped 0x3xxx report words in sync. */
+uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
+                                uint8_t field_mask,
+                                uint16_t enabled,
+                                uint16_t secondary,
+                                uint16_t tertiary)
+{
+    uint16_t report[3];
+    uint32_t report_vp;
+    uint8_t valid_mask;
+    uint8_t report_words;
+    uint8_t save_changed;
+
+    if((control >= T5L_STC_MAPPED_CONTROL_COUNT) ||
+       (((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U) &&
+        (enabled > 1U)))
+    {
+        return 0U;
+    }
+
+    valid_mask = T5L_STC_MAPPED_FIELD_ENABLED;
+    report_words = 1U;
+    save_changed = 0U;
+    switch(control)
+    {
+        case T5L_STC_MAPPED_EXHAUST:
+        case T5L_STC_MAPPED_UVB:
+        case T5L_STC_MAPPED_HUMIDIFIER:
+            valid_mask |= T5L_STC_MAPPED_FIELD_SECONDARY |
+                          T5L_STC_MAPPED_FIELD_TERTIARY;
+            report_words = 3U;
+            break;
+        case T5L_STC_MAPPED_LIGHT:
+        case T5L_STC_MAPPED_CLIMATE:
+        case T5L_STC_MAPPED_INLET_FAN:
+            valid_mask |= T5L_STC_MAPPED_FIELD_SECONDARY;
+            report_words = 2U;
+            break;
+        default:
+            break;
+    }
+    field_mask &= valid_mask;
+    if(field_mask == 0U)
+    {
+        return 0U;
+    }
+
+    if((((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U) &&
+        (((control == T5L_STC_MAPPED_EXHAUST) &&
+          ((secondary < 1U) || (secondary > 6U))) ||
+         ((control == T5L_STC_MAPPED_LIGHT) &&
+          ((secondary < 1U) || (secondary > 4U))) ||
+         ((control == T5L_STC_MAPPED_UVB) &&
+          ((secondary < 1U) || (secondary > 4U))) ||
+         ((control == T5L_STC_MAPPED_CLIMATE) &&
+          ((secondary < 20U) || (secondary > 35U))) ||
+         ((control == T5L_STC_MAPPED_HUMIDIFIER) &&
+          ((secondary < 1U) || (secondary > 4U))) ||
+         ((control == T5L_STC_MAPPED_INLET_FAN) &&
+          ((secondary < 1U) || (secondary > 4U))))) ||
+       (((field_mask & T5L_STC_MAPPED_FIELD_TERTIARY) != 0U) &&
+        (((control == T5L_STC_MAPPED_EXHAUST) &&
+          ((tertiary < 1U) || (tertiary > 5U))) ||
+         ((control == T5L_STC_MAPPED_UVB) &&
+          ((tertiary < 1U) || (tertiary > 4U))) ||
+         ((control == T5L_STC_MAPPED_HUMIDIFIER) &&
+          ((tertiary < 1U) || (tertiary > 3U))))))
+    {
+        return 0U;
+    }
+
+    switch(control)
+    {
+        case T5L_STC_MAPPED_EXHAUST:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Exhaust.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.Exhaust.speed != secondary) save_changed = 1U;
+                G_Device_Ctrl.Exhaust.speed = secondary;
+                G_Device_Ctrl.Exhaust.target_speed = secondary;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_TERTIARY) != 0U)
+            {
+                if(G_Device_Ctrl.Exhaust.interval_time_h != tertiary) save_changed = 1U;
+                G_Device_Ctrl.Exhaust.interval_time_h = tertiary;
+            }
+            report[0] = G_Device_Ctrl.Exhaust.enable;
+            report[1] = G_Device_Ctrl.Exhaust.speed;
+            report[2] = G_Device_Ctrl.Exhaust.interval_time_h;
+            report_vp = T5L_STC_REPORT_EXHAUST_VP;
+            break;
+
+        case T5L_STC_MAPPED_LIGHT:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Light.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.Light.brightness != secondary) save_changed = 1U;
+                G_Device_Ctrl.Light.brightness = secondary;
+                G_Device_Ctrl.Light.target_brightness = secondary;
+            }
+            report[0] = G_Device_Ctrl.Light.enable;
+            report[1] = G_Device_Ctrl.Light.brightness;
+            report_vp = T5L_STC_REPORT_LIGHT_VP;
+            break;
+
+        case T5L_STC_MAPPED_UVB:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.UVB.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.UVB.brightness != secondary) save_changed = 1U;
+                G_Device_Ctrl.UVB.brightness = secondary;
+                G_Device_Ctrl.UVB.target_brightness = secondary;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_TERTIARY) != 0U)
+            {
+                if(G_Device_Ctrl.UVB.running_time_h != tertiary) save_changed = 1U;
+                G_Device_Ctrl.UVB.running_time_h = tertiary;
+            }
+            report[0] = G_Device_Ctrl.UVB.enable;
+            report[1] = G_Device_Ctrl.UVB.brightness;
+            report[2] = G_Device_Ctrl.UVB.running_time_h;
+            report_vp = T5L_STC_REPORT_UVB_VP;
+            break;
+
+        case T5L_STC_MAPPED_ANION:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Anion.enable = enabled;
+            }
+            report[0] = G_Device_Ctrl.Anion.enable;
+            report_vp = T5L_STC_REPORT_ANION_VP;
+            break;
+
+        case T5L_STC_MAPPED_PLASMA:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Plasma.enable = enabled;
+            }
+            report[0] = G_Device_Ctrl.Plasma.enable;
+            report_vp = T5L_STC_REPORT_PLASMA_VP;
+            break;
+
+        case T5L_STC_MAPPED_CLIMATE:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Heater.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.Heater.set_temp != secondary) save_changed = 1U;
+                G_Device_Ctrl.Heater.set_temp = secondary;
+                G_Device_Ctrl.Heater.target_temp = secondary;
+            }
+            report[0] = G_Device_Ctrl.Heater.enable;
+            report[1] = G_Device_Ctrl.Heater.set_temp;
+            report_vp = T5L_STC_REPORT_CLIMATE_VP;
+            break;
+
+        case T5L_STC_MAPPED_HUMIDIFIER:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Humidifier.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.Humidifier.interval_time_h != secondary) save_changed = 1U;
+                G_Device_Ctrl.Humidifier.interval_time_h = secondary;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_TERTIARY) != 0U)
+            {
+                if(G_Device_Ctrl.Humidifier.running_time_h != tertiary) save_changed = 1U;
+                G_Device_Ctrl.Humidifier.running_time_h = tertiary;
+            }
+            report[0] = G_Device_Ctrl.Humidifier.enable;
+            report[1] = G_Device_Ctrl.Humidifier.interval_time_h;
+            report[2] = G_Device_Ctrl.Humidifier.running_time_h;
+            report_vp = T5L_STC_REPORT_HUMIDIFIER_VP;
+            break;
+
+        case T5L_STC_MAPPED_INLET_FAN:
+            if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+            {
+                G_Device_Ctrl.Inlet_Fan.enable = enabled;
+            }
+            if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+            {
+                if(G_Device_Ctrl.Inlet_Fan.speed != secondary) save_changed = 1U;
+                G_Device_Ctrl.Inlet_Fan.speed = secondary;
+                G_Device_Ctrl.Inlet_Fan.target_speed = secondary;
+            }
+            report[0] = G_Device_Ctrl.Inlet_Fan.enable;
+            report[1] = G_Device_Ctrl.Inlet_Fan.speed;
+            report_vp = T5L_STC_REPORT_INLET_FAN_VP;
+            break;
+
+        default:
+            return 0U;
+    }
+
+    write_dgus_vp(report_vp, (uint8_t *)report, report_words);
+    if(save_changed != 0U)
+    {
+        Start_Once_SaveData();
+    }
+    return 1U;
+}
+
 void Queue_Init(void)
 {
     G_Queue.head = 0;
@@ -239,10 +456,10 @@ void Queue_Sta_Poll(void)
 }
 
 //将时间间隔档位转换为秒数 time_tpye 0=间隔时间  1=单次运行时间
-uint16_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
+uint32_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
 {
 
-    uint16_t ts = 0;
+    uint32_t ts = 0UL;
     if (dev_type < Type_OutWind || dev_type > Type_LOCK)
         return 0; //设备类型错误
     switch (dev_type)
@@ -258,24 +475,21 @@ uint16_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
             }
             else if (th == 2)
             {
-                ts = 1 * 3600;
+                ts = 1 * 3600UL;
             }
             else if (th == 3)
             {
-                ts = 2 * 3600;
+                ts = 2 * 3600UL;
             }
             else if (th == 4)
             {
-                ts = 4 * 3600;
+                ts = 4 * 3600UL;
             }
             else if (th == 5)
             {
-                ts = 8 * 3600;
+                ts = 8 * 3600UL;
             }
-            else if (th == 6)
-            {
-                ts = 12 * 3600;
-            }
+
         }
         break;
     case Type_InWind:
@@ -304,38 +518,38 @@ uint16_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
         {
             if (th == 1)
             {
-                ts = (24 - 2) * 3600;
+                ts = (24 - 2) * 3600UL;
             }
             else if (th == 2)
             {
-                ts = (24 - 4) * 3600;
+                ts = (24 - 4) * 3600UL;
             }
             else if (th == 3)
             {
-                ts = (24 - 6) * 3600;
+                ts = (24 - 6) * 3600UL;
             }
             else if (th == 4)
             {
-                ts = (24 - 8) * 3600;
+                ts = (24 - 8) * 3600UL;
             }
         }
         else if (time_tpye == 1)
         {
             if (th == 1)
             {
-                ts = 2 * 3600;
+                ts = 2 * 3600UL;
             }
             else if (th == 2)
             {
-                ts = 4 * 3600;
+                ts = 4 * 3600UL;
             }
             else if (th == 3)
             {
-                ts = 6 * 3600;
+                ts = 6 * 3600UL;
             }
             else if (th == 4)
             {
-                ts = 8 * 3600;
+                ts = 8 * 3600UL;
             }
         }
 
@@ -345,19 +559,19 @@ uint16_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
         {
             if (th == 1)
             {
-                ts = 2 * 3600;
+                ts = 2 * 3600UL;
             }
             else if (th == 2)
             {
-                ts = 4 * 3600;
+                ts = 4 * 3600UL;
             }
             else if (th == 3)
             {
-                ts = 8 * 3600;
+                ts = 8 * 3600UL;
             }
             else if (th == 4)
             {
-                ts = 12 * 3600;
+                ts = 12 * 3600UL;
             }
         }
         break;
@@ -385,33 +599,68 @@ uint16_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
     return ts;
 }
 
+static uint8_t T5lStcAcknowledgedRunState(uint16_t addr)
+{
+    DATA_NODE *node;
+    uint16_t queued_addr;
+
+    node = &G_Queue.Data[G_Queue.last_head];
+    if(node->len >= 8U)
+    {
+        queued_addr = (uint16_t)(((uint16_t)node->buf[4] << 8) |
+                                 node->buf[5]);
+        if(queued_addr == addr)
+        {
+            return node->buf[7];
+        }
+    }
+
+    switch(addr)
+    {
+        case OUTWIND_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Exhaust.target_speed;
+        case INWIND_CMDWORD:
+        case INWIND2_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed;
+        case LIGHT_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Light.target_brightness;
+        case UVB_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.UVB.target_brightness;
+        case HEATER_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Heater.enable;
+        case ANION_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Anion.enable;
+        case PLASMA_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Plasma.enable;
+        case HUMIDIFIER_CMDWORD:
+            return (uint8_t)G_Device_Ctrl.Humidifier.enable;
+        default:
+            return 0U;
+    }
+}
+
 //应答成功回调
 void T5l_Stc_UartRxProcess(uint16_t addr)
 {
     uint16_t tmp;
     uint16_t time_value;
+    uint8_t run_state;
     if (addr >= 6100 && addr <= 0x61FF)
     {
         G_Queue.sta = STATE_WAIT_ACK_SUCCESS;
         write_dgus_vp(0x535A, "\x00\x01", 1); //设定成功
         G_Queue.showsuccse_time_ms = 1000;
+        run_state = T5lStcAcknowledgedRunState(addr);
         switch (addr)
         {
         case OUTWIND_CMDWORD:
-            //排风
-            if (G_Device_Ctrl.Exhaust.target_speed == 0)
+            if (run_state == 0U)
             {
                 G_Device_Ctrl.Exhaust.running = FALSE;
-                if (G_Device_Ctrl.Exhaust.auto_vent_en == 0)
-                {
-                    G_Device_Ctrl.Exhaust.enable = 0;
-                    write_dgus_vp(OUTWIND_VP, (uint8_t *)&G_Device_Ctrl.Exhaust.enable, 1); //更新设置页图标开关状态
-                }
             }
             else
             {
                 G_Device_Ctrl.Exhaust.auto_vent_en = 1;
-                G_Device_Ctrl.Exhaust.enable = 1;
                 G_Device_Ctrl.Exhaust.running = TRUE;
                 G_Device_Ctrl.Exhaust.running_time_sec = OUTWIND_AUTO_RUN_TIME_SEC;
                 read_dgus_vp(OUTWIND_VP + 2, (uint8_t *)&time_value, 1);
@@ -420,54 +669,28 @@ void T5l_Stc_UartRxProcess(uint16_t addr)
                     G_Device_Ctrl.Exhaust.interval_time_h = time_value;
                     Start_Once_SaveData();
                 }
-                if (G_Device_Ctrl.Exhaust.speed != G_Device_Ctrl.Exhaust.target_speed)
-                {
-                    G_Device_Ctrl.Exhaust.speed = G_Device_Ctrl.Exhaust.target_speed;
-                    Start_Once_SaveData();
-                }
-
-                write_dgus_vp(OUTWIND_VP, (uint8_t *)&G_Device_Ctrl.Exhaust.enable, 1); //更新设置页图标开关状态
             }
-
-            // write_dgus_vp(0x5328,(uint8_t*)&G_Device_Ctrl.Exhaust.speed,1);//更新状态页排风图标状态
-            // write_dgus_vp(0x5329,(uint8_t*)&G_Device_Ctrl.Exhaust.interval_time_h,1);//更新状态页排风图标状态
             break;
         case INWIND_CMDWORD:
         case INWIND2_CMDWORD:
-
-            if (G_Device_Ctrl.Inlet_Fan.target_speed == 0)
+            if (run_state == 0U)
             {
-                G_Device_Ctrl.Inlet_Fan.enable = 0;
                 G_Device_Ctrl.Inlet_Fan.running = FALSE;
             }
             else
             {
-                G_Device_Ctrl.Inlet_Fan.enable = 1;
-
                 G_Device_Ctrl.Inlet_Fan.running = TRUE;
-                G_Device_Ctrl.Inlet_Fan.speed = G_Device_Ctrl.Inlet_Fan.target_speed;
             }
             break;
         case LIGHT_CMDWORD:
-            //照明灯
-            if (G_Device_Ctrl.Light.target_brightness == 0)
+            if (run_state == 0U)
             {
-                G_Device_Ctrl.Light.enable = 0;
                 G_Device_Ctrl.Light.running = FALSE;
             }
             else
             {
-                G_Device_Ctrl.Light.enable = 1;
                 G_Device_Ctrl.Light.running = TRUE;
-                if (G_Device_Ctrl.Light.brightness != G_Device_Ctrl.Light.target_brightness)
-                {
-                    G_Device_Ctrl.Light.brightness = G_Device_Ctrl.Light.target_brightness;
-                    Start_Once_SaveData();
-                }
             }
-
-            write_dgus_vp(LIGHT_VP, (uint8_t *)&G_Device_Ctrl.Light.enable, 1); //更新图标状态
-            // write_dgus_vp(0x5320,(uint8_t*)&G_Device_Ctrl.Light.brightness,1);//更新灯光状态页图标状态
             break;
         case IR_CMDWORD:
 
@@ -494,30 +717,21 @@ void T5l_Stc_UartRxProcess(uint16_t addr)
             Start_Once_SaveData();
             break;
         case UVB_CMDWORD:
-            // UVB
-            if (G_Device_Ctrl.UVB.target_brightness == 0)
+            if (run_state == 0U)
             {
                 G_Device_Ctrl.UVB.running = FALSE;
-                if (G_Device_Ctrl.UVB.auto_UVB_en == 0)
-                {
-                    G_Device_Ctrl.UVB.enable = 0;
-                    write_dgus_vp(UVB_VP, (uint8_t *)&G_Device_Ctrl.UVB.enable, 1); //更新设置页图标开关状态
-                }
             }
             else
             {
                 G_Device_Ctrl.UVB.auto_UVB_en = 1;
-                G_Device_Ctrl.UVB.enable = 1;
                 G_Device_Ctrl.UVB.running = TRUE;
-
-                write_dgus_vp(UVB_VP, (uint8_t *)&G_Device_Ctrl.UVB.enable, 1); //更新设置页图标开关状态
             }
 
-            if (G_Device_Ctrl.UVB.target_brightness != 0)
+            if (run_state != 0U)
             {
-                if (G_Device_Ctrl.UVB.brightness != G_Device_Ctrl.UVB.target_brightness)
+                if (G_Device_Ctrl.UVB.brightness != run_state)
                 {
-                    G_Device_Ctrl.UVB.brightness = G_Device_Ctrl.UVB.target_brightness;
+                    G_Device_Ctrl.UVB.brightness = run_state;
                     Start_Once_SaveData();
                 }
             }
@@ -531,92 +745,58 @@ void T5l_Stc_UartRxProcess(uint16_t addr)
             G_Device_Ctrl.UVB.running_time_s = Get_Interval_Run_Sec(Type_UVB, 1, G_Device_Ctrl.UVB.running_time_h);
             break;
         case HEATER_CMDWORD:
-            if (G_Device_Ctrl.Heater.enable == 1)
+            if (run_state == 0U)
             {
-
                 G_Device_Ctrl.Inlet_Fan.heater_auto_en = 0;
                 G_Device_Ctrl.Inlet_Fan.off_delay_sec = 5;
                 G_Device_Ctrl.Heater.running = FALSE;
-                if (G_Device_Ctrl.Heater.aotu_heater_en == 0)
-                {
-                    G_Device_Ctrl.Heater.enable = 0;
-                    write_dgus_vp(HEATER_VP, (uint8_t *)&G_Device_Ctrl.Heater.enable, 1); //更新设置页图标开关状态
-                }
             }
             else
             {
                 G_Device_Ctrl.Inlet_Fan.heater_auto_en = 1;
                 G_Device_Ctrl.Heater.aotu_heater_en = 1;
-                G_Device_Ctrl.Heater.enable = 1;
                 G_Device_Ctrl.Heater.run_status = 2;
                 G_Device_Ctrl.Heater.running = TRUE;
-
-                write_dgus_vp(HEATER_VP, (uint8_t *)&G_Device_Ctrl.Heater.enable, 1); //更新设置页图标开关状态
             }
-
-            if (G_Device_Ctrl.Heater.set_temp != G_Device_Ctrl.Heater.target_temp)
-            {
-                G_Device_Ctrl.Heater.set_temp = G_Device_Ctrl.Heater.target_temp;
-                Start_Once_SaveData();
-            }
-
             break;
         case 0x6108:
 
             break;
         case ANION_CMDWORD: // NAI
-            if (G_Device_Ctrl.Anion.enable == 0)
+            if (run_state != 0U)
             {
                 G_Device_Ctrl.Inlet_Fan.anion_auto_en = 1;
-
-                G_Device_Ctrl.Anion.enable = 1;
                 G_Device_Ctrl.Anion.running = TRUE;
             }
             else
             {
                 G_Device_Ctrl.Inlet_Fan.anion_auto_en = 0;
                 G_Device_Ctrl.Inlet_Fan.run_status = 1;
-                G_Device_Ctrl.Anion.enable = 0;
                 G_Device_Ctrl.Anion.running = FALSE;
             }
-            write_dgus_vp(ANION_VP, (uint8_t *)&G_Device_Ctrl.Anion.enable, 1);
             break;
         case PLASMA_CMDWORD: // PLASMA
-            if (G_Device_Ctrl.Plasma.enable == 0)
+            if (run_state != 0U)
             {
                 G_Device_Ctrl.Inlet_Fan.plasma_auto_en = 1;
-                // G_Device_Ctrl.Plasma.enable = 1;
                 G_Device_Ctrl.Plasma.running = TRUE;
             }
             else
             {
                 G_Device_Ctrl.Inlet_Fan.plasma_auto_en = 0;
                 G_Device_Ctrl.Inlet_Fan.run_status = 1;
-                G_Device_Ctrl.Plasma.enable = 0;
                 G_Device_Ctrl.Plasma.running = FALSE;
             }
-
-            write_dgus_vp(PLASMA_VP, (uint8_t *)&G_Device_Ctrl.Plasma.enable, 1);
             break;
         case HUMIDIFIER_CMDWORD: // Humidifier
-            //雾化
-            if (G_Device_Ctrl.Humidifier.enable == 1)
+            if (run_state == 0U)
             {
                 G_Device_Ctrl.Humidifier.running = FALSE;
-                // G_Device_Ctrl.Humidifier
-                if (G_Device_Ctrl.Exhaust.auto_vent_en == 0)
-                {
-                    G_Device_Ctrl.Humidifier.enable = 0;
-                    write_dgus_vp(MIST_VP, (uint8_t *)&G_Device_Ctrl.Humidifier.enable, 1); //更新设置页图标开关状态
-                }
             }
             else
             {
                 G_Device_Ctrl.Humidifier.auto_mist_en = 1;
-                G_Device_Ctrl.Humidifier.enable = 1;
                 G_Device_Ctrl.Humidifier.running = TRUE;
-
-                write_dgus_vp(MIST_VP, (uint8_t *)&G_Device_Ctrl.Humidifier.enable, 1); //更新设置页图标开关状态
             }
 
             read_dgus_vp(MIST_VP + 1, (uint8_t *)&time_value, 1);
@@ -791,25 +971,41 @@ void sys_config(uint8_t is_beep, uint8_t is_sleep)
 
 void Exhaust_On()
 {
-    G_Device_Ctrl.Exhaust.enable = 0;
+    uint16_t interval_code;
 
     read_dgus_vp(OUTWIND_VP + 1, (uint8_t *)&G_Device_Ctrl.Exhaust.target_speed, 1);
+    read_dgus_vp(OUTWIND_VP + 2, (uint8_t *)&interval_code, 1);
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_EXHAUST,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
+        T5L_STC_MAPPED_FIELD_TERTIARY,
+        1U, G_Device_Ctrl.Exhaust.target_speed, interval_code);
     Send_Cmd_Ctrl(OUTWIND_CMDWORD, G_Device_Ctrl.Exhaust.target_speed);
 }
 
 //正常关闭auto_flag=0; 定时间隔关闭auto_flag=1;0更新开关状态  1不更新开关状态
 void Exhaust_Off(uint8_t auto_flag)
 {
-    G_Device_Ctrl.Exhaust.enable = 1;
-
     G_Device_Ctrl.Exhaust.auto_vent_en = auto_flag;
     G_Device_Ctrl.Exhaust.target_speed = 0;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_EXHAUST,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(OUTWIND_CMDWORD, (uint8_t)G_Device_Ctrl.Exhaust.target_speed);
 }
 
 void Humidifier_On()
 {
-    G_Device_Ctrl.Humidifier.enable = 0;
+    uint16_t interval_code;
+    uint16_t running_code;
+
+    read_dgus_vp(MIST_VP + 1, (uint8_t *)&interval_code, 1);
+    read_dgus_vp(MIST_VP + 2, (uint8_t *)&running_code, 1);
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_HUMIDIFIER,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
+        T5L_STC_MAPPED_FIELD_TERTIARY,
+        1U, interval_code, running_code);
     Send_Cmd_Ctrl(HUMIDIFIER_CMDWORD, 1);
 }
 
@@ -817,14 +1013,23 @@ void Humidifier_On()
 void Humidifier_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Humidifier.auto_mist_en = auto_flag;
-    G_Device_Ctrl.Humidifier.enable = 1;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_HUMIDIFIER,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(HUMIDIFIER_CMDWORD, 0);
 }
 
 void UVB_On(uint16_t target_brightness)
 {
-    G_Device_Ctrl.UVB.enable = 0;
+    uint16_t daily_code;
+
     G_Device_Ctrl.UVB.target_brightness = target_brightness;
+    read_dgus_vp(UVB_VP + 2, (uint8_t *)&daily_code, 1);
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_UVB,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
+        T5L_STC_MAPPED_FIELD_TERTIARY,
+        1U, target_brightness, daily_code);
     Send_Cmd_Ctrl(UVB_CMDWORD, (uint8_t)target_brightness);
 }
 
@@ -832,8 +1037,10 @@ void UVB_On(uint16_t target_brightness)
 void UVB_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.UVB.auto_UVB_en = auto_flag;
-    G_Device_Ctrl.UVB.enable = 1;
     G_Device_Ctrl.UVB.target_brightness = 0;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_UVB,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(UVB_CMDWORD, (uint8_t)G_Device_Ctrl.UVB.target_brightness);
 }
 
@@ -851,16 +1058,19 @@ void UVC_Off()
 //调用此函数时需要先把目标值负值给G_Device_Ctrl.Heater.target_temp，并传入target_tmp
 void Heater_On(int16_t target_tmp)
 {
+    G_Device_Ctrl.Heater.target_temp = (uint16_t)target_tmp;
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_CLIMATE,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
+        1U, (uint16_t)target_tmp, 0U);
     //判断温差
     if ((G_Device_Ctrl.environment.temperature + 5) < target_tmp)
     {
-        G_Device_Ctrl.Heater.enable = 0;
         Send_Cmd_Ctrl(HEATER_CMDWORD, 1);
     }
     else
     {
         G_Device_Ctrl.Heater.aotu_heater_en = 1;
-        G_Device_Ctrl.Heater.enable = 1;
         G_Device_Ctrl.Heater.running = 1;
         write_dgus_vp(HEATER_VP, "\x00\x01", 1);
     }
@@ -870,36 +1080,48 @@ void Heater_On(int16_t target_tmp)
 void Heater_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Heater.aotu_heater_en = auto_flag;
-    G_Device_Ctrl.UVC.enable = 1;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_CLIMATE,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(HEATER_CMDWORD, 0);
 }
 
 void InWind_On(uint16_t speed)
 {
     G_Device_Ctrl.Inlet_Fan.target_speed = speed;
-    G_Device_Ctrl.Inlet_Fan.enable = 0;
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_INLET_FAN,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
+        1U, speed, 0U);
     Send_Cmd_Ctrl(INWIND_CMDWORD, (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed);
     Send_Cmd_Ctrl(INWIND2_CMDWORD, (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed);
 }
 void InWind_Off()
 {
     G_Device_Ctrl.Inlet_Fan.target_speed = 0;
-    G_Device_Ctrl.Inlet_Fan.enable = 1;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_INLET_FAN,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(INWIND_CMDWORD, (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed);
     Send_Cmd_Ctrl(INWIND2_CMDWORD, (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed);
 }
 
 void Light_On(uint16_t target_brightness)
 {
-    G_Device_Ctrl.Light.enable = 0;
     G_Device_Ctrl.Light.target_brightness = target_brightness;
+    (void)T5lStcSyncMappedControl(
+        T5L_STC_MAPPED_LIGHT,
+        T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
+        1U, target_brightness, 0U);
     Send_Cmd_Ctrl(LIGHT_CMDWORD, (uint8_t)target_brightness);
 }
 
 void Light_Off()
 {
     G_Device_Ctrl.Light.target_brightness = 0;
-    G_Device_Ctrl.Light.enable = 1;
+    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_LIGHT,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
     Send_Cmd_Ctrl(LIGHT_CMDWORD, (uint8_t)G_Device_Ctrl.Light.target_brightness);
 }
 
@@ -1076,7 +1298,11 @@ void key_scanf(void)
             //===============================负离子 start================================//
 
         case 0x504: //负离子开关
-            Send_Cmd_Ctrl(ANION_CMDWORD, !G_Device_Ctrl.Anion.enable);
+            tmp = (uint16_t)!G_Device_Ctrl.Anion.enable;
+            (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_ANION,
+                                          T5L_STC_MAPPED_FIELD_ENABLED,
+                                          tmp, 0U, 0U);
+            Send_Cmd_Ctrl(ANION_CMDWORD, (uint8_t)tmp);
             break;
             //===============================负离子 end================================//
 
@@ -1105,7 +1331,11 @@ void key_scanf(void)
             //===============================UVB End================================//
             //===============================等离子 start================================//
         case 0x506: //等离子开关
-            Send_Cmd_Ctrl(PLASMA_CMDWORD, !G_Device_Ctrl.Plasma.enable);
+            tmp = (uint16_t)!G_Device_Ctrl.Plasma.enable;
+            (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_PLASMA,
+                                          T5L_STC_MAPPED_FIELD_ENABLED,
+                                          tmp, 0U, 0U);
+            Send_Cmd_Ctrl(PLASMA_CMDWORD, (uint8_t)tmp);
             break;
             //===============================等离子 end================================//
             //===============================紫外消杀 start================================//
@@ -2016,7 +2246,7 @@ void Updata_Vpdata_To_Report()
 
     databuf[20] = G_Device_Ctrl.UVB.enable;
     databuf[21] = G_Device_Ctrl.UVB.brightness;
-    databuf[22] = G_Device_Ctrl.UVB.interval_time_h;
+    databuf[22] = G_Device_Ctrl.UVB.running_time_h;
     databuf[23] = G_Device_Ctrl.UVB.running;
     databuf[24] = 0;
 
@@ -2034,7 +2264,19 @@ void Updata_Vpdata_To_Report()
 
     databuf[35] = G_Device_Ctrl.Heater.enable;
     databuf[36] = G_Device_Ctrl.Heater.set_temp;
-    databuf[37] = G_Device_Ctrl.Heater.enable;
+    if (G_Device_Ctrl.Heater.enable == 0)
+    {
+        databuf[37] = 0;
+    }
+    else if ((G_Device_Ctrl.Heater.running != 0) ||
+             (G_Device_Ctrl.Heater.run_status == 2))
+    {
+        databuf[37] = 1;
+    }
+    else
+    {
+        databuf[37] = 2;
+    }
     databuf[38] = G_Device_Ctrl.Heater.running;
     databuf[39] = 0;
 
@@ -2042,11 +2284,11 @@ void Updata_Vpdata_To_Report()
     databuf[41] = G_Device_Ctrl.Humidifier.interval_time_h;
     databuf[42] = G_Device_Ctrl.Humidifier.running_time_h;
     databuf[43] = G_Device_Ctrl.Humidifier.running;
-    databuf[44] = 0;
+    databuf[44] = G_Device_Ctrl.Humidifier.liquid_status;
 
     databuf[45] = G_Device_Ctrl.Inlet_Fan.enable;
     databuf[46] = G_Device_Ctrl.Inlet_Fan.speed;
-    databuf[47] = G_Device_Ctrl.Inlet_Fan.enable;
+    databuf[47] = G_Device_Ctrl.Inlet_Fan.running;
     databuf[48] = 0;
     databuf[49] = 0;
 

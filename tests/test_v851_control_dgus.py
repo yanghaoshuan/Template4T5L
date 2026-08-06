@@ -36,6 +36,7 @@ class V851ControlDgusTests(unittest.TestCase):
             "CLIMATE": "0x3033UL",
             "HUMIDIFIER": "0x3038UL",
             "INLET_FAN": "0x303DUL",
+            "FILTER": "0x3042UL",
         }
         for name, address in command_addresses.items():
             self.assertIn(f"V851_CONTROL_COMMAND_{name}_ADDR", self.header)
@@ -45,11 +46,24 @@ class V851ControlDgusTests(unittest.TestCase):
             self.assertIn(address, self.header)
         self.assertNotIn("V851_CONTROL_DGUS_", self.header)
 
-    def test_only_semantically_compatible_fields_are_mapped(self) -> None:
-        self.assertIn("V851ControlInfoIsEnabledTag", self.source)
-        self.assertIn("V851ControlInfoIsLevelTag", self.source)
-        self.assertIn("V851_TLV_STRUCT_CLIMATE", self.source)
-        self.assertIn("V851TlvReadBinary64Uint16", self.source)
+    def test_all_nine_actuator_fields_are_mapped_by_protocol_type(self) -> None:
+        self.assertIn("V851ControlInfoMapWritableField", self.source)
+        self.assertIn("V851ControlInfoWriteHours", self.source)
+        self.assertIn("V851ControlInfoHoursToCode", self.source)
+        for struct_name in (
+            "EXHAUST", "LIGHT", "UVB", "ANION", "PLASMA", "CLIMATE",
+            "HUMIDIFIER", "INLET_FAN", "FILTER",
+        ):
+            self.assertIn(f"V851_TLV_STRUCT_{struct_name}", self.source)
+        for tag_name in (
+            "EXH_INTERVAL_HOURS", "EXH_RUNNING", "LIGHT_RUNNING",
+            "UVB_LEVEL", "UVB_DAILY_HOURS", "UVB_RUNNING", "ANION_RUNNING",
+            "PLASMA_RUNNING", "CLIMATE_CTRL_STATUS", "CLIMATE_RUNNING",
+            "HUMI_INTERVAL_HOURS", "HUMI_RUNNING_HOURS", "HUMI_RUNNING",
+            "HUMI_LIQUID_STATUS", "INLET_RUNNING", "FILTER_LIFE_PERCENT",
+            "FILTER_NEED_REPLACE",
+        ):
+            self.assertIn(f"V851_TLV_TAG_{tag_name}", self.source)
         for obsolete in (
             "target_humidity",
             "duration_minutes",
@@ -66,7 +80,7 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertLess(second_pass, apply)
         self.assertNotIn("V851ControlInfoApplySegment", self.protocol[first_pass:second_pass])
 
-    def test_remote_write_only_targets_command_vps(self) -> None:
+    def test_remote_write_targets_command_and_optimistic_report_state(self) -> None:
         self.assertIn("uint8_t V851ControlInfoApplySegment", self.header)
         self.assertIn("uint8_t V851ControlInfoApplySegment", self.source)
         self.assertIn("return changed;", self.source)
@@ -74,7 +88,12 @@ class V851ControlDgusTests(unittest.TestCase):
         apply_end = self.source.index("uint16_t V851ControlInfoBuildFields", apply_start)
         apply = self.source[apply_start:apply_end]
         self.assertIn("V851ControlInfoCommandAddress(struct_type)", apply)
-        self.assertIn("V851_CONTROL_COMMAND_SLOT_WORDS", apply)
+        self.assertIn("V851ControlInfoCommandWords(struct_type)", apply)
+        self.assertIn("write_dgus_vp(address, record, command_words)", apply)
+        self.assertIn("T5lStcSyncMappedControl", apply)
+        self.assertIn("T5L_STC_MAPPED_FIELD_ENABLED", apply)
+        self.assertIn("T5L_STC_MAPPED_FIELD_SECONDARY", apply)
+        self.assertIn("T5L_STC_MAPPED_FIELD_TERTIARY", apply)
         self.assertNotIn("V851ControlInfoReportAddress", apply)
         self.assertNotIn("v851_control_report_shadow", apply)
 
