@@ -55,6 +55,24 @@ class TlvCodecTests(unittest.TestCase):
         self.assertEqual(len(frame), 42)
         self.assertEqual(len(sim.decode_tlv_frame(frame).segments), 2)
 
+    def test_snapshot_and_bootstrap_share_command_by_direction(self) -> None:
+        snapshot = sim.encode_snapshot(
+            [
+                (struct_type, [sim.field_u8(0x01, struct_type & 1)])
+                for struct_type in range(0x61, 0x69)
+            ]
+        )
+        decoded = sim.decode_tlv_frame(snapshot)
+        self.assertEqual(decoded.command, sim.TLV_CMD_SNAPSHOT)
+        self.assertEqual(
+            [segment.struct_type for segment in decoded.segments],
+            list(range(0x61, 0x69)),
+        )
+        with self.assertRaises(sim.ProtocolError):
+            sim.decode_bootstrap_result(snapshot)
+        with self.assertRaises(ValueError):
+            sim.encode_snapshot([(0x61, [sim.field_u8(0x01, 1)])])
+
     def test_2048_byte_tlv_boundary(self) -> None:
         field = sim.TlvField(0xFE, b"X" * 2037)
         frame = sim.encode_tlv_frame(0x35, [(0xEE, [field])])
@@ -157,6 +175,10 @@ class TlvCodecTests(unittest.TestCase):
 
 
 class WifiAndOtaTests(unittest.TestCase):
+    def test_monitor_defaults_to_uart4_baudrate(self) -> None:
+        args = sim.build_parser().parse_args(["monitor", "--port", "COM8"])
+        self.assertEqual(args.baud, 115200)
+
     def test_wifi_scan_uses_r11_length_semantics(self) -> None:
         frame = sim.encode_wifi_scan(2)
         self.assertEqual(frame, bytes.fromhex("AA 55 00 03 C0 0A 05"))

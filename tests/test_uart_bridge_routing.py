@@ -11,6 +11,7 @@ class UartRoutingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.config = (REPO_ROOT / "include/T5L/T5LOSConfig.h").read_text(encoding="utf-8")
+        cls.config_t5f = (REPO_ROOT / "include/T5F/T5FOSConfig.h").read_text(encoding="utf-8")
         cls.uart = (REPO_ROOT / "source/uart.c").read_text(encoding="utf-8")
         cls.uart_h = (REPO_ROOT / "source/uart.h").read_text(encoding="utf-8")
         cls.main = (REPO_ROOT / "user/main.c").read_text(encoding="utf-8")
@@ -28,9 +29,11 @@ class UartRoutingTests(unittest.TestCase):
             "#define uartUART_COMMON_FRAME_SIZE     4160",
             "#define uartUART4_RXBUF_SIZE         4160",
             "#define uartUART4_TXBUF_SIZE         2112",
+            "#define uartUART4_BAUDRATE           115200",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, self.config)
+        self.assertIn("#define uartUART4_BAUDRATE           115200", self.config_t5f)
 
     def test_main_registers_only_v851_wifi_protocol_and_ota_paths(self) -> None:
         self.assertIn("V851WifiInit();", self.main)
@@ -56,6 +59,7 @@ class UartRoutingTests(unittest.TestCase):
             "V851_TLV_CMD_OTA_STATUS",
         ):
             self.assertIn(command, self.uart)
+        self.assertIn("V851_TLV_CMD_SNAPSHOT", self.protocol_h)
 
     def test_uart4_overflow_discards_batch(self) -> None:
         self.assertIn("uint8_t RxOverflow:1", self.uart_h)

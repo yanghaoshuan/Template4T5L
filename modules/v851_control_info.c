@@ -6,8 +6,9 @@
 
 #pragma optimize(8, size)
 
-static uint8_t xdata v851_control_shadow[V851_CONTROL_COUNT]
-                                         [V851_CONTROL_DGUS_SLOT_BYTES];
+static uint8_t xdata v851_control_report_shadow[V851_CONTROL_COUNT]
+                                                [V851_CONTROL_REPORT_MAX_BYTES];
+static uint16_t v851_control_report_shadow_valid_mask;
 
 static uint16_t V851ControlInfoReadBe16(const uint8_t *bytes)
 {
@@ -30,26 +31,51 @@ static uint8_t V851ControlInfoIndex(uint8_t struct_type)
     return (uint8_t)(struct_type - V851_TLV_STRUCT_EXHAUST);
 }
 
-static uint32_t V851ControlInfoAddress(uint8_t struct_type)
+static uint32_t V851ControlInfoCommandAddress(uint8_t struct_type)
 {
     switch(struct_type)
     {
         case V851_TLV_STRUCT_EXHAUST:
-            return V851_CONTROL_DGUS_EXHAUST_ADDR;
+            return V851_CONTROL_COMMAND_EXHAUST_ADDR;
         case V851_TLV_STRUCT_LIGHT:
-            return V851_CONTROL_DGUS_LIGHT_ADDR;
+            return V851_CONTROL_COMMAND_LIGHT_ADDR;
         case V851_TLV_STRUCT_UVB:
-            return V851_CONTROL_DGUS_UVB_ADDR;
+            return V851_CONTROL_COMMAND_UVB_ADDR;
         case V851_TLV_STRUCT_ANION:
-            return V851_CONTROL_DGUS_ANION_ADDR;
+            return V851_CONTROL_COMMAND_ANION_ADDR;
         case V851_TLV_STRUCT_PLASMA:
-            return V851_CONTROL_DGUS_PLASMA_ADDR;
+            return V851_CONTROL_COMMAND_PLASMA_ADDR;
         case V851_TLV_STRUCT_CLIMATE:
-            return V851_CONTROL_DGUS_CLIMATE_ADDR;
+            return V851_CONTROL_COMMAND_CLIMATE_ADDR;
         case V851_TLV_STRUCT_HUMIDIFIER:
-            return V851_CONTROL_DGUS_HUMIDIFIER_ADDR;
+            return V851_CONTROL_COMMAND_HUMIDIFIER_ADDR;
         case V851_TLV_STRUCT_INLET_FAN:
-            return V851_CONTROL_DGUS_INLET_FAN_ADDR;
+            return V851_CONTROL_COMMAND_INLET_FAN_ADDR;
+        default:
+            return 0UL;
+    }
+}
+
+static uint32_t V851ControlInfoReportAddress(uint8_t struct_type)
+{
+    switch(struct_type)
+    {
+        case V851_TLV_STRUCT_EXHAUST:
+            return V851_CONTROL_REPORT_EXHAUST_ADDR;
+        case V851_TLV_STRUCT_LIGHT:
+            return V851_CONTROL_REPORT_LIGHT_ADDR;
+        case V851_TLV_STRUCT_UVB:
+            return V851_CONTROL_REPORT_UVB_ADDR;
+        case V851_TLV_STRUCT_ANION:
+            return V851_CONTROL_REPORT_ANION_ADDR;
+        case V851_TLV_STRUCT_PLASMA:
+            return V851_CONTROL_REPORT_PLASMA_ADDR;
+        case V851_TLV_STRUCT_CLIMATE:
+            return V851_CONTROL_REPORT_CLIMATE_ADDR;
+        case V851_TLV_STRUCT_HUMIDIFIER:
+            return V851_CONTROL_REPORT_HUMIDIFIER_ADDR;
+        case V851_TLV_STRUCT_INLET_FAN:
+            return V851_CONTROL_REPORT_INLET_FAN_ADDR;
         default:
             return 0UL;
     }
@@ -92,21 +118,6 @@ static uint8_t V851ControlInfoIsLevelTag(uint8_t struct_type, uint8_t tag)
     return (uint8_t)((struct_type == V851_TLV_STRUCT_EXHAUST) ||
                      (struct_type == V851_TLV_STRUCT_LIGHT) ||
                      (struct_type == V851_TLV_STRUCT_INLET_FAN));
-}
-
-void V851ControlInfoInit(void)
-{
-    uint8_t index;
-    uint8_t struct_type;
-
-    memset(v851_control_shadow, 0, sizeof(v851_control_shadow));
-    for(index = 0U; index < V851_CONTROL_COUNT; ++index)
-    {
-        struct_type = (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
-        read_dgus_vp(V851ControlInfoAddress(struct_type),
-                     v851_control_shadow[index],
-                     V851_CONTROL_DGUS_SLOT_WORDS);
-    }
 }
 
 uint8_t V851ControlInfoValidateSegment(uint8_t struct_type,
@@ -179,26 +190,25 @@ uint8_t V851ControlInfoValidateSegment(uint8_t struct_type,
     }
 }
 
-void V851ControlInfoApplySegment(uint8_t struct_type,
-                                 const uint8_t *field_bytes,
-                                 uint16_t length)
+uint8_t V851ControlInfoApplySegment(uint8_t struct_type,
+                                    const uint8_t *field_bytes,
+                                    uint16_t length)
 {
     V851TlvFieldCursor cursor;
     V851TlvField field;
-    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
-    uint8_t index;
+    uint8_t record[V851_CONTROL_COMMAND_SLOT_BYTES];
     uint8_t changed;
     uint16_t target;
     uint32_t address;
 
-    index = V851ControlInfoIndex(struct_type);
-    if((index == 0xFFU) || (field_bytes == NULL))
+    if((V851ControlInfoIndex(struct_type) == 0xFFU) ||
+       (field_bytes == NULL))
     {
-        return;
+        return 0U;
     }
 
-    address = V851ControlInfoAddress(struct_type);
-    read_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+    address = V851ControlInfoCommandAddress(struct_type);
+    read_dgus_vp(address, record, V851_CONTROL_COMMAND_SLOT_WORDS);
     changed = 0U;
     V851TlvFieldCursorInit(&cursor, field_bytes, length);
     while(V851TlvFieldNext(&cursor, &field) == V851_TLV_ITER_FIELD)
@@ -225,28 +235,33 @@ void V851ControlInfoApplySegment(uint8_t struct_type,
 
     if(changed != 0U)
     {
-        write_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
-        memcpy(v851_control_shadow[index], record,
-               V851_CONTROL_DGUS_SLOT_BYTES);
+        write_dgus_vp(address, record, V851_CONTROL_COMMAND_SLOT_WORDS);
     }
+    return changed;
 }
 
 uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
                                     uint8_t *field_buffer,
                                     uint16_t capacity)
 {
-    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    uint8_t record[V851_CONTROL_REPORT_MAX_BYTES];
+    uint8_t bytes;
     uint16_t offset;
     uint16_t value;
     uint32_t address;
 
-    address = V851ControlInfoAddress(struct_type);
+    address = V851ControlInfoReportAddress(struct_type);
     if((address == 0UL) || (field_buffer == NULL))
     {
         return 0U;
     }
 
-    read_dgus_vp(address, record, V851_CONTROL_DGUS_SLOT_WORDS);
+    bytes = V851ControlInfoRelevantBytes(struct_type);
+    if(bytes == 0U)
+    {
+        return 0U;
+    }
+    read_dgus_vp(address, record, (uint8_t)(bytes / 2U));
     offset = 0U;
     value = V851ControlInfoReadBe16(&record[0]);
     if(value <= 1U)
@@ -258,9 +273,9 @@ uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
         }
     }
 
-    value = V851ControlInfoReadBe16(&record[2]);
     if(V851ControlInfoIsLevelTag(struct_type, 0x02U) != 0U)
     {
+        value = V851ControlInfoReadBe16(&record[2]);
         if((value <= 0xFFU) &&
            (V851TlvWriteU8(field_buffer, capacity, &offset, 0x02U,
                             (uint8_t)value) == 0U))
@@ -270,6 +285,7 @@ uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
     }
     else if(struct_type == V851_TLV_STRUCT_CLIMATE)
     {
+        value = V851ControlInfoReadBe16(&record[2]);
         if(V851TlvWriteBinary64Uint16(field_buffer, capacity, &offset,
                                       V851_TLV_TAG_CLIMATE_TARGET,
                                       value) == 0U)
@@ -282,10 +298,11 @@ uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
 
 uint16_t V851ControlInfoScanChanged(void)
 {
-    uint8_t record[V851_CONTROL_DGUS_SLOT_BYTES];
+    uint8_t record[V851_CONTROL_REPORT_MAX_BYTES];
     uint8_t index;
     uint8_t bytes;
     uint8_t struct_type;
+    uint16_t valid_bit;
     uint16_t changed_mask;
 
     changed_mask = 0U;
@@ -293,13 +310,19 @@ uint16_t V851ControlInfoScanChanged(void)
     {
         struct_type = (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
         bytes = V851ControlInfoRelevantBytes(struct_type);
-        read_dgus_vp(V851ControlInfoAddress(struct_type), record,
-                     V851_CONTROL_DGUS_SLOT_WORDS);
-        if(memcmp(record, v851_control_shadow[index], bytes) != 0)
+        read_dgus_vp(V851ControlInfoReportAddress(struct_type), record,
+                     (uint8_t)(bytes / 2U));
+        valid_bit = (uint16_t)1U << index;
+        if((v851_control_report_shadow_valid_mask & valid_bit) == 0U)
         {
-            changed_mask |= (uint16_t)(1U << index);
-            memcpy(v851_control_shadow[index], record,
-                   V851_CONTROL_DGUS_SLOT_BYTES);
+            /* The first scan establishes a baseline without reporting. */
+            memcpy(v851_control_report_shadow[index], record, bytes);
+            v851_control_report_shadow_valid_mask |= valid_bit;
+        }
+        else if(memcmp(record, v851_control_report_shadow[index], bytes) != 0)
+        {
+            changed_mask |= valid_bit;
+            memcpy(v851_control_report_shadow[index], record, bytes);
         }
     }
     return changed_mask;

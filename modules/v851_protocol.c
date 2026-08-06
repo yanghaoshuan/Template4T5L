@@ -19,7 +19,7 @@
 #define V851_OTA_TX_MAX                           64U
 #define V851_OTA_ERROR_MAX                        32U
 #define V851_STATE_SCAN_INTERVAL_MS               500UL
-#define V851_STATE_REPORT_INTERVAL_MS             5000UL
+#define V851_STATE_FULL_INTERVAL_MS               10000UL
 #define V851_POST_OTA_REPORT_INTERVAL_MS          1000UL
 
 static uint8_t xdata v851_tlv_tx[V851_TLV_TX_DEPTH][V851_TLV_FRAME_MAX];
@@ -40,9 +40,8 @@ static uint8_t v851_ota_tx_pending;
 
 static uint8_t xdata v851_state_fields[V851_CONTROL_COUNT][16U];
 static uint16_t v851_state_dirty_mask;
-static uint8_t v851_state_snapshot_pending;
 static uint32_t v851_state_scan_tick;
-static uint32_t v851_state_report_tick;
+static uint32_t v851_state_full_tick;
 
 static uint8_t v851_ota_status_pending;
 static V851OtaStage v851_ota_status_stage;
@@ -297,6 +296,7 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
     if((segments == NULL) || (count == 0U) ||
        ((command != V851_TLV_CMD_PROPERTY) &&
         (command != V851_TLV_CMD_FACTORY) &&
+        (command != V851_TLV_CMD_SNAPSHOT) &&
         (command != V851_TLV_CMD_OTA_STATUS)) ||
        (v851_tlv_tx_count >= V851_TLV_TX_DEPTH))
     {
@@ -306,6 +306,12 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
     segment_bytes = 0U;
     for(index = 0U; index < count; ++index)
     {
+        if((command == V851_TLV_CMD_SNAPSHOT) &&
+           ((segments[index].struct_type < V851_TLV_STRUCT_EXHAUST) ||
+            (segments[index].struct_type > V851_TLV_STRUCT_INLET_FAN)))
+        {
+            return 0U;
+        }
         if((segments[index].payload == NULL) && (segments[index].length != 0U))
         {
             return 0U;
@@ -483,9 +489,9 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
            (segment.struct_type >= V851_TLV_STRUCT_EXHAUST) &&
            (segment.struct_type <= V851_TLV_STRUCT_INLET_FAN))
         {
-            V851ControlInfoApplySegment(segment.struct_type,
-                                        segment.payload,
-                                        segment.length);
+            (void)V851ControlInfoApplySegment(segment.struct_type,
+                                               segment.payload,
+                                               segment.length);
         }
         V851TlvApplicationSegment(command, &segment);
         offset = (uint16_t)(offset + V851_TLV_SEGMENT_HEADER_SIZE +
@@ -493,7 +499,8 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
     }
 }
 
-static uint16_t V851ProtocolQueueStateMask(uint16_t requested_mask)
+static uint16_t V851ProtocolQueueStateMask(uint8_t command,
+                                           uint16_t requested_mask)
 {
     V851TlvSegment segments[V851_CONTROL_COUNT];
     uint16_t included_mask;
@@ -521,8 +528,8 @@ static uint16_t V851ProtocolQueueStateMask(uint16_t requested_mask)
             }
         }
     }
-    if((count != 0U) &&
-       (V851ProtocolSendSegments(V851_TLV_CMD_PROPERTY, segments, count) != 0U))
+    if((count != 0U) && (included_mask == requested_mask) &&
+       (V851ProtocolSendSegments(command, segments, count) != 0U))
     {
         return included_mask;
     }
@@ -638,30 +645,31 @@ static void V851ProtocolServiceState(uint32_t tick)
 {
     uint16_t sent_mask;
 
-    if(v851_state_snapshot_pending != 0U)
-    {
-        sent_mask = V851ProtocolQueueStateMask(0x00FFU);
-        if(sent_mask != 0U)
-        {
-            v851_state_snapshot_pending = 0U;
-            v851_state_report_tick = tick;
-        }
-    }
     if((uint32_t)(tick - v851_state_scan_tick) >=
        V851_STATE_SCAN_INTERVAL_MS)
     {
         v851_state_scan_tick = tick;
         v851_state_dirty_mask |= V851ControlInfoScanChanged();
     }
-    if((v851_state_dirty_mask != 0U) &&
-       ((uint32_t)(tick - v851_state_report_tick) >=
-        V851_STATE_REPORT_INTERVAL_MS))
+
+    if(v851_state_dirty_mask != 0U)
     {
-        sent_mask = V851ProtocolQueueStateMask(v851_state_dirty_mask);
+        sent_mask = V851ProtocolQueueStateMask(V851_TLV_CMD_PROPERTY,
+                                                v851_state_dirty_mask);
         if(sent_mask != 0U)
         {
             v851_state_dirty_mask &= (uint16_t)~sent_mask;
-            v851_state_report_tick = tick;
+        }
+        return;
+    }
+
+    if((uint32_t)(tick - v851_state_full_tick) >=
+       V851_STATE_FULL_INTERVAL_MS)
+    {
+        sent_mask = V851ProtocolQueueStateMask(V851_TLV_CMD_SNAPSHOT, 0x00FFU);
+        if(sent_mask == 0x00FFU)
+        {
+            v851_state_full_tick = tick;
         }
     }
 }
@@ -714,19 +722,17 @@ void V851ProtocolInit(void)
     v851_ota_tx_len = 0U;
     v851_ota_tx_pending = 0U;
     v851_state_dirty_mask = 0U;
-    v851_state_snapshot_pending = 1U;
     v851_ota_status_pending = 0U;
     v851_ota_status_error[0] = '\0';
     tick = GetSysTick();
     v851_state_scan_tick = tick;
-    v851_state_report_tick = tick;
+    v851_state_full_tick = tick;
     v851_post_ota_success_tick = tick - V851_POST_OTA_REPORT_INTERVAL_MS;
 #if otaOTA_ENABLED
     v851_post_ota_success_remaining = (OtaCompleteFlag != 0U) ? 3U : 0U;
 #else
     v851_post_ota_success_remaining = 0U;
 #endif
-    V851ControlInfoInit();
 }
 
 void V851ProtocolTask(void)

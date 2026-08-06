@@ -18,13 +18,51 @@ class V851StateAndWifiTests(unittest.TestCase):
         cls.ota = (REPO_ROOT / "modules/ota.c").read_text(encoding="utf-8")
         cls.r11 = (REPO_ROOT / "modules/r11_common.c").read_text(encoding="utf-8")
 
-    def test_initial_snapshot_and_coalesced_local_updates(self) -> None:
-        self.assertIn("v851_state_snapshot_pending = 1U", self.protocol)
-        self.assertIn("V851ProtocolQueueStateMask(0x00FFU)", self.protocol)
+    def test_full_snapshot_waits_ten_seconds_and_retries_until_queued(self) -> None:
+        self.assertIn("V851_TLV_CMD_SNAPSHOT                    0x37U", self.protocol_h)
+        self.assertIn("V851_STATE_FULL_INTERVAL_MS               10000UL", self.protocol)
+        self.assertIn(
+            "V851ProtocolQueueStateMask(V851_TLV_CMD_SNAPSHOT, 0x00FFU)",
+            self.protocol,
+        )
+        self.assertIn("if(sent_mask == 0x00FFU)", self.protocol)
+        self.assertIn("v851_state_full_tick = tick", self.protocol)
+        self.assertNotIn("v851_state_snapshot_pending", self.protocol)
+
+    def test_local_updates_report_on_next_500ms_scan_without_rate_limit(self) -> None:
         self.assertIn("V851_STATE_SCAN_INTERVAL_MS               500UL", self.protocol)
-        self.assertIn("V851_STATE_REPORT_INTERVAL_MS             5000UL", self.protocol)
         self.assertIn("v851_state_dirty_mask |= V851ControlInfoScanChanged()", self.protocol)
+        self.assertIn(
+            "V851ProtocolQueueStateMask(V851_TLV_CMD_PROPERTY,\n"
+            "                                                v851_state_dirty_mask)",
+            self.protocol,
+        )
         self.assertIn("v851_state_dirty_mask &= (uint16_t)~sent_mask", self.protocol)
+        self.assertNotIn("V851_STATE_REPORT_INTERVAL_MS", self.protocol)
+
+    def test_remote_updates_wait_for_actual_state_scan(self) -> None:
+        for removed in (
+            "V851_REMOTE_CONFIRM_DEPTH",
+            "v851_remote_confirm_masks",
+            "v851_remote_confirm_overflow_mask",
+            "V851ProtocolAddRemoteConfirmation",
+            "remote_confirm_mask",
+        ):
+            self.assertNotIn(removed, self.protocol)
+        self.assertIn("(void)V851ControlInfoApplySegment", self.protocol)
+        service_start = self.protocol.index("static void V851ProtocolServiceState")
+        service_end = self.protocol.index("static void V851ProtocolServiceTx", service_start)
+        service = self.protocol[service_start:service_end]
+        local = service.index("if(v851_state_dirty_mask != 0U)")
+        full = service.index("if((uint32_t)(tick - v851_state_full_tick)")
+        self.assertLess(local, full)
+        self.assertEqual(service.count("return;"), 1)
+
+    def test_snapshot_sender_only_accepts_actuator_segments(self) -> None:
+        self.assertIn("command != V851_TLV_CMD_SNAPSHOT", self.protocol)
+        self.assertIn("command == V851_TLV_CMD_SNAPSHOT", self.protocol)
+        self.assertIn("segments[index].struct_type < V851_TLV_STRUCT_EXHAUST", self.protocol)
+        self.assertIn("segments[index].struct_type > V851_TLV_STRUCT_INLET_FAN", self.protocol)
 
     def test_two_slot_tlv_queue_and_priority_order(self) -> None:
         self.assertIn("#define V851_TLV_TX_DEPTH                         2U", self.protocol)
@@ -35,6 +73,7 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertLess(wifi, tlv)
 
     def test_bootstrap_is_37_6c_and_ota_status_is_38_6d(self) -> None:
+        self.assertIn("V851_TLV_CMD_SNAPSHOT                    0x37U", self.protocol_h)
         self.assertIn("V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U", self.protocol_h)
         self.assertIn("V851_TLV_STRUCT_BOOTSTRAP_RESULT         0x6CU", self.protocol_h)
         self.assertIn("V851_TLV_CMD_OTA_STATUS                  0x38U", self.protocol_h)

@@ -14,6 +14,7 @@
 #include "tlv_codec.h"
 #include "queue_worker.h"
 #include "config.h"
+#include "mqttssl_worker.h"  /* g_property_report_pending, property_report_collect() 等 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -461,6 +462,8 @@ int process_tlv_worker_task(void)
 
         /* ================================================================
          * 0x35: 设备属性上报 (TLV_CMD_PROPERTY) — 多段结构体循环解析
+         *   解析每段后 collect 到全局缓冲区, 全部解析完设置 g_property_report_pending=1,
+         *   由 MQTT 线程消费标志并发布 device.property_report 增量属性。
          * ================================================================ */
         if (cmd == TLV_CMD_PROPERTY) {
             if (payload_len < 3) {
@@ -468,6 +471,9 @@ int process_tlv_worker_task(void)
                 free(recvdata);
                 return -1;
             }
+
+            /* 清空上一轮收集缓冲区 */
+            property_report_collect_reset();
 
             const uint8_t *payload = (const uint8_t *)(recvdata + 5);
             int offset = 0;
@@ -490,12 +496,20 @@ int process_tlv_worker_task(void)
 
                 tlv_dispatch(struct_type, tlv_data, seg_len);
 
+                /* 收集 TLV 段, 供 MQTT 线程发布 device.property_report */
+                property_report_collect(struct_type, tlv_data, seg_len);
+
                 offset += seg_len;
                 seg_count++;
             }
 
             if (seg_count == 0) {
                 printf_info("[TLV-PROPERTY] no valid segment parsed\n");
+            } else {
+                printf_info("[TLV-PROPERTY] parsed %d segments, triggering device.property_report\n",
+                            seg_count);
+                /* 设置标志, 通知 MQTT 线程发布 device.property_report */
+                g_property_report_pending = 1;
             }
         }
         /* ================================================================
@@ -531,6 +545,51 @@ int process_tlv_worker_task(void)
                         struct_type, seg_len);
 
             tlv_dispatch(struct_type, tlv_data, seg_len);
+        }
+        /* ================================================================
+         * 0x37: 设备全量状态快照 (TLV_CMD_SNAPSHOT) — 多段循环解析 + 触发 MQTT device.snapshot
+         * 与 0x35 相同的多段解析, 解析完所有段后设置 g_snapshot_pending=1,
+         * 由 MQTT 线程消费标志并发布 device.snapshot 全量状态。
+         * ================================================================ */
+        else if (cmd == TLV_CMD_SNAPSHOT) {
+            if (payload_len < 3) {
+                printf_info("[TLV-SNAPSHOT] invalid payload_len=%d\n", payload_len);
+                free(recvdata);
+                return -1;
+            }
+
+            const uint8_t *payload = (const uint8_t *)(recvdata + 5);
+            int offset = 0;
+            int seg_count = 0;
+
+            while (offset + 3 <= payload_len) {
+                uint8_t struct_type = payload[offset];
+                int seg_len = (payload[offset + 1] << 8) | payload[offset + 2];
+                offset += 3;
+
+                if (offset + seg_len > payload_len) {
+                    printf_info("[TLV-SNAPSHOT] seg_len=%d exceeds remaining=%d, skip\n",
+                                seg_len, payload_len - offset);
+                    break;
+                }
+
+                const uint8_t *tlv_data = payload + offset;
+                printf_info("[TLV-SNAPSHOT] seg#%d struct_type=0x%02X data_len=%d\n",
+                            seg_count, struct_type, seg_len);
+
+                tlv_dispatch(struct_type, tlv_data, seg_len);
+
+                offset += seg_len;
+                seg_count++;
+            }
+
+            if (seg_count == 0) {
+                printf_info("[TLV-SNAPSHOT] no valid segment parsed\n");
+            } else {
+                printf_info("[TLV-SNAPSHOT] parsed %d segments, triggering device.snapshot\n", seg_count);
+                /* 设置标志, 通知 MQTT 线程发布 device.snapshot */
+                g_snapshot_pending = 1;
+            }
         }
         else {
             printf_info("[TLV] unknown cmd=0x%02X, skip\n", cmd);

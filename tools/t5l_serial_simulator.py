@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V851 UART4 AA55 property/Bootstrap TLV, Wi-Fi and ABCD OTA simulator."""
+"""V851 UART4 AA55 property/Snapshot/Bootstrap TLV, Wi-Fi and OTA simulator."""
 
 from __future__ import annotations
 
@@ -21,12 +21,13 @@ ABCD_MAGIC = b"\xAB\xCD"
 
 TLV_CMD_PROPERTY = 0x35
 TLV_CMD_FACTORY = 0x36
+TLV_CMD_SNAPSHOT = 0x37
 TLV_CMD_BOOTSTRAP_RESULT = 0x37
 TLV_CMD_OTA_STATUS = 0x38
 TLV_COMMANDS = {
     TLV_CMD_PROPERTY,
     TLV_CMD_FACTORY,
-    TLV_CMD_BOOTSTRAP_RESULT,
+    TLV_CMD_SNAPSHOT,
     TLV_CMD_OTA_STATUS,
 }
 
@@ -164,6 +165,16 @@ def encode_tlv_frame(
     if len(frame) > TLV_FRAME_MAX:
         raise ValueError("TLV frame exceeds 2048 bytes")
     return frame
+
+
+def encode_snapshot(
+    segments: Iterable[tuple[int, Iterable[TlvField] | bytes]],
+) -> bytes:
+    """Encode one full T5L-to-V851 snapshot with actuator types 0x61-0x68."""
+    materialized = list(segments)
+    if [struct_type for struct_type, _ in materialized] != list(range(0x61, 0x69)):
+        raise ValueError("a snapshot needs exactly one ordered segment for 0x61-0x68")
+    return encode_tlv_frame(TLV_CMD_SNAPSHOT, materialized)
 
 
 def _decode_fields(payload: bytes) -> tuple[TlvField, ...]:
@@ -430,7 +441,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     monitor = sub.add_parser("monitor", help="split/decode live UART4 traffic")
     monitor.add_argument("--port", required=True)
-    monitor.add_argument("--baud", type=int, default=921600)
+    monitor.add_argument("--baud", type=int, default=115200)
     monitor.set_defaults(func=command_monitor)
     return parser
 

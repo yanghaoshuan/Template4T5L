@@ -16,8 +16,8 @@ class V851ControlDgusTests(unittest.TestCase):
         cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
         cls.tlv_app = (REPO_ROOT / "modules/v851_tlv_app.c").read_text(encoding="utf-8")
 
-    def test_dgus_address_layout(self) -> None:
-        expected = {
+    def test_command_and_report_address_layouts_are_separate(self) -> None:
+        command_addresses = {
             "EXHAUST": "0x5100UL",
             "INLET_FAN": "0x5104UL",
             "UVB": "0x510CUL",
@@ -27,9 +27,23 @@ class V851ControlDgusTests(unittest.TestCase):
             "PLASMA": "0x5120UL",
             "ANION": "0x5124UL",
         }
-        for name, address in expected.items():
-            self.assertIn(f"V851_CONTROL_DGUS_{name}_ADDR", self.header)
+        report_addresses = {
+            "EXHAUST": "0x301AUL",
+            "LIGHT": "0x301FUL",
+            "UVB": "0x3024UL",
+            "ANION": "0x3029UL",
+            "PLASMA": "0x302EUL",
+            "CLIMATE": "0x3033UL",
+            "HUMIDIFIER": "0x3038UL",
+            "INLET_FAN": "0x303DUL",
+        }
+        for name, address in command_addresses.items():
+            self.assertIn(f"V851_CONTROL_COMMAND_{name}_ADDR", self.header)
             self.assertIn(address, self.header)
+        for name, address in report_addresses.items():
+            self.assertIn(f"V851_CONTROL_REPORT_{name}_ADDR", self.header)
+            self.assertIn(address, self.header)
+        self.assertNotIn("V851_CONTROL_DGUS_", self.header)
 
     def test_only_semantically_compatible_fields_are_mapped(self) -> None:
         self.assertIn("V851ControlInfoIsEnabledTag", self.source)
@@ -52,10 +66,38 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertLess(second_pass, apply)
         self.assertNotIn("V851ControlInfoApplySegment", self.protocol[first_pass:second_pass])
 
-    def test_remote_write_updates_shadow_without_ack(self) -> None:
-        self.assertIn("memcpy(v851_control_shadow[index], record", self.source)
-        self.assertNotIn("ACK", self.protocol)
-        self.assertNotIn("ack", self.protocol)
+    def test_remote_write_only_targets_command_vps(self) -> None:
+        self.assertIn("uint8_t V851ControlInfoApplySegment", self.header)
+        self.assertIn("uint8_t V851ControlInfoApplySegment", self.source)
+        self.assertIn("return changed;", self.source)
+        apply_start = self.source.index("uint8_t V851ControlInfoApplySegment")
+        apply_end = self.source.index("uint16_t V851ControlInfoBuildFields", apply_start)
+        apply = self.source[apply_start:apply_end]
+        self.assertIn("V851ControlInfoCommandAddress(struct_type)", apply)
+        self.assertIn("V851_CONTROL_COMMAND_SLOT_WORDS", apply)
+        self.assertNotIn("V851ControlInfoReportAddress", apply)
+        self.assertNotIn("v851_control_report_shadow", apply)
+
+    def test_full_and_incremental_reporting_read_actual_state_vps(self) -> None:
+        build_start = self.source.index("uint16_t V851ControlInfoBuildFields")
+        scan_start = self.source.index("uint16_t V851ControlInfoScanChanged")
+        build = self.source[build_start:scan_start]
+        scan = self.source[scan_start:]
+        self.assertIn("V851ControlInfoReportAddress(struct_type)", build)
+        self.assertIn("V851ControlInfoReportAddress(struct_type)", scan)
+        self.assertNotIn("V851ControlInfoCommandAddress", build)
+        self.assertNotIn("V851ControlInfoCommandAddress", scan)
+
+    def test_first_scan_silently_establishes_baseline_without_init_api(self) -> None:
+        self.assertNotIn("V851ControlInfoInit", self.header)
+        self.assertNotIn("V851ControlInfoInit", self.source)
+        self.assertNotIn("V851ControlInfoInit", self.protocol)
+        self.assertIn("v851_control_report_shadow_valid_mask", self.source)
+        scan_start = self.source.index("uint16_t V851ControlInfoScanChanged")
+        scan = self.source[scan_start:]
+        baseline = scan.index("v851_control_report_shadow_valid_mask & valid_bit")
+        changed = scan.index("changed_mask |= valid_bit")
+        self.assertLess(baseline, changed)
 
     def test_binary64_uses_words_not_native_double(self) -> None:
         self.assertIn("uint32_t high_word", self.protocol)

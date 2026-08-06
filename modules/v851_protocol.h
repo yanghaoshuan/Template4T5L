@@ -11,6 +11,7 @@
 #define V851_FRAME_MAGIC_LOW                     0x55U
 #define V851_TLV_CMD_PROPERTY                    0x35U
 #define V851_TLV_CMD_FACTORY                     0x36U
+#define V851_TLV_CMD_SNAPSHOT                    0x37U
 #define V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U
 /* Project-private OTA status command; synchronized with the V851 firmware. */
 #define V851_TLV_CMD_OTA_STATUS                  0x38U
