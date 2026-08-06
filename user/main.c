@@ -1,7 +1,7 @@
 #include "sys.h"
 #include "uart.h"
 #include "timer.h"
-
+#include "t5l_stc.h"
 #if pb03fBLE_ENABLED
 #include "pb03f_ble.h"
 #endif /* pb03fBLE_ENABLED */
@@ -54,7 +54,7 @@ void main(void)
 
 
 	T5LCpuInit();
-
+	T5l_Stc_Init();
 
 	#if otaOTA_ENABLED
 	OtaInit();
@@ -90,6 +90,12 @@ void main(void)
 	#if otaOTA_ENABLED
 	SysTaskAdd(6, otaTASK_INTERVAL, OtaTask);
 	#endif /* otaOTA_ENABLED */
+
+	SysTaskAdd(7, T5LTOSTC_TASK_INTERVAL1, T5L_Stc_Poll);
+	SysTaskAdd(8, T5LTOSTC_TASK_INTERVAL2, Mult_Task);
+
+	// SysTaskAdd(8, 1, key_scanf);
+
 
 	while(1)
 	{

@@ -631,6 +631,11 @@
               <FileType>5</FileType>
               <FilePath>..\modules\v851_control_mock.h</FilePath>
             </File>
+            <File>
+              <FileName>t5l_stc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\t5l_stc.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

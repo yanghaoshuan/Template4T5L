@@ -11,7 +11,7 @@
 #include "uart.h"
 #include <string.h>
 #include "sys.h"
-
+#include "t5l_stc.h"
 #if uartMODBUS_PROTOCOL_ENABLED
 #include "modbus.h"
 #endif /* uartMODBUS_PROTOCOL_ENABLED */
@@ -618,7 +618,15 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         {
             return;
         }
-        write_dgus_vp((frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
+
+        if(frame[6]==0x4F&&frame[7]==0x4B){
+            T5l_Stc_UartRxProcess(((uint32_t)frame[4] << 8) | frame[5]);
+            return;
+        }
+        write_dgus_vp(((uint32_t)frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
+        STC_ReporData_Procese(((uint32_t)frame[4] << 8) | frame[5]);
+
+       
         #if uartUART_82CMD_RETURN
         i=0;
         send_return_frame[i++] = 0x5a;

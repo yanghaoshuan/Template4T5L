@@ -24,7 +24,7 @@
 uint16_t SysTaskTimerTick = 0;
 
 uint32_t SysCurrentTick = 0;
-
+uint16_t timecnt=0;
 #if gpioPWM_ENABLE && gpioGPIO_ENABLE
 uint16_t gpio_count_pwm = 0;  /**< PWM高电平计数 */
 #endif /* gpioPWM_ENABLE && gpioGPIO_ENABLE */
@@ -125,7 +125,12 @@ void Timer0Isr() interrupt 1
      */
     OtaTimerTick1ms();
     #endif /* otaOTA_ENABLED */
-
+    Queue_Time_Check();
+    timecnt++;
+    if(timecnt>=1000){
+        timecnt=0;
+        Dev_Time_Check();
+    }
     SysTaskTimerTick++;
 
     SysCurrentTick++;

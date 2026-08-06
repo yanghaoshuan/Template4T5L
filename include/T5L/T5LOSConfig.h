@@ -292,7 +292,7 @@ extern uint32_t sysFCLK;
  * @brief UART2使能标志
  * @details 1: 启用UART2接口, 0: 禁用UART2接口
  */
-#define uartUART2_ENABLED               0
+#define uartUART2_ENABLED               1
 
 #if uartUART2_ENABLED
     /**
