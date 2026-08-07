@@ -18,6 +18,7 @@
 
 #define V851_TLV_FRAME_MAX                       2048U
 #define V851_TLV_FRAME_FIXED_SIZE                5U
+#define V851_TLV_RX_LENGTH_BASE_SIZE             4U
 #define V851_TLV_SEGMENT_HEADER_SIZE             3U
 #define V851_TLV_FIELD_HEADER_SIZE               3U
 #define V851_OTA_FRAME_MAX                       4124U

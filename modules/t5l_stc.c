@@ -126,15 +126,19 @@ void Dev_Init(void)
     memset(&G_Device_Ctrl, 0, sizeof(G_Device_Ctrl));
 }
 
-/* Keep G_Device_Ctrl and the mapped 0x3xxx report words in sync. */
-uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
+/* Keep G_Device_Ctrl and the mapped DGUS words in sync. */
+static uint8_t T5lStcSyncMappedControlInternal(
+                                T5lStcMappedControl control,
                                 uint8_t field_mask,
                                 uint16_t enabled,
                                 uint16_t secondary,
-                                uint16_t tertiary)
+                                uint16_t tertiary,
+                                uint8_t sync_command_vp)
 {
     uint16_t report[3];
+    uint16_t command[3];
     uint32_t report_vp;
+    uint32_t command_vp;
     uint8_t valid_mask;
     uint8_t report_words;
     uint8_t save_changed;
@@ -218,6 +222,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             report[0] = G_Device_Ctrl.Exhaust.enable;
             report[1] = G_Device_Ctrl.Exhaust.speed;
             report[2] = G_Device_Ctrl.Exhaust.interval_time_h;
+            command_vp = OUTWIND_VP;
             report_vp = T5L_STC_REPORT_EXHAUST_VP;
             break;
 
@@ -234,6 +239,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             }
             report[0] = G_Device_Ctrl.Light.enable;
             report[1] = G_Device_Ctrl.Light.brightness;
+            command_vp = LIGHT_VP;
             report_vp = T5L_STC_REPORT_LIGHT_VP;
             break;
 
@@ -256,6 +262,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             report[0] = G_Device_Ctrl.UVB.enable;
             report[1] = G_Device_Ctrl.UVB.brightness;
             report[2] = G_Device_Ctrl.UVB.running_time_h;
+            command_vp = UVB_VP;
             report_vp = T5L_STC_REPORT_UVB_VP;
             break;
 
@@ -265,6 +272,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
                 G_Device_Ctrl.Anion.enable = enabled;
             }
             report[0] = G_Device_Ctrl.Anion.enable;
+            command_vp = ANION_VP;
             report_vp = T5L_STC_REPORT_ANION_VP;
             break;
 
@@ -274,6 +282,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
                 G_Device_Ctrl.Plasma.enable = enabled;
             }
             report[0] = G_Device_Ctrl.Plasma.enable;
+            command_vp = PLASMA_VP;
             report_vp = T5L_STC_REPORT_PLASMA_VP;
             break;
 
@@ -290,6 +299,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             }
             report[0] = G_Device_Ctrl.Heater.enable;
             report[1] = G_Device_Ctrl.Heater.set_temp;
+            command_vp = HEATER_VP;
             report_vp = T5L_STC_REPORT_CLIMATE_VP;
             break;
 
@@ -311,6 +321,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             report[0] = G_Device_Ctrl.Humidifier.enable;
             report[1] = G_Device_Ctrl.Humidifier.interval_time_h;
             report[2] = G_Device_Ctrl.Humidifier.running_time_h;
+            command_vp = MIST_VP;
             report_vp = T5L_STC_REPORT_HUMIDIFIER_VP;
             break;
 
@@ -327,6 +338,7 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             }
             report[0] = G_Device_Ctrl.Inlet_Fan.enable;
             report[1] = G_Device_Ctrl.Inlet_Fan.speed;
+            command_vp = INWIND_VP;
             report_vp = T5L_STC_REPORT_INLET_FAN_VP;
             break;
 
@@ -334,12 +346,49 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
             return 0U;
     }
 
+    if(sync_command_vp != 0U)
+    {
+        read_dgus_vp(command_vp, (uint8_t *)command, report_words);
+        if((field_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+        {
+            command[0] = report[0];
+        }
+        if((field_mask & T5L_STC_MAPPED_FIELD_SECONDARY) != 0U)
+        {
+            command[1] = report[1];
+        }
+        if((field_mask & T5L_STC_MAPPED_FIELD_TERTIARY) != 0U)
+        {
+            command[2] = report[2];
+        }
+        write_dgus_vp(command_vp, (uint8_t *)command, report_words);
+    }
     write_dgus_vp(report_vp, (uint8_t *)report, report_words);
     if(save_changed != 0U)
     {
         Start_Once_SaveData();
     }
     return 1U;
+}
+
+uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
+                                uint8_t field_mask,
+                                uint16_t enabled,
+                                uint16_t secondary,
+                                uint16_t tertiary)
+{
+    return T5lStcSyncMappedControlInternal(control, field_mask, enabled,
+                                            secondary, tertiary, 0U);
+}
+
+uint8_t T5lStcSyncLocalMappedControl(T5lStcMappedControl control,
+                                     uint8_t field_mask,
+                                     uint16_t enabled,
+                                     uint16_t secondary,
+                                     uint16_t tertiary)
+{
+    return T5lStcSyncMappedControlInternal(control, field_mask, enabled,
+                                            secondary, tertiary, 1U);
 }
 
 void Queue_Init(void)
@@ -975,7 +1024,7 @@ void Exhaust_On()
 
     read_dgus_vp(OUTWIND_VP + 1, (uint8_t *)&G_Device_Ctrl.Exhaust.target_speed, 1);
     read_dgus_vp(OUTWIND_VP + 2, (uint8_t *)&interval_code, 1);
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_EXHAUST,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
         T5L_STC_MAPPED_FIELD_TERTIARY,
@@ -988,7 +1037,7 @@ void Exhaust_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Exhaust.auto_vent_en = auto_flag;
     G_Device_Ctrl.Exhaust.target_speed = 0;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_EXHAUST,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_EXHAUST,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(OUTWIND_CMDWORD, (uint8_t)G_Device_Ctrl.Exhaust.target_speed);
@@ -1001,7 +1050,7 @@ void Humidifier_On()
 
     read_dgus_vp(MIST_VP + 1, (uint8_t *)&interval_code, 1);
     read_dgus_vp(MIST_VP + 2, (uint8_t *)&running_code, 1);
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_HUMIDIFIER,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
         T5L_STC_MAPPED_FIELD_TERTIARY,
@@ -1013,7 +1062,7 @@ void Humidifier_On()
 void Humidifier_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Humidifier.auto_mist_en = auto_flag;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_HUMIDIFIER,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_HUMIDIFIER,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(HUMIDIFIER_CMDWORD, 0);
@@ -1025,7 +1074,7 @@ void UVB_On(uint16_t target_brightness)
 
     G_Device_Ctrl.UVB.target_brightness = target_brightness;
     read_dgus_vp(UVB_VP + 2, (uint8_t *)&daily_code, 1);
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_UVB,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY |
         T5L_STC_MAPPED_FIELD_TERTIARY,
@@ -1038,7 +1087,7 @@ void UVB_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.UVB.auto_UVB_en = auto_flag;
     G_Device_Ctrl.UVB.target_brightness = 0;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_UVB,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_UVB,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(UVB_CMDWORD, (uint8_t)G_Device_Ctrl.UVB.target_brightness);
@@ -1059,7 +1108,7 @@ void UVC_Off()
 void Heater_On(int16_t target_tmp)
 {
     G_Device_Ctrl.Heater.target_temp = (uint16_t)target_tmp;
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_CLIMATE,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
         1U, (uint16_t)target_tmp, 0U);
@@ -1080,7 +1129,7 @@ void Heater_On(int16_t target_tmp)
 void Heater_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Heater.aotu_heater_en = auto_flag;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_CLIMATE,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_CLIMATE,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(HEATER_CMDWORD, 0);
@@ -1089,7 +1138,7 @@ void Heater_Off(uint8_t auto_flag)
 void InWind_On(uint16_t speed)
 {
     G_Device_Ctrl.Inlet_Fan.target_speed = speed;
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_INLET_FAN,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
         1U, speed, 0U);
@@ -1099,7 +1148,7 @@ void InWind_On(uint16_t speed)
 void InWind_Off()
 {
     G_Device_Ctrl.Inlet_Fan.target_speed = 0;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_INLET_FAN,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_INLET_FAN,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(INWIND_CMDWORD, (uint8_t)G_Device_Ctrl.Inlet_Fan.target_speed);
@@ -1109,7 +1158,7 @@ void InWind_Off()
 void Light_On(uint16_t target_brightness)
 {
     G_Device_Ctrl.Light.target_brightness = target_brightness;
-    (void)T5lStcSyncMappedControl(
+    (void)T5lStcSyncLocalMappedControl(
         T5L_STC_MAPPED_LIGHT,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
         1U, target_brightness, 0U);
@@ -1119,7 +1168,7 @@ void Light_On(uint16_t target_brightness)
 void Light_Off()
 {
     G_Device_Ctrl.Light.target_brightness = 0;
-    (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_LIGHT,
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_LIGHT,
                                   T5L_STC_MAPPED_FIELD_ENABLED,
                                   0U, 0U, 0U);
     Send_Cmd_Ctrl(LIGHT_CMDWORD, (uint8_t)G_Device_Ctrl.Light.target_brightness);
@@ -1247,8 +1296,8 @@ void key_scanf(void)
             Humidifier_On();
             break;
         case 0x702: //雾化-取消
-            write_dgus_vp(MIST_VP + 1, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1);
-            write_dgus_vp(MIST_VP + 2, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1);
+            write_dgus_vp(MIST_VP + 1, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1);
+            write_dgus_vp(MIST_VP + 2, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1);
             break;
             //===============================雾化end================================//
             //===============================照明灯start================================//
@@ -1299,7 +1348,7 @@ void key_scanf(void)
 
         case 0x504: //负离子开关
             tmp = (uint16_t)!G_Device_Ctrl.Anion.enable;
-            (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_ANION,
+            (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_ANION,
                                           T5L_STC_MAPPED_FIELD_ENABLED,
                                           tmp, 0U, 0U);
             Send_Cmd_Ctrl(ANION_CMDWORD, (uint8_t)tmp);
@@ -1332,7 +1381,7 @@ void key_scanf(void)
             //===============================等离子 start================================//
         case 0x506: //等离子开关
             tmp = (uint16_t)!G_Device_Ctrl.Plasma.enable;
-            (void)T5lStcSyncMappedControl(T5L_STC_MAPPED_PLASMA,
+            (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_PLASMA,
                                           T5L_STC_MAPPED_FIELD_ENABLED,
                                           tmp, 0U, 0U);
             Send_Cmd_Ctrl(PLASMA_CMDWORD, (uint8_t)tmp);

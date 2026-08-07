@@ -45,8 +45,12 @@ class UartRoutingTests(unittest.TestCase):
         self.assertNotIn("core_json.h", self.main)
 
     def test_uart4_dispatches_all_three_length_families(self) -> None:
-        self.assertIn("body_len +\n                                                  V851_TLV_FRAME_FIXED_SIZE", self.uart)
-        self.assertIn("one_frame_len = (uint16_t)(body_len + 4U)", self.uart)
+        self.assertIn("V851 RX length includes the command byte", self.uart)
+        self.assertIn("body_len < (V851_TLV_SEGMENT_HEADER_SIZE + 1U)", self.uart)
+        self.assertIn("V851_TLV_RX_LENGTH_BASE_SIZE", self.uart)
+        self.assertNotIn("body_len +\n                                                  V851_TLV_FRAME_FIXED_SIZE", self.uart)
+        self.assertIn("len - V851_TLV_RX_LENGTH_BASE_SIZE", self.protocol)
+        self.assertIn("#define V851_TLV_RX_LENGTH_BASE_SIZE             4U", self.protocol_h)
         self.assertIn("V851ProtocolReceiveFrame(&frame[frame_offset]", self.uart)
         self.assertIn("V851WifiReceiveFrame(&frame[frame_offset]", self.uart)
         self.assertIn("OtaReceive(&frame[frame_offset], one_frame_len)", self.uart)
@@ -60,6 +64,28 @@ class UartRoutingTests(unittest.TestCase):
         ):
             self.assertIn(command, self.uart)
         self.assertIn("V851_TLV_CMD_SNAPSHOT", self.protocol_h)
+
+    def test_v851_property_capture_uses_command_inclusive_length(self) -> None:
+        captures = (
+            bytes.fromhex(
+                "AA 55 00 26 35 67 00 22 "
+                "01 00 01 01 "
+                "02 00 08 40 10 00 00 00 00 00 00 "
+                "03 00 08 40 00 00 00 00 00 00 00 "
+                "04 00 01 01 05 00 01 00"
+            ),
+            bytes.fromhex(
+                "AA 55 00 10 35 62 00 0C "
+                "01 00 01 01 02 00 01 02 03 00 01 01"
+            ),
+        )
+        for frame in captures:
+            with self.subTest(frame=frame.hex(" ")):
+                declared = int.from_bytes(frame[2:4], "big")
+                self.assertEqual(len(frame), declared + 4)
+                self.assertNotEqual(len(frame), declared + 5)
+                segment_length = int.from_bytes(frame[6:8], "big")
+                self.assertEqual(len(frame), 8 + segment_length)
 
     def test_uart4_overflow_discards_batch(self) -> None:
         self.assertIn("uint8_t RxOverflow:1", self.uart_h)

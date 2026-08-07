@@ -859,15 +859,17 @@ void UartReadFrame(UART_TYPE *uart)
                        (command == V851_TLV_CMD_BOOTSTRAP_RESULT) ||
                        (command == V851_TLV_CMD_OTA_STATUS))
                     {
-                        if((body_len < V851_TLV_SEGMENT_HEADER_SIZE) ||
+                        /* V851 RX length includes the command byte. */
+                        if((body_len < (V851_TLV_SEGMENT_HEADER_SIZE + 1U)) ||
                            (body_len > (V851_TLV_FRAME_MAX -
-                                        V851_TLV_FRAME_FIXED_SIZE)))
+                                        V851_TLV_RX_LENGTH_BASE_SIZE)))
                         {
                             i--;
                             continue;
                         }
-                        one_frame_len = (uint16_t)(body_len +
-                                                  V851_TLV_FRAME_FIXED_SIZE);
+                        one_frame_len =
+                            (uint16_t)(body_len +
+                                       V851_TLV_RX_LENGTH_BASE_SIZE);
                     }
                     else if((command == V851_WIFI_CMD_SCAN) ||
                             (command == V851_WIFI_CMD_CONNECT) ||

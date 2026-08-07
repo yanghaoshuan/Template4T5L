@@ -431,7 +431,9 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
     }
     declared_length = (uint16_t)(((uint16_t)frame[2] << 8) | frame[3]);
     command = frame[4];
-    if((declared_length != (uint16_t)(len - V851_TLV_FRAME_FIXED_SIZE)) ||
+    /* V851 RX length includes the command byte: total = 4 + length. */
+    if((declared_length !=
+        (uint16_t)(len - V851_TLV_RX_LENGTH_BASE_SIZE)) ||
        ((command != V851_TLV_CMD_PROPERTY) &&
         (command != V851_TLV_CMD_FACTORY) &&
         (command != V851_TLV_CMD_BOOTSTRAP_RESULT) &&

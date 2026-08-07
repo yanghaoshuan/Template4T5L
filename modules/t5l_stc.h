@@ -332,6 +332,11 @@ uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,
                                 uint16_t enabled,
                                 uint16_t secondary,
                                 uint16_t tertiary);
+uint8_t T5lStcSyncLocalMappedControl(T5lStcMappedControl control,
+                                     uint8_t field_mask,
+                                     uint16_t enabled,
+                                     uint16_t secondary,
+                                     uint16_t tertiary);
 
 extern void T5l_Stc_Init(void);
 extern void Queue_Time_Check(void);

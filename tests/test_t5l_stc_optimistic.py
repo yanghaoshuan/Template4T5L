@@ -36,12 +36,16 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
                 self.assertIn(address, self.header)
         self.assertIn("T5lStcMappedControl", self.header)
         self.assertIn("T5lStcSyncMappedControl", self.header)
+        self.assertIn("T5lStcSyncLocalMappedControl", self.header)
         self.assertIn("T5L_STC_MAPPED_FIELD_ENABLED", self.header)
         self.assertIn("T5L_STC_MAPPED_FIELD_SECONDARY", self.header)
         self.assertIn("T5L_STC_MAPPED_FIELD_TERTIARY", self.header)
 
     def test_sync_updates_memory_and_report_without_running_inference(self) -> None:
-        sync = self._function("uint8_t T5lStcSyncMappedControl", "void Queue_Init")
+        sync = self._function(
+            "static uint8_t T5lStcSyncMappedControlInternal",
+            "uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,",
+        )
         for expression in (
             "G_Device_Ctrl.Exhaust.enable = enabled",
             "G_Device_Ctrl.Exhaust.speed = secondary",
@@ -65,6 +69,45 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
         self.assertNotIn(".running =", sync)
         self.assertIn("write_dgus_vp(report_vp", sync)
 
+    def test_local_sync_read_modifies_command_vps_by_field_mask(self) -> None:
+        sync = self._function(
+            "static uint8_t T5lStcSyncMappedControlInternal",
+            "uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,",
+        )
+        mappings = {
+            "OUTWIND_VP": "T5L_STC_REPORT_EXHAUST_VP",
+            "LIGHT_VP": "T5L_STC_REPORT_LIGHT_VP",
+            "UVB_VP": "T5L_STC_REPORT_UVB_VP",
+            "ANION_VP": "T5L_STC_REPORT_ANION_VP",
+            "PLASMA_VP": "T5L_STC_REPORT_PLASMA_VP",
+            "HEATER_VP": "T5L_STC_REPORT_CLIMATE_VP",
+            "MIST_VP": "T5L_STC_REPORT_HUMIDIFIER_VP",
+            "INWIND_VP": "T5L_STC_REPORT_INLET_FAN_VP",
+        }
+        for command_vp, report_vp in mappings.items():
+            with self.subTest(command_vp=command_vp):
+                self.assertIn(f"command_vp = {command_vp}", sync)
+                self.assertIn(f"report_vp = {report_vp}", sync)
+        self.assertIn("read_dgus_vp(command_vp", sync)
+        self.assertIn("write_dgus_vp(command_vp", sync)
+        self.assertIn("command[0] = report[0]", sync)
+        self.assertIn("command[1] = report[1]", sync)
+        self.assertIn("command[2] = report[2]", sync)
+        self.assertIn("field_mask & T5L_STC_MAPPED_FIELD_ENABLED", sync)
+        self.assertIn("field_mask & T5L_STC_MAPPED_FIELD_SECONDARY", sync)
+        self.assertIn("field_mask & T5L_STC_MAPPED_FIELD_TERTIARY", sync)
+
+        remote = self._function(
+            "uint8_t T5lStcSyncMappedControl(T5lStcMappedControl control,",
+            "uint8_t T5lStcSyncLocalMappedControl(T5lStcMappedControl control,",
+        )
+        local = self._function(
+            "uint8_t T5lStcSyncLocalMappedControl",
+            "void Queue_Init",
+        )
+        self.assertIn("secondary, tertiary, 0U", remote)
+        self.assertIn("secondary, tertiary, 1U", local)
+
     def test_local_controls_sync_before_uart2_command(self) -> None:
         functions = (
             ("void Exhaust_On()", "void Exhaust_Off", "T5L_STC_MAPPED_EXHAUST"),
@@ -84,7 +127,7 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
             with self.subTest(signature=signature):
                 body = self._function(signature, next_signature)
                 self.assertIn(control, body)
-                self.assertLess(body.index("T5lStcSyncMappedControl"), body.index("Send_Cmd_Ctrl"))
+                self.assertLess(body.index("T5lStcSyncLocalMappedControl"), body.index("Send_Cmd_Ctrl"))
 
         key_scan = self._function("void key_scanf", "void SysCfg_Init")
         for control, command in (
@@ -94,6 +137,29 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
             sync = key_scan.index(control)
             send = key_scan.index(f"Send_Cmd_Ctrl({command}", sync)
             self.assertLess(sync, send)
+        self.assertEqual(key_scan.count("T5lStcSyncLocalMappedControl"), 2)
+        self.assertNotIn("T5lStcSyncMappedControl", key_scan)
+
+    def test_humidifier_cancel_restores_fields_in_vp_order(self) -> None:
+        key_scan = self._function("void key_scanf", "void SysCfg_Init")
+        cancel = key_scan[key_scan.index("case 0x702"):key_scan.index("case 0x502")]
+        interval = "write_dgus_vp(MIST_VP + 1, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1)"
+        running = "write_dgus_vp(MIST_VP + 2, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1)"
+        self.assertIn(interval, cancel)
+        self.assertIn(running, cancel)
+        self.assertLess(cancel.index(interval), cancel.index(running))
+
+    def test_humidifier_local_confirm_syncs_enabled_interval_and_running_hours(self) -> None:
+        humidifier = self._function("void Humidifier_On()", "void Humidifier_Off")
+        read_interval = "read_dgus_vp(MIST_VP + 1, (uint8_t *)&interval_code, 1)"
+        read_running = "read_dgus_vp(MIST_VP + 2, (uint8_t *)&running_code, 1)"
+        sync = "1U, interval_code, running_code"
+        self.assertIn(read_interval, humidifier)
+        self.assertIn(read_running, humidifier)
+        self.assertIn("T5lStcSyncLocalMappedControl", humidifier)
+        self.assertIn(sync, humidifier)
+        self.assertLess(humidifier.index(read_interval), humidifier.index(sync))
+        self.assertLess(humidifier.index(read_running), humidifier.index(sync))
 
     def test_ack_does_not_overwrite_mapped_fields(self) -> None:
         ack = self._function("void T5l_Stc_UartRxProcess", "void Stc_FlashBackup")
@@ -122,6 +188,7 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
         queue = self._function("void Queue_Sta_Poll", "uint32_t Get_Interval_Run_Sec")
         failure = queue[queue.index("case STATE_WAIT_ACK_FAILURE"):]
         self.assertNotIn("T5lStcSyncMappedControl", failure)
+        self.assertNotIn("T5lStcSyncLocalMappedControl", failure)
         self.assertNotIn("write_dgus_vp(T5L_STC_REPORT_", failure)
 
 

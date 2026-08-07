@@ -91,6 +91,7 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertIn("V851ControlInfoCommandWords(struct_type)", apply)
         self.assertIn("write_dgus_vp(address, record, command_words)", apply)
         self.assertIn("T5lStcSyncMappedControl", apply)
+        self.assertNotIn("T5lStcSyncLocalMappedControl", apply)
         self.assertIn("T5L_STC_MAPPED_FIELD_ENABLED", apply)
         self.assertIn("T5L_STC_MAPPED_FIELD_SECONDARY", apply)
         self.assertIn("T5L_STC_MAPPED_FIELD_TERTIARY", apply)
