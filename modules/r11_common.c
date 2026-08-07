@@ -1273,7 +1273,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 // }else
                                                 // {
 
-                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                while(DATA3 == 0x00 && DATA2 == 0x01)
                                                 {
                                                     delay_ms(1);
                                                     RAMMODE = 0xAF;
@@ -1282,7 +1282,25 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 												    while ( APP_EN );
                                                     RAMMODE = 0x00;
                                                 }
-                                                
+
+                                                ADR_H = JpegLaber_DGUSII_VP >> 17;
+												ADR_M = JpegLaber_DGUSII_VP >> 9;
+												ADR_L = JpegLaber_DGUSII_VP >> 1;
+												ADR_INC = 0x00;
+												RAMMODE = 0xAF;
+												while ( !APP_ACK );
+												APP_EN = 1;
+												while ( APP_EN );
+												RAMMODE = 0x8F;
+												DATA1 = DATA2;
+												DATA3 = 0x5A;
+												DATA2 = 0xA5;
+												//DATA1 = 0xFF;
+												DATA0 = 0xFE;
+												APP_EN = 1;
+												while ( APP_EN );
+												RAMMODE = 0x00;
+
                                                 ADR_H = Icon_Overlay_SP[Index] >> 17;
                                                 ADR_M = Icon_Overlay_SP[Index] >> 9;
                                                 ADR_L = Icon_Overlay_SP[Index] >> 1;
@@ -1386,7 +1404,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 // }else
                                                 // {
 
-                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                while(DATA3 == 0x00 && DATA2 == 0x01)
                                                 {
                                                     delay_ms(1);
                                                     RAMMODE = 0xAF;
@@ -1396,7 +1414,23 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                     RAMMODE = 0x00;
                                                 }
 
-                                                    
+                                                    ADR_H = JpegLaber_DGUSII_VP >> 17;
+                                                    ADR_M = JpegLaber_DGUSII_VP >> 9;
+                                                    ADR_L = JpegLaber_DGUSII_VP >> 1;
+                                                    ADR_INC = 0x00;
+                                                    RAMMODE = 0xAF;
+                                                    while ( !APP_ACK );
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    RAMMODE = 0x8F;
+                                                    DATA1 = DATA2;
+                                                    DATA3 = 0x5A;
+                                                    DATA2 = 0xA5;
+                                                    //DATA1 = 0xFF;
+                                                    DATA0 = 0xFE;
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    RAMMODE = 0x00;
                                                 
 
                                                     ADR_H = Icon_Overlay_SP[Index] >> 17;
