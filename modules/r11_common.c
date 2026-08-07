@@ -1292,7 +1292,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 // }else
                                                 // {
 
-                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                while(DATA3 == 0x00 && DATA2 == 0x01)
                                                 {
                                                     delay_ms(1);
                                                     RAMMODE = 0xAF;
@@ -1423,7 +1423,7 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                                 // }else
                                                 // {
 
-                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                while(DATA3 == 0x00 && DATA2 == 0x01)
                                                 {
                                                     delay_ms(1);
                                                     RAMMODE = 0xAF;
