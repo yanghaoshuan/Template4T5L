@@ -98,6 +98,37 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertNotIn("V851ControlInfoReportAddress", apply)
         self.assertNotIn("v851_control_report_shadow", apply)
 
+    def test_remote_enabled_dispatches_all_eight_stc_switches_after_sync(self) -> None:
+        helper_start = self.source.index("static void V851ControlInfoApplySwitch")
+        helper_end = self.source.index("uint8_t V851ControlInfoApplySegment", helper_start)
+        helper = self.source[helper_start:helper_end]
+        for struct_name, on_call, off_call in (
+            ("EXHAUST", "Exhaust_On()", "Exhaust_Off(0U)"),
+            ("LIGHT", "Light_On(setting)", "Light_Off()"),
+            ("UVB", "UVB_On(setting)", "UVB_Off(0U)"),
+            ("ANION", "Anion_On()", "Anion_Off()"),
+            ("PLASMA", "Plasma_On()", "Plasma_Off()"),
+            ("CLIMATE", "Heater_On((int16_t)setting)", "Heater_Off(0U)"),
+            ("HUMIDIFIER", "Humidifier_On()", "Humidifier_Off(0U)"),
+            ("INLET_FAN", "InWind_On(setting)", "InWind_Off()"),
+        ):
+            with self.subTest(struct_name=struct_name):
+                self.assertIn(f"V851_TLV_STRUCT_{struct_name}", helper)
+                self.assertIn(on_call, helper)
+                self.assertIn(off_call, helper)
+        self.assertNotIn("V851_TLV_STRUCT_FILTER", helper)
+
+        apply_start = self.source.index("uint8_t V851ControlInfoApplySegment")
+        apply_end = self.source.index("uint16_t V851ControlInfoBuildFields", apply_start)
+        apply = self.source[apply_start:apply_end]
+        write = apply.index("write_dgus_vp(address, record, command_words)")
+        sync = apply.index("T5lStcSyncMappedControl", write)
+        enabled_guard = apply.index("mapped_mask & T5L_STC_MAPPED_FIELD_ENABLED", sync)
+        dispatch = apply.index("V851ControlInfoApplySwitch", enabled_guard)
+        self.assertLess(write, sync)
+        self.assertLess(sync, enabled_guard)
+        self.assertLess(enabled_guard, dispatch)
+
     def test_full_and_incremental_reporting_read_actual_state_vps(self) -> None:
         build_start = self.source.index("uint16_t V851ControlInfoBuildFields")
         scan_start = self.source.index("uint16_t V851ControlInfoScanChanged")

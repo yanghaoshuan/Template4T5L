@@ -1,83 +1,83 @@
 /*
-ÖÇÄÜ²ÕÄñ²Õ²úÆ·ËµÃ÷Êé
+æ™ºèƒ½èˆ±é¸Ÿèˆ±äº§å“è¯´æ˜ä¹¦
 
-1.²úÆ·¹¦ÄÜ²ÎÊı½éÉÜ
+1.äº§å“åŠŸèƒ½å‚æ•°ä»‹ç»
 
-ÅÅ·ç£º
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ·çÉÈ1-6·çËÙµ÷½Ú
-      ¿É¿ØÖÆ¿ª¹ØÊ±¼ä£¨¶¨Ê±0.5-8Ğ¡Ê±ºó×Ô¶¯¿ªÆôÍ¨·çÊ±³¤10-15·ÖÖÓ£©
-
-
-½ø·ç£º
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ·çÉÈ1-4µµ·çËÙ¿Éµ÷½Ú£¨Ô¤ÁôºóÆÚ¿ÉÒÔÓÃ¸ºÀë×ÓÌæ´ú£©
-    C.×Ô¶¯¿ªÆôÌØÊâÇé¿ö
-        1.	¿ªÆô¼ÓÈÈ£¬ÎÂ¶È´«¸ĞÆ÷·´À¡ÓĞÎÂ²î£¬×Ô¶¯¿ªÆô¼ÓÈÈÇ¿·ç¡£
-        2.	¸ºÀë×Ó£¬µÈÀë×Ó¿ªÆô×Ô¶¯¿ªÆôĞ¡·ç£¨Ò»µµ£©
-        3.	¿ªÆô¼ÓÈÈÊ±£¬¸ºÀë×Ó£¬µÈÀë×ÓÒÔ¼ÓÈÈµÄ½ø·ç£¬ÓÅÏÈ¿¼ÂÇ
-        4.	¿ªÆô¼ÓÈÈ×Ô¶¯¿ªÆô£¬¼ÓÈÈÊ±½ø·ç²»¿É¿ØÖÆ¹Ø±Õ
-
-uvb£º£¨µ¥¶À¿ØÖÆ»òµ¥¶ÀÁ¬½Ó¶Ë×Ó£©
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆUVB 1-4µµÁÁ¶Èµ÷½Ú¡¢(1µµ£º0-18/2µµ£º18-25/3µµ£º25-64/4µµ£º64-87.5°´ÕÕ¸¥¸ñÉ­ËÄÇø¼ä¿ØÖÆ£©Ê±¼ä¿ØÖÆ£¨2Ğ¡Ê±/4Ğ¡Ê±/6Ğ¡Ê±/8Ğ¡Ê±£©
-    B. UVB²¨¶Î£¨253.7nm£©ÓĞÖúÓÚ²¹¸Æ£¬·ÂÉ¹Ì«Ñô
+æ’é£ï¼š
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶é£æ‰‡1-6é£é€Ÿè°ƒèŠ‚
+      å¯æ§åˆ¶å¼€å…³æ—¶é—´ï¼ˆå®šæ—¶0.5-8å°æ—¶åè‡ªåŠ¨å¼€å¯é€šé£æ—¶é•¿10-15åˆ†é’Ÿï¼‰
 
 
-Îí»¯£ºÎí»¯Æ¬+Îí»¯Òº¼ì²â
-    A.	app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ¿ª¹ØÎí»¯Æ¬£¬ÄÜ¹»¸ù¾İ²ÕÄÚÊª¶È´«¸ĞÆ÷ĞèÒª¼ÓÊªÁ¿µ÷½Ú£¬Ë®Î»´«¸ĞÆ÷¼ì²âÎí»¯Òº£¬¼ÓÒºÌáĞÑ¡£
-    B.	µ¥´ÎÔËĞĞ0.5/1/2Ğ¡Ê±£¬¼ä¸ôÊ±¼äÎª2/4/8/12Ğ¡Ê±
-                     C.Ö±¾¶16mm/ÆµÂÊ100-115KHz/¹¤×÷µçÑ¹3-12v/Ğ³Õñ×è¿¹¡Ü180/¾²Ì¬µçÈİÁ¿3000¡À15%/»úµçÅººÏÏµÊı¡İ60%/ºñ¶È0.05mm/¿×Ä¿Êı1-5000/¿×¾¶3-20Um/¶Â¿×ÂÊ¡Ü2%
+è¿›é£ï¼š
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶é£æ‰‡1-4æ¡£é£é€Ÿå¯è°ƒèŠ‚ï¼ˆé¢„ç•™åæœŸå¯ä»¥ç”¨è´Ÿç¦»å­æ›¿ä»£ï¼‰
+    C.è‡ªåŠ¨å¼€å¯ç‰¹æ®Šæƒ…å†µ
+        1.	å¼€å¯åŠ çƒ­ï¼Œæ¸©åº¦ä¼ æ„Ÿå™¨åé¦ˆæœ‰æ¸©å·®ï¼Œè‡ªåŠ¨å¼€å¯åŠ çƒ­å¼ºé£ã€‚
+        2.	è´Ÿç¦»å­ï¼Œç­‰ç¦»å­å¼€å¯è‡ªåŠ¨å¼€å¯å°é£ï¼ˆä¸€æ¡£ï¼‰
+        3.	å¼€å¯åŠ çƒ­æ—¶ï¼Œè´Ÿç¦»å­ï¼Œç­‰ç¦»å­ä»¥åŠ çƒ­çš„è¿›é£ï¼Œä¼˜å…ˆè€ƒè™‘
+        4.	å¼€å¯åŠ çƒ­è‡ªåŠ¨å¼€å¯ï¼ŒåŠ çƒ­æ—¶è¿›é£ä¸å¯æ§åˆ¶å…³é—­
 
-ÕÕÃ÷£º£¨µ¥¶À¿ØÖÆ»òµ¥¶ÀÁ¬½Ó¶Ë×Ó£©
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆµÆ¹â1-4µµÁÁ¶Èµ÷½Ú£¨1µµ£ºÈõ¹â/2µµÕı³£¹â/3-4µµÇ¿¹â£©
-
-
-¼ÓÈÈÄ£¿é:
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆÎÂ¶È20-35¶È(¿ªÆôÊ±¿ìËÙÉıÎÂ´ïµ½Ö¸¶¨ÎÂ¶È£¬
-     ´«¸ĞÆ÷·´À¡ÎÂ¶È´ïµ½ÁËÍ£Ö¹¼ÓÈÈ£¬ÎÂ¶ÈÃ»´ïµ½²î-5¡ãÕı³£¼ÓÈÈ
-    £¨½ø·ç·çÉÈºÍ¼ÓÈÈÄ£¿éÍ¬²½¿ªÆğ£¬¹Ø±ÕÊ±½ø·ç·çÉÈ±È¼ÓÈÈÄ£¿éÍí5Ãë¹Ø±Õ£©
-    B.²ÉÓÃ220VµÄPTC¼ÓÈÈÔª¼ş£¬Ìá¹©°²È«µÄ¼ÓÈÈÄÜÁ¦£¬PTC¸ù¾İ»·¾³ÎÂ¶Èµ÷½Ú¼ÓÈÈ¹¦ÂÊ£»1Â·400W PTC¼ÓÈÈÆ÷ÊÇ·ñÄÜ¼æÈİ£¬220V/110VÍ¨ÓÃ¡£
-
-×ÏÍâÏßÏûÉ±£¨uvc£©£º£¨µ¥¶À¿ØÖÆ»òµ¥¶ÀÁ¬½Ó¶Ë×Ó£©
-    A.	app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ¿ª¹ØÊ±¼ä£¨15·ÖÖÓ/30·ÖÖÓ/1Ğ¡Ê±£©
-    B.	×ÏÍâÏßUVC£¨253.7nm£©É±¾ú¹¦ÄÜ£¬¶Ô¿ÕÆø½øĞĞÉî¶ÈÏû¶¾£¬
-    C.	Ïû¶¾ĞèÒªÏÔÊ¾ÆÁÈ·ÈÏ²ÕÄÚÊÇ·ñÓĞ³èÎï,²¢´¥·¢ÎïÀí¿ª¹Ø¿ªÊ¼¹¤×÷
+uvbï¼šï¼ˆå•ç‹¬æ§åˆ¶æˆ–å•ç‹¬è¿æ¥ç«¯å­ï¼‰
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶UVB 1-4æ¡£äº®åº¦è°ƒèŠ‚ã€(1æ¡£ï¼š0-18/2æ¡£ï¼š18-25/3æ¡£ï¼š25-64/4æ¡£ï¼š64-87.5æŒ‰ç…§å¼—æ ¼æ£®å››åŒºé—´æ§åˆ¶ï¼‰æ—¶é—´æ§åˆ¶ï¼ˆ2å°æ—¶/4å°æ—¶/6å°æ—¶/8å°æ—¶ï¼‰
+    B. UVBæ³¢æ®µï¼ˆ253.7nmï¼‰æœ‰åŠ©äºè¡¥é’™ï¼Œä»¿æ™’å¤ªé˜³
 
 
-ºìÍâÏß£º£¨µ¥¶À¿ØÖÆ»òµ¥¶ÀÁ¬½Ó¶Ë×Ó£©
-    A.¹âÏß½Ï°µ×Ô¶¯¿ªÆô/¹âÏßÇ¿×Ô¶¯¹Ø±Õ£¨¿ªÆôºó ÉãÏñÍ·LRcatÄ£Ê½×Ô¶¯¿ªÆô£©
-    B.ºìÍâÏß²¨¶Î£¨940nm£©Ò¹¼äÕÕÃ÷ÉãÏñÍ·¹Û²ìÇåÎú
+é›¾åŒ–ï¼šé›¾åŒ–ç‰‡+é›¾åŒ–æ¶²æ£€æµ‹
+    A.	app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶å¼€å…³é›¾åŒ–ç‰‡ï¼Œèƒ½å¤Ÿæ ¹æ®èˆ±å†…æ¹¿åº¦ä¼ æ„Ÿå™¨éœ€è¦åŠ æ¹¿é‡è°ƒèŠ‚ï¼Œæ°´ä½ä¼ æ„Ÿå™¨æ£€æµ‹é›¾åŒ–æ¶²ï¼ŒåŠ æ¶²æé†’ã€‚
+    B.	å•æ¬¡è¿è¡Œ0.5/1/2å°æ—¶ï¼Œé—´éš”æ—¶é—´ä¸º2/4/8/12å°æ—¶
+                     C.ç›´å¾„16mm/é¢‘ç‡100-115KHz/å·¥ä½œç”µå‹3-12v/è°æŒ¯é˜»æŠ—â‰¤180/é™æ€ç”µå®¹é‡3000Â±15%/æœºç”µè—•åˆç³»æ•°â‰¥60%/åšåº¦0.05mm/å­”ç›®æ•°1-5000/å­”å¾„3-20Um/å µå­”ç‡â‰¤2%
 
-¸ºÀë×Ó£º
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ¿ª¹Ø(¿ªÆôÊ±½ø·ç×Ô¶¯¿ªÆô£©
-    B.	³ß´ç42*24*21mm/¹¤×÷»·¾³-20µ½80¶È/¹¦ÂÊ12v/0.3ma/Êä³ö¸ßÑ¹-4500v¡À500v/¸ºÀë×ÓÅ¨¶È1000Íòpcs/cm?
-
-µÈÀë×Ó£º
-    A.app Ğ¡³ÌĞò ¿ØÖÆÆÁ¿É¿ØÖÆ¿ª¹Ø(¿ªÆôÊ±½ø·ç×Ô¶¯¿ªÆô£©
-    C.	³ß´ç42*24*21mm/¹¦ÂÊ0.5w/Êä³ö¸ßÑ¹¡À5000v¡À500v/ÕıÀë×ÓÅ¨¶È1000Íòpcs/cm?/¸ºÀë×ÓÅ¨¶È1000Íòpcs/cm?/¹¤×÷»·¾³-20µ½75¶È/Êª¶È£¼75%Êª¶ÈÔ½¸ßÔëÒôÔ½´ó/µÈÀë×Ó·¢ÉäÍ·Õë¼â¾à10-50mm
+ç…§æ˜ï¼šï¼ˆå•ç‹¬æ§åˆ¶æˆ–å•ç‹¬è¿æ¥ç«¯å­ï¼‰
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶ç¯å…‰1-4æ¡£äº®åº¦è°ƒèŠ‚ï¼ˆ1æ¡£ï¼šå¼±å…‰/2æ¡£æ­£å¸¸å…‰/3-4æ¡£å¼ºå…‰ï¼‰
 
 
+åŠ çƒ­æ¨¡å—:
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶æ¸©åº¦20-35åº¦(å¼€å¯æ—¶å¿«é€Ÿå‡æ¸©è¾¾åˆ°æŒ‡å®šæ¸©åº¦ï¼Œ
+     ä¼ æ„Ÿå™¨åé¦ˆæ¸©åº¦è¾¾åˆ°äº†åœæ­¢åŠ çƒ­ï¼Œæ¸©åº¦æ²¡è¾¾åˆ°å·®-5Â°æ­£å¸¸åŠ çƒ­
+    ï¼ˆè¿›é£é£æ‰‡å’ŒåŠ çƒ­æ¨¡å—åŒæ­¥å¼€èµ·ï¼Œå…³é—­æ—¶è¿›é£é£æ‰‡æ¯”åŠ çƒ­æ¨¡å—æ™š5ç§’å…³é—­ï¼‰
+    B.é‡‡ç”¨220Vçš„PTCåŠ çƒ­å…ƒä»¶ï¼Œæä¾›å®‰å…¨çš„åŠ çƒ­èƒ½åŠ›ï¼ŒPTCæ ¹æ®ç¯å¢ƒæ¸©åº¦è°ƒèŠ‚åŠ çƒ­åŠŸç‡ï¼›1è·¯400W PTCåŠ çƒ­å™¨æ˜¯å¦èƒ½å…¼å®¹ï¼Œ220V/110Vé€šç”¨ã€‚
+
+ç´«å¤–çº¿æ¶ˆæ€ï¼ˆuvcï¼‰ï¼šï¼ˆå•ç‹¬æ§åˆ¶æˆ–å•ç‹¬è¿æ¥ç«¯å­ï¼‰
+    A.	app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶å¼€å…³æ—¶é—´ï¼ˆ15åˆ†é’Ÿ/30åˆ†é’Ÿ/1å°æ—¶ï¼‰
+    B.	ç´«å¤–çº¿UVCï¼ˆ253.7nmï¼‰æ€èŒåŠŸèƒ½ï¼Œå¯¹ç©ºæ°”è¿›è¡Œæ·±åº¦æ¶ˆæ¯’ï¼Œ
+    C.	æ¶ˆæ¯’éœ€è¦æ˜¾ç¤ºå±ç¡®è®¤èˆ±å†…æ˜¯å¦æœ‰å® ç‰©,å¹¶è§¦å‘ç‰©ç†å¼€å…³å¼€å§‹å·¥ä½œ
 
 
-´«¸ĞÆ÷£º£¨Êª¶È+ÎÂ¶È´«¸ĞÆ÷£©¿É¿ØÖÆpc°å
-ÉãÏñÍ·£º
-    A.app Ğ¡³ÌĞò¿É¿ØÖÆ¿ª¹Ø
-    B. ´îÔØ160¡ã³¬¹ã½Ç1080P¸ßÇå
+çº¢å¤–çº¿ï¼šï¼ˆå•ç‹¬æ§åˆ¶æˆ–å•ç‹¬è¿æ¥ç«¯å­ï¼‰
+    A.å…‰çº¿è¾ƒæš—è‡ªåŠ¨å¼€å¯/å…‰çº¿å¼ºè‡ªåŠ¨å…³é—­ï¼ˆå¼€å¯å æ‘„åƒå¤´LRcatæ¨¡å¼è‡ªåŠ¨å¼€å¯ï¼‰
+    B.çº¢å¤–çº¿æ³¢æ®µï¼ˆ940nmï¼‰å¤œé—´ç…§æ˜æ‘„åƒå¤´è§‚å¯Ÿæ¸…æ™°
+
+è´Ÿç¦»å­ï¼š
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶å¼€å…³(å¼€å¯æ—¶è¿›é£è‡ªåŠ¨å¼€å¯ï¼‰
+    B.	å°ºå¯¸42*24*21mm/å·¥ä½œç¯å¢ƒ-20åˆ°80åº¦/åŠŸç‡12v/0.3ma/è¾“å‡ºé«˜å‹-4500vÂ±500v/è´Ÿç¦»å­æµ“åº¦1000ä¸‡pcs/cm?
+
+ç­‰ç¦»å­ï¼š
+    A.app å°ç¨‹åº æ§åˆ¶å±å¯æ§åˆ¶å¼€å…³(å¼€å¯æ—¶è¿›é£è‡ªåŠ¨å¼€å¯ï¼‰
+    C.	å°ºå¯¸42*24*21mm/åŠŸç‡0.5w/è¾“å‡ºé«˜å‹Â±5000vÂ±500v/æ­£ç¦»å­æµ“åº¦1000ä¸‡pcs/cm?/è´Ÿç¦»å­æµ“åº¦1000ä¸‡pcs/cm?/å·¥ä½œç¯å¢ƒ-20åˆ°75åº¦/æ¹¿åº¦ï¼œ75%æ¹¿åº¦è¶Šé«˜å™ªéŸ³è¶Šå¤§/ç­‰ç¦»å­å‘å°„å¤´é’ˆå°–è·10-50mm
+
+
+
+
+ä¼ æ„Ÿå™¨ï¼šï¼ˆæ¹¿åº¦+æ¸©åº¦ä¼ æ„Ÿå™¨ï¼‰å¯æ§åˆ¶pcæ¿
+æ‘„åƒå¤´ï¼š
+    A.app å°ç¨‹åºå¯æ§åˆ¶å¼€å…³
+    B. æ­è½½160Â°è¶…å¹¿è§’1080Pé«˜æ¸…
     C.
-        1.¿ÉÍ¨¹ıapp£¬Ğ¡³ÌĞò¹²ÏíÉãÏñÍ·£¬
-    2.ÊÓÆµ¿É·Ö¶ÎÉÏ´«ÔÆ¶Ë£¬¿É·ÖÏíÃ½ÌåÈç Î¢ĞÅ ¶¶Òô Ğ¡ºìÊéµÈ
-    3.¹âÏß°µÉãÏñÍ·LRcatÄ£Ê½ºìÍâÏß×Ô¶¯¿ªÆô
-    4.ÓïÒôÏà»¥½ÓÊÕÄÚÖÃÂó¿Ë·çºÍÑïÉùÆ÷Ö§³ÖÓïÒô²É¼¯Óë²¥·Å£¬
-      ¿ÉË«ÏòÍ¨»°»òÓïÒô¿ØÖÆ»¥¶¯£¬¿ÉÏû³ı»ØÒô±³¾°µÈ£¬MICºÍSPEAKER¼¯³ÉÔÚÉãÏñÍ·Ä£¿é
+        1.å¯é€šè¿‡appï¼Œå°ç¨‹åºå…±äº«æ‘„åƒå¤´ï¼Œ
+    2.è§†é¢‘å¯åˆ†æ®µä¸Šä¼ äº‘ç«¯ï¼Œå¯åˆ†äº«åª’ä½“å¦‚ å¾®ä¿¡ æŠ–éŸ³ å°çº¢ä¹¦ç­‰
+    3.å…‰çº¿æš—æ‘„åƒå¤´LRcatæ¨¡å¼çº¢å¤–çº¿è‡ªåŠ¨å¼€å¯
+    4.è¯­éŸ³ç›¸äº’æ¥æ”¶å†…ç½®éº¦å…‹é£å’Œæ‰¬å£°å™¨æ”¯æŒè¯­éŸ³é‡‡é›†ä¸æ’­æ”¾ï¼Œ
+      å¯åŒå‘é€šè¯æˆ–è¯­éŸ³æ§åˆ¶äº’åŠ¨ï¼Œå¯æ¶ˆé™¤å›éŸ³èƒŒæ™¯ç­‰ï¼ŒMICå’ŒSPEAKERé›†æˆåœ¨æ‘„åƒå¤´æ¨¡å—
 
-µç´ÅËø£º
-    A.Ö»¿É¿ØÖÆÆÁÊäÈëµç´ÅËø¿ªÆô£¨ºóÌ¨¿ÉÒ»¼üÍ¬²½¿ªÆô¶àÌ¨µç´ÅÃÅ£©
-    B. 12V/0.5A/80¿ËÁ¦/10Ãë
+ç”µç£é”ï¼š
+    A.åªå¯æ§åˆ¶å±è¾“å…¥ç”µç£é”å¼€å¯ï¼ˆåå°å¯ä¸€é”®åŒæ­¥å¼€å¯å¤šå°ç”µç£é—¨ï¼‰
+    B. 12V/0.5A/80å…‹åŠ›/10ç§’
 
-ÖÇÄÜÁ¬½Ó¹ÜÀí£º1. Ö§³ÖË«ÆµWi-FiºÍÀ¶ÑÀ£¬È·±£Éè±¸¿ÉÇáËÉ½ÓÈëÍøÂç
-2.ºóÌ¨Êı¾İ¿É¿ìËÙÁË½âÉè±¸ÔËĞĞ×´¿ö£¬¿Í»§ÏÂ´ïÖ¸ÁîºóÌ¨¿É²éÑ¯ÊÇ·ñÍ¬²½
-3.ºóÌ¨¿É°ï¿Í»§½â°ó¶şÎ¬Âë
-4.¶şÎ¬ÂëÖ»¿É°ó¶¨Ò»ÈË£¬¹¦ÄÜ¿ØÖÆÈ¨¹ÜÀí£¬ÓÉ°ó¶¨ÈË·ÖÏíËüÈË
+æ™ºèƒ½è¿æ¥ç®¡ç†ï¼š1. æ”¯æŒåŒé¢‘Wi-Fiå’Œè“ç‰™ï¼Œç¡®ä¿è®¾å¤‡å¯è½»æ¾æ¥å…¥ç½‘ç»œ
+2.åå°æ•°æ®å¯å¿«é€Ÿäº†è§£è®¾å¤‡è¿è¡ŒçŠ¶å†µï¼Œå®¢æˆ·ä¸‹è¾¾æŒ‡ä»¤åå°å¯æŸ¥è¯¢æ˜¯å¦åŒæ­¥
+3.åå°å¯å¸®å®¢æˆ·è§£ç»‘äºŒç»´ç 
+4.äºŒç»´ç åªå¯ç»‘å®šä¸€äººï¼ŒåŠŸèƒ½æ§åˆ¶æƒç®¡ç†ï¼Œç”±ç»‘å®šäººåˆ†äº«å®ƒäºº
 
-    *·şÎñÆ÷Óë±¾µØ¿ØÖÆÁ¢¼´Í¬²½ UI£»Ö÷¿ØÓ¦´ğÖ»¸üĞÂÔËĞĞ¡¢Áª¶¯ºÍ¶ÓÁĞ×´Ì¬¡£
+    *æœåŠ¡å™¨ä¸æœ¬åœ°æ§åˆ¶ç«‹å³åŒæ­¥ UIï¼›ä¸»æ§åº”ç­”åªæ›´æ–°è¿è¡Œã€è”åŠ¨å’Œé˜Ÿåˆ—çŠ¶æ€ã€‚
 */
 #include "sys.h"
 #include "t5l_stc.h"
@@ -85,19 +85,19 @@ uvb£º£¨µ¥¶À¿ØÖÆ»òµ¥¶ÀÁ¬½Ó¶Ë×Ó£©
 #include "string.h"
 DeviceCtrl G_Device_Ctrl;
 
-#define WAIT_ACK_TIMEOUT 1000 //µÈ´ıÓ¦´ğ³¬Ê±Ê±¼ä
-#define WAIT_ACK_ERROR_CNT 2  //µÈ´ıÓ¦´ğ´íÎó´ÎÊı
+#define WAIT_ACK_TIMEOUT 1000 //ç­‰å¾…åº”ç­”è¶…æ—¶æ—¶é—´
+#define WAIT_ACK_ERROR_CNT 2  //ç­‰å¾…åº”ç­”é”™è¯¯æ¬¡æ•°
 /**
- * @brief  modbusÖ÷»ú×´Ì¬
+ * @brief  modbusä¸»æœºçŠ¶æ€
  */
 typedef enum
 {
-    STATE_IDLE = 0X00,      // Ö÷»ú¿ÕÏĞ×´Ì¬
-    STATE_WAIT_ACK,         // µÈ´ı½ÓÊÕ
-    STATE_WAIT_ACK_TIMEOUT, // µÈ´ı½ÓÊÕ³¬Ê±
-    STATE_WAIT_ACK_FAILURE, // µÈ´ı½ÓÊÕ´íÎó
-    STATE_WAIT_ACK_SUCCESS, // µÈ´ı½ÓÊÕ³É¹¦
-    STATE_EXEC,             // »Øµ÷´¦Àí
+    STATE_IDLE = 0X00,      // ä¸»æœºç©ºé—²çŠ¶æ€
+    STATE_WAIT_ACK,         // ç­‰å¾…æ¥æ”¶
+    STATE_WAIT_ACK_TIMEOUT, // ç­‰å¾…æ¥æ”¶è¶…æ—¶
+    STATE_WAIT_ACK_FAILURE, // ç­‰å¾…æ¥æ”¶é”™è¯¯
+    STATE_WAIT_ACK_SUCCESS, // ç­‰å¾…æ¥æ”¶æˆåŠŸ
+    STATE_EXEC,             // å›è°ƒå¤„ç†
 
 } Uart_State;
 
@@ -115,12 +115,12 @@ typedef struct _queue_node
     uint8_t last_head;
     uint8_t err_cnt;
     Uart_State sta;
-    uint16_t wait_ack_time; //µÈ´ıÓ¦´ğÊ±¼ä
+    uint16_t wait_ack_time; //ç­‰å¾…åº”ç­”æ—¶é—´
     uint16_t showsuccse_time_ms;
     uint8_t showsuccse_sta;
 } QUEUE_NODE;
 
-QUEUE_NODE G_Queue; //»·ĞÎ¶ÓÁĞ
+QUEUE_NODE G_Queue; //ç¯å½¢é˜Ÿåˆ—
 void Dev_Init(void)
 {
     memset(&G_Device_Ctrl, 0, sizeof(G_Device_Ctrl));
@@ -440,9 +440,9 @@ void Queue_Push(uint8_t *buf, uint8_t len)
 }
 
 /**
- * @brief ¶ÓÁĞ³ö¶Óº¯Êı
- * @details ´Ó¶ÓÁĞÖĞÈ¡³öÒ»¸öÔªËØ£¬Í¨¹ıÒÆ¶¯¶ÓÁĞÍ·Ö¸ÕëÊµÏÖ
- *          ¶ÓÁĞ²ÉÓÃÑ­»·¶ÓÁĞÊµÏÖ£¬µ±Í·Ö¸Õëµ½´ï¶ÓÁĞÄ©Î²Ê±»á»Øµ½ÆğÊ¼Î»ÖÃ
+ * @brief é˜Ÿåˆ—å‡ºé˜Ÿå‡½æ•°
+ * @details ä»é˜Ÿåˆ—ä¸­å–å‡ºä¸€ä¸ªå…ƒç´ ï¼Œé€šè¿‡ç§»åŠ¨é˜Ÿåˆ—å¤´æŒ‡é’ˆå®ç°
+ *          é˜Ÿåˆ—é‡‡ç”¨å¾ªç¯é˜Ÿåˆ—å®ç°ï¼Œå½“å¤´æŒ‡é’ˆåˆ°è¾¾é˜Ÿåˆ—æœ«å°¾æ—¶ä¼šå›åˆ°èµ·å§‹ä½ç½®
  */
 void Queue_Pop_Poll(void)
 {
@@ -450,7 +450,7 @@ void Queue_Pop_Poll(void)
     {
         return;
     }
-    // ¼ì²é¶ÓÁĞÊÇ·ñÎª¿Õ£¨Í·Ö¸ÕëºÍÎ²Ö¸Õë²»ÏàµÈ±íÊ¾¶ÓÁĞ²»Îª¿Õ£©
+    // æ£€æŸ¥é˜Ÿåˆ—æ˜¯å¦ä¸ºç©ºï¼ˆå¤´æŒ‡é’ˆå’Œå°¾æŒ‡é’ˆä¸ç›¸ç­‰è¡¨ç¤ºé˜Ÿåˆ—ä¸ä¸ºç©ºï¼‰
     if (G_Queue.head != G_Queue.tail)
     {
         G_Queue.err_cnt = 0;
@@ -459,9 +459,9 @@ void Queue_Pop_Poll(void)
         G_Queue.last_head = G_Queue.head;
 
         UartSendData(&Uart2, G_Queue.Data[G_Queue.head].buf, G_Queue.Data[G_Queue.head].len);
-        // Í·Ö¸ÕëºóÒÆ£¬ÊµÏÖ³ö¶Ó²Ù×÷
+        // å¤´æŒ‡é’ˆåç§»ï¼Œå®ç°å‡ºé˜Ÿæ“ä½œ
         G_Queue.head++;
-        // Ñ­»·¶ÓÁĞ´¦Àí£ºµ±Í·Ö¸Õë´ïµ½¶ÓÁĞÈİÁ¿ÉÏÏŞÊ±£¬»Øµ½ÆğÊ¼Î»ÖÃ
+        // å¾ªç¯é˜Ÿåˆ—å¤„ç†ï¼šå½“å¤´æŒ‡é’ˆè¾¾åˆ°é˜Ÿåˆ—å®¹é‡ä¸Šé™æ—¶ï¼Œå›åˆ°èµ·å§‹ä½ç½®
         if (G_Queue.head >= 16)
         {
             G_Queue.head = 0;
@@ -473,7 +473,7 @@ void Queue_Sta_Poll(void)
 {
     switch (G_Queue.sta)
     {
-    case STATE_WAIT_ACK_TIMEOUT: //³¬Ê±ÖØ´«
+    case STATE_WAIT_ACK_TIMEOUT: //è¶…æ—¶é‡ä¼ 
         G_Queue.err_cnt++;
         if (G_Queue.err_cnt > WAIT_ACK_ERROR_CNT)
         {
@@ -485,11 +485,11 @@ void Queue_Sta_Poll(void)
         G_Queue.wait_ack_time = WAIT_ACK_TIMEOUT;
         UartSendData(&Uart2, G_Queue.Data[G_Queue.last_head].buf, G_Queue.Data[G_Queue.last_head].len);
         break;
-    case STATE_WAIT_ACK_FAILURE: //ÎŞÏìÓ¦ÅĞ¶ÏÊ§°Ü
+    case STATE_WAIT_ACK_FAILURE: //æ— å“åº”åˆ¤æ–­å¤±è´¥
         G_Queue.sta = STATE_IDLE;
         G_Queue.err_cnt = 0;
         break;
-    case STATE_WAIT_ACK_SUCCESS: //³É¹¦
+    case STATE_WAIT_ACK_SUCCESS: //æˆåŠŸ
         G_Queue.sta = STATE_IDLE;
         G_Queue.err_cnt = 0;
         break;
@@ -504,13 +504,13 @@ void Queue_Sta_Poll(void)
     }
 }
 
-//½«Ê±¼ä¼ä¸ôµµÎ»×ª»»ÎªÃëÊı time_tpye 0=¼ä¸ôÊ±¼ä  1=µ¥´ÎÔËĞĞÊ±¼ä
+//å°†æ—¶é—´é—´éš”æ¡£ä½è½¬æ¢ä¸ºç§’æ•° time_tpye 0=é—´éš”æ—¶é—´  1=å•æ¬¡è¿è¡Œæ—¶é—´
 uint32_t Get_Interval_Run_Sec(DEV_TYPE dev_type, uint8_t time_tpye, uint16_t th)
 {
 
     uint32_t ts = 0UL;
     if (dev_type < Type_OutWind || dev_type > Type_LOCK)
-        return 0; //Éè±¸ÀàĞÍ´íÎó
+        return 0; //è®¾å¤‡ç±»å‹é”™è¯¯
     switch (dev_type)
     {
     case Type_OutWind:
@@ -688,7 +688,7 @@ static uint8_t T5lStcAcknowledgedRunState(uint16_t addr)
     }
 }
 
-//Ó¦´ğ³É¹¦»Øµ÷
+//åº”ç­”æˆåŠŸå›è°ƒ
 void T5l_Stc_UartRxProcess(uint16_t addr)
 {
     uint16_t tmp;
@@ -697,7 +697,7 @@ void T5l_Stc_UartRxProcess(uint16_t addr)
     if (addr >= 6100 && addr <= 0x61FF)
     {
         G_Queue.sta = STATE_WAIT_ACK_SUCCESS;
-        write_dgus_vp(0x535A, "\x00\x01", 1); //Éè¶¨³É¹¦
+        write_dgus_vp(0x535A, "\x00\x01", 1); //è®¾å®šæˆåŠŸ
         G_Queue.showsuccse_time_ms = 1000;
         run_state = T5lStcAcknowledgedRunState(addr);
         switch (addr)
@@ -883,7 +883,7 @@ void T5l_Stc_UartRxProcess(uint16_t addr)
     }
 }
 
-//×´Ì¬flashË«±¸·İ£¨Ô¤Áô£©
+//çŠ¶æ€flashåŒå¤‡ä»½ï¼ˆé¢„ç•™ï¼‰
 void Stc_FlashBackup(void)
 {
     // TODO
@@ -892,23 +892,23 @@ void Stc_FlashBackup(void)
 /*
 /*
 cmd
-0x6100	ÅÅ·çÉÈ_µµÎ»ÉèÖÃ
-0x6101	½ø·çÉÈ µµÎ»ÉèÖÃ
-0x6103	ÕÕÃ÷µÆ_µµÎ»ÉèÖÃ
-0x6104	ºìÍâµÆ_¿ª¹ØÉèÖÃ
-0x6105	UVC_¿ª¹ØÉèÖÃ
-0x6106	UVB_µµÎ»ÉèÖÃ
-0x6107	¼ÓÈÈÆ÷_¿ª¹ØÉèÖÃ
+0x6100	æ’é£æ‰‡_æ¡£ä½è®¾ç½®
+0x6101	è¿›é£æ‰‡ æ¡£ä½è®¾ç½®
+0x6103	ç…§æ˜ç¯_æ¡£ä½è®¾ç½®
+0x6104	çº¢å¤–ç¯_å¼€å…³è®¾ç½®
+0x6105	UVC_å¼€å…³è®¾ç½®
+0x6106	UVB_æ¡£ä½è®¾ç½®
+0x6107	åŠ çƒ­å™¨_å¼€å…³è®¾ç½®
 
-0x6109	¸ºÀë×Ó_¿ª¹ØÉèÖÃ
-0x610A	µÈÀë×Ó_¿ª¹ØÉèÖÃ
+0x6109	è´Ÿç¦»å­_å¼€å…³è®¾ç½®
+0x610A	ç­‰ç¦»å­_å¼€å…³è®¾ç½®
 
-0x610B	Îí»¯Æ÷_¿ª¹ØÉèÖÃ
-0x610C	Ëø_¿ª¹ØÉèÖÃ
+0x610B	é›¾åŒ–å™¨_å¼€å…³è®¾ç½®
+0x610C	é”_å¼€å…³è®¾ç½®
 
 run_sta:
--¶ÔÖ»ÓÃ¿ª¹ØµÄÉè±¸0=OFF£¬1=ON
--¶ÔÓĞµµÎ»µÄÉè±¸0=OFF£¬1~nµµÎ»
+-å¯¹åªç”¨å¼€å…³çš„è®¾å¤‡0=OFFï¼Œ1=ON
+-å¯¹æœ‰æ¡£ä½çš„è®¾å¤‡0=OFFï¼Œ1~næ¡£ä½
 */
 
 void Send_Cmd_Ctrl(uint16_t cmdword, uint8_t run_sta)
@@ -921,7 +921,7 @@ void Send_Cmd_Ctrl(uint16_t cmdword, uint8_t run_sta)
     cmdbuf[t_len++] = 0x5A;
     cmdbuf[t_len++] = 0xA5;
 
-    cmdbuf[t_len++] = 0x00; //³¤¶È
+    cmdbuf[t_len++] = 0x00; //é•¿åº¦
     cmdbuf[t_len++] = 0x82;
 
     *(uint16_t *)&cmdbuf[t_len] = cmdword;
@@ -929,44 +929,44 @@ void Send_Cmd_Ctrl(uint16_t cmdword, uint8_t run_sta)
 
     if (run_sta)
     {
-        //´ò¿ª
+        //æ‰“å¼€
         cmdbuf[t_len++] = 0;
         cmdbuf[t_len++] = run_sta;
     }
     else
     {
-        //¹Ø±Õ
+        //å…³é—­
         cmdbuf[t_len++] = 0;
         cmdbuf[t_len++] = OFF;
     }
 
-    //Ğ£Ñé
+    //æ ¡éªŒ
     crc = crc_16((uint8_t *)&cmdbuf[3], t_len - 3);
     cmdbuf[t_len++] = (uint8_t)(crc & 0x00FF);
     cmdbuf[t_len++] = (uint8_t)(crc >> 8);
     // t_len += 2;
-    cmdbuf[2] = t_len - 3; // ³¤¶È
-    //Ìí¼Óµ½·¢ËÍ¶ÓÁĞ
+    cmdbuf[2] = t_len - 3; // é•¿åº¦
+    //æ·»åŠ åˆ°å‘é€é˜Ÿåˆ—
     Queue_Push(cmdbuf, t_len);
 }
 /**
- * @brief ¶ÓÁĞ³¬Ê±¼ì²éº¯Êı ·ÅÈë1ms¶¨Ê±Æ÷ÖĞ
- * @details ¸Ãº¯ÊıÓÃÓÚ¼ì²é¶ÓÁĞµÈ´ıÓ¦´ğµÄ×´Ì¬£¬²¢ÔÚµÈ´ı³¬Ê±ºó¸üĞÂ¶ÓÁĞ×´Ì¬
+ * @brief é˜Ÿåˆ—è¶…æ—¶æ£€æŸ¥å‡½æ•° æ”¾å…¥1mså®šæ—¶å™¨ä¸­
+ * @details è¯¥å‡½æ•°ç”¨äºæ£€æŸ¥é˜Ÿåˆ—ç­‰å¾…åº”ç­”çš„çŠ¶æ€ï¼Œå¹¶åœ¨ç­‰å¾…è¶…æ—¶åæ›´æ–°é˜Ÿåˆ—çŠ¶æ€
  */
 void Queue_Time_Check(void)
 {
-    // ¼ì²é¶ÓÁĞµ±Ç°×´Ì¬ÊÇ·ñÎªµÈ´ıÓ¦´ğ×´Ì¬
+    // æ£€æŸ¥é˜Ÿåˆ—å½“å‰çŠ¶æ€æ˜¯å¦ä¸ºç­‰å¾…åº”ç­”çŠ¶æ€
     if (G_Queue.sta == STATE_WAIT_ACK)
     {
-        // Èç¹û´æÔÚµÈ´ıÓ¦´ğµÄ¼ÆÊ±Æ÷
+        // å¦‚æœå­˜åœ¨ç­‰å¾…åº”ç­”çš„è®¡æ—¶å™¨
         if (G_Queue.wait_ack_time)
         {
-            // ¼ÆÊ±Æ÷µİ¼õ
+            // è®¡æ—¶å™¨é€’å‡
             G_Queue.wait_ack_time--;
-            // Èç¹û¼ÆÊ±Æ÷¼õµ½0£¬±íÊ¾Ó¦´ğ³¬Ê±
+            // å¦‚æœè®¡æ—¶å™¨å‡åˆ°0ï¼Œè¡¨ç¤ºåº”ç­”è¶…æ—¶
             if (G_Queue.wait_ack_time == 0)
             {
-                // ¸üĞÂ¶ÓÁĞ×´Ì¬ÎªµÈ´ıÓ¦´ğ³¬Ê±×´Ì¬
+                // æ›´æ–°é˜Ÿåˆ—çŠ¶æ€ä¸ºç­‰å¾…åº”ç­”è¶…æ—¶çŠ¶æ€
                 G_Queue.sta = STATE_WAIT_ACK_TIMEOUT;
             }
         }
@@ -991,30 +991,30 @@ void T5L_Stc_Poll(void)
     Dev_Aotu_Procese();
     key_scanf();
 }
-//ÏµÍ³ÅäÖÃ,´Ë·½Ê½ÅäÖÃµÄ²ÎÊı,ÊÇµôµç²»±£´æµÄ
-// is_beep:ÊÇ·ñ¿ªÆô´¥ÃşÆÁÌáÊ¾Òô
-// is_sleep:ÊÇ·ñ¿ªÆô´¥ÃşÆÁ×Ô¶¯´ı»úĞİÃßµÄ¹¦ÄÜ
+//ç³»ç»Ÿé…ç½®,æ­¤æ–¹å¼é…ç½®çš„å‚æ•°,æ˜¯æ‰ç”µä¸ä¿å­˜çš„
+// is_beep:æ˜¯å¦å¼€å¯è§¦æ‘¸å±æç¤ºéŸ³
+// is_sleep:æ˜¯å¦å¼€å¯è§¦æ‘¸å±è‡ªåŠ¨å¾…æœºä¼‘çœ çš„åŠŸèƒ½
 void sys_config(uint8_t is_beep, uint8_t is_sleep)
 {
 #define CONFIG_ADDR 0x80
     uint8_t config_cmd[4];
 
-    //ÏÈ°ÑÖ®Ç°µÄÉèÖÃÏÈ¶ÁÈ¡³öÀ´
+    //å…ˆæŠŠä¹‹å‰çš„è®¾ç½®å…ˆè¯»å–å‡ºæ¥
     read_dgus_vp(CONFIG_ADDR, config_cmd, 2);
 
-    //ÊÇ·ñ¿ªÆôÌáÊ¾Òô
+    //æ˜¯å¦å¼€å¯æç¤ºéŸ³
     if (is_beep)
         config_cmd[3] |= 0x08;
     else
         config_cmd[3] &= 0xf7;
-    //×Ô¶¯ĞİÃß¿ØÖÆ
+    //è‡ªåŠ¨ä¼‘çœ æ§åˆ¶
     if (is_sleep)
         config_cmd[3] |= 0x04;
     else
         config_cmd[3] &= 0xfb;
 
-    //ÔÙĞ´»ØÈ¥
-    config_cmd[0] = 0x5a; //Æô¶¯Ğ´²Ù×÷
+    //å†å†™å›å»
+    config_cmd[0] = 0x5a; //å¯åŠ¨å†™æ“ä½œ
     write_dgus_vp(CONFIG_ADDR, config_cmd, 2);
 }
 
@@ -1032,7 +1032,7 @@ void Exhaust_On()
     Send_Cmd_Ctrl(OUTWIND_CMDWORD, G_Device_Ctrl.Exhaust.target_speed);
 }
 
-//Õı³£¹Ø±Õauto_flag=0; ¶¨Ê±¼ä¸ô¹Ø±Õauto_flag=1;0¸üĞÂ¿ª¹Ø×´Ì¬  1²»¸üĞÂ¿ª¹Ø×´Ì¬
+//æ­£å¸¸å…³é—­auto_flag=0; å®šæ—¶é—´éš”å…³é—­auto_flag=1;0æ›´æ–°å¼€å…³çŠ¶æ€  1ä¸æ›´æ–°å¼€å…³çŠ¶æ€
 void Exhaust_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Exhaust.auto_vent_en = auto_flag;
@@ -1058,7 +1058,7 @@ void Humidifier_On()
     Send_Cmd_Ctrl(HUMIDIFIER_CMDWORD, 1);
 }
 
-//Õı³£¹Ø±Õauto_flag=0; ¶¨Ê±¼ä¸ô¹Ø±Õauto_flag=1;0¸üĞÂ¿ª¹Ø×´Ì¬  1²»¸üĞÂ¿ª¹Ø×´Ì¬
+//æ­£å¸¸å…³é—­auto_flag=0; å®šæ—¶é—´éš”å…³é—­auto_flag=1;0æ›´æ–°å¼€å…³çŠ¶æ€  1ä¸æ›´æ–°å¼€å…³çŠ¶æ€
 void Humidifier_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Humidifier.auto_mist_en = auto_flag;
@@ -1082,7 +1082,7 @@ void UVB_On(uint16_t target_brightness)
     Send_Cmd_Ctrl(UVB_CMDWORD, (uint8_t)target_brightness);
 }
 
-//Õı³£¹Ø±Õauto_flag=0; ¶¨Ê±¼ä¸ô¹Ø±Õauto_flag=1;0¸üĞÂ¿ª¹Ø×´Ì¬  1²»¸üĞÂ¿ª¹Ø×´Ì¬
+//æ­£å¸¸å…³é—­auto_flag=0; å®šæ—¶é—´éš”å…³é—­auto_flag=1;0æ›´æ–°å¼€å…³çŠ¶æ€  1ä¸æ›´æ–°å¼€å…³çŠ¶æ€
 void UVB_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.UVB.auto_UVB_en = auto_flag;
@@ -1104,7 +1104,7 @@ void UVC_Off()
     Send_Cmd_Ctrl(UVC_CMDWORD, 0);
 }
 
-//µ÷ÓÃ´Ëº¯ÊıÊ±ĞèÒªÏÈ°ÑÄ¿±êÖµ¸ºÖµ¸øG_Device_Ctrl.Heater.target_temp£¬²¢´«Èëtarget_tmp
+//è°ƒç”¨æ­¤å‡½æ•°æ—¶éœ€è¦å…ˆæŠŠç›®æ ‡å€¼è´Ÿå€¼ç»™G_Device_Ctrl.Heater.target_tempï¼Œå¹¶ä¼ å…¥target_tmp
 void Heater_On(int16_t target_tmp)
 {
     G_Device_Ctrl.Heater.target_temp = (uint16_t)target_tmp;
@@ -1112,7 +1112,7 @@ void Heater_On(int16_t target_tmp)
         T5L_STC_MAPPED_CLIMATE,
         T5L_STC_MAPPED_FIELD_ENABLED | T5L_STC_MAPPED_FIELD_SECONDARY,
         1U, (uint16_t)target_tmp, 0U);
-    //ÅĞ¶ÏÎÂ²î
+    //åˆ¤æ–­æ¸©å·®
     if ((G_Device_Ctrl.environment.temperature + 5) < target_tmp)
     {
         Send_Cmd_Ctrl(HEATER_CMDWORD, 1);
@@ -1125,7 +1125,7 @@ void Heater_On(int16_t target_tmp)
     }
 }
 
-//Õı³£¹Ø±Õauto_flag=0; ¶¨Ê±¼ä¸ô¹Ø±Õauto_flag=1;0¸üĞÂ¿ª¹Ø×´Ì¬  1²»¸üĞÂ¿ª¹Ø×´Ì¬
+//æ­£å¸¸å…³é—­auto_flag=0; å®šæ—¶é—´éš”å…³é—­auto_flag=1;0æ›´æ–°å¼€å…³çŠ¶æ€  1ä¸æ›´æ–°å¼€å…³çŠ¶æ€
 void Heater_Off(uint8_t auto_flag)
 {
     G_Device_Ctrl.Heater.aotu_heater_en = auto_flag;
@@ -1174,6 +1174,38 @@ void Light_Off()
     Send_Cmd_Ctrl(LIGHT_CMDWORD, (uint8_t)G_Device_Ctrl.Light.target_brightness);
 }
 
+void Anion_On(void)
+{
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_ANION,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  1U, 0U, 0U);
+    Send_Cmd_Ctrl(ANION_CMDWORD, 1U);
+}
+
+void Anion_Off(void)
+{
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_ANION,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
+    Send_Cmd_Ctrl(ANION_CMDWORD, 0U);
+}
+
+void Plasma_On(void)
+{
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_PLASMA,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  1U, 0U, 0U);
+    Send_Cmd_Ctrl(PLASMA_CMDWORD, 1U);
+}
+
+void Plasma_Off(void)
+{
+    (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_PLASMA,
+                                  T5L_STC_MAPPED_FIELD_ENABLED,
+                                  0U, 0U, 0U);
+    Send_Cmd_Ctrl(PLASMA_CMDWORD, 0U);
+}
+
 uint8_t check_passwd_format(uint8_t *u8buf)
 {
     uint8_t i;
@@ -1191,7 +1223,7 @@ uint8_t check_passwd_format(uint8_t *u8buf)
     }
     else
     {
-        write_dgus_vp(0x535A, "\x00\x02", 1); //ÊäÈë4Î»ÃÜÂë
+        write_dgus_vp(0x535A, "\x00\x02", 1); //è¾“å…¥4ä½å¯†ç 
         G_Queue.showsuccse_time_ms = 1500;
         return 0;
     }
@@ -1206,11 +1238,11 @@ uint8_t compare_passwd(uint8_t *buf)
     {
         if (0 == memcmp(buf, G_Device_Ctrl.Cfg.passwd, PASSWD_BTYELEN))
         {
-            return 1; //ÃÜÂëÕıÈ·
+            return 1; //å¯†ç æ­£ç¡®
         }
         else
         {
-            write_dgus_vp(0x535A, "\x00\x03", 1); //ÃÜÂë´íÎó
+            write_dgus_vp(0x535A, "\x00\x03", 1); //å¯†ç é”™è¯¯
             G_Queue.showsuccse_time_ms = 1500;
         }
     }
@@ -1242,7 +1274,7 @@ void key_scanf(void)
         {
 
         case 0x301:
-            //½øÈëÉèÖÃ-ÃÜÂë
+            //è¿›å…¥è®¾ç½®-å¯†ç 
             SwitchPageById(4);
         case 0x403:
             touch_ctrl(4);
@@ -1255,11 +1287,11 @@ void key_scanf(void)
             }
             break;
         case 0x1401:
-            //ËøÃÜÂë-È·ÈÏ
+            //é”å¯†ç -ç¡®è®¤
             break;
-            //===============================¼ÓÈÈstart================================//
-        case 0x500: //¼ÓÈÈ-¿ª¹Ø
-            //ĞèÒªÍ¬²½¼ì²âÎÂ¶ÈÊÇ·ñµ½´ïÄ¿±êÎÂ¶È
+            //===============================åŠ çƒ­start================================//
+        case 0x500: //åŠ çƒ­-å¼€å…³
+            //éœ€è¦åŒæ­¥æ£€æµ‹æ¸©åº¦æ˜¯å¦åˆ°è¾¾ç›®æ ‡æ¸©åº¦
             if (G_Device_Ctrl.Heater.enable == FALSE)
             {
                 read_dgus_vp(HEATER_VP + 1, (uint8_t *)&G_Device_Ctrl.Heater.target_temp, 1);
@@ -1270,19 +1302,19 @@ void key_scanf(void)
                 Heater_Off(0);
             }
             break;
-        case 0x601: //¼ÓÈÈ-È·¶¨
+        case 0x601: //åŠ çƒ­-ç¡®å®š
             read_dgus_vp(HEATER_VP + 1, (uint8_t *)&G_Device_Ctrl.Heater.target_temp, 1);
             Heater_On(G_Device_Ctrl.Heater.target_temp);
 
             break;
-        case 0x602: //¼ÓÈÈ-È¡Ïû
+        case 0x602: //åŠ çƒ­-å–æ¶ˆ
             write_dgus_vp(HEATER_VP + 1, (uint8_t *)&G_Device_Ctrl.Heater.set_temp, 1);
 
             break;
-            //===============================¼ÓÈÈend================================//
-            //===============================Îí»¯start================================//
-        case 0x501: //Îí»¯-¿ª¹Ø
-            //¶ÁÈ¡Ê±¼ä£¬ÉèÖÃ¶¨Ê±¼ä¸ô
+            //===============================åŠ çƒ­end================================//
+            //===============================é›¾åŒ–start================================//
+        case 0x501: //é›¾åŒ–-å¼€å…³
+            //è¯»å–æ—¶é—´ï¼Œè®¾ç½®å®šæ—¶é—´éš”
             if (G_Device_Ctrl.Humidifier.enable == 0)
             {
                 Humidifier_On();
@@ -1292,17 +1324,17 @@ void key_scanf(void)
                 Humidifier_Off(0);
             }
             break;
-        case 0x701: //Îí»¯-È·¶¨
+        case 0x701: //é›¾åŒ–-ç¡®å®š
             Humidifier_On();
             break;
-        case 0x702: //Îí»¯-È¡Ïû
+        case 0x702: //é›¾åŒ–-å–æ¶ˆ
             write_dgus_vp(MIST_VP + 1, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1);
             write_dgus_vp(MIST_VP + 2, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1);
             break;
-            //===============================Îí»¯end================================//
-            //===============================ÕÕÃ÷µÆstart================================//
-        case 0x502: //ÕÕÃ÷µÆ-¿ª¹Ø
-            //¶ÁÈ¡µµÎ»
+            //===============================é›¾åŒ–end================================//
+            //===============================ç…§æ˜ç¯start================================//
+        case 0x502: //ç…§æ˜ç¯-å¼€å…³
+            //è¯»å–æ¡£ä½
             if (G_Device_Ctrl.Light.enable == 0)
             {
                 read_dgus_vp(LIGHT_VP + 1, (uint8_t *)&tmp, 1);
@@ -1314,18 +1346,18 @@ void key_scanf(void)
                 Light_Off();
             }
             break;
-        case 0x801: //ÕÕÃ÷µÆ-È·¶¨
-            //Ö»Ö´ĞĞ´ò¿ª²Ù×÷
+        case 0x801: //ç…§æ˜ç¯-ç¡®å®š
+            //åªæ‰§è¡Œæ‰“å¼€æ“ä½œ
             read_dgus_vp(LIGHT_VP + 1, (uint8_t *)&G_Device_Ctrl.Light.target_brightness, 1);
             Light_On(G_Device_Ctrl.Light.target_brightness);
             break;
-        case 0x802: //ÕÕÃ÷µÆ-È¡Ïû
+        case 0x802: //ç…§æ˜ç¯-å–æ¶ˆ
             write_dgus_vp(LIGHT_VP + 1, (uint8_t *)&G_Device_Ctrl.Light.brightness, 1);
             break;
-            //===============================ÕÕÃ÷µÆend================================//
-            //===============================ÅÅ·çstart================================//
-        case 0x503: //ÅÅ·ç-¿ª¹Ø
-            //¶ÁÈ¡µµÎ»£¬ÉèÖÃ¶¨Ê±¼ä¸ô
+            //===============================ç…§æ˜ç¯end================================//
+            //===============================æ’é£start================================//
+        case 0x503: //æ’é£-å¼€å…³
+            //è¯»å–æ¡£ä½ï¼Œè®¾ç½®å®šæ—¶é—´éš”
             if (G_Device_Ctrl.Exhaust.enable == 0)
             {
                 Exhaust_On();
@@ -1335,29 +1367,32 @@ void key_scanf(void)
                 Exhaust_Off(0);
             }
             break;
-        case 0x901: //ÅÅ·ç-È·¶¨
-            //Ö»Ö´ĞĞ´ò¿ª²Ù×÷
+        case 0x901: //æ’é£-ç¡®å®š
+            //åªæ‰§è¡Œæ‰“å¼€æ“ä½œ
             Exhaust_On();
             break;
-        case 0x902: //ÅÅ·ç-È¡Ïû
+        case 0x902: //æ’é£-å–æ¶ˆ
             write_dgus_vp(OUTWIND_VP + 1, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1);
             write_dgus_vp(OUTWIND_VP + 2, (uint8_t *)&G_Device_Ctrl.Exhaust.interval_time_h, 1);
             break;
-            //===============================ÅÅ·çend================================//
-            //===============================¸ºÀë×Ó start================================//
+            //===============================æ’é£end================================//
+            //===============================è´Ÿç¦»å­ start================================//
 
-        case 0x504: //¸ºÀë×Ó¿ª¹Ø
-            tmp = (uint16_t)!G_Device_Ctrl.Anion.enable;
-            (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_ANION,
-                                          T5L_STC_MAPPED_FIELD_ENABLED,
-                                          tmp, 0U, 0U);
-            Send_Cmd_Ctrl(ANION_CMDWORD, (uint8_t)tmp);
+        case 0x504: //è´Ÿç¦»å­å¼€å…³
+            if(G_Device_Ctrl.Anion.enable == 0U)
+            {
+                Anion_On();
+            }
+            else
+            {
+                Anion_Off();
+            }
             break;
-            //===============================¸ºÀë×Ó end================================//
+            //===============================è´Ÿç¦»å­ end================================//
 
             //===============================UVB Start================================//
-        case 0x505: // UVB-¿ª¹Ø
-            //¶ÁÈ¡µµÎ»£¬ÉèÖÃ¶¨Ê±¼ä¸ô
+        case 0x505: // UVB-å¼€å…³
+            //è¯»å–æ¡£ä½ï¼Œè®¾ç½®å®šæ—¶é—´éš”
             if (G_Device_Ctrl.UVB.enable == FALSE)
             {
                 read_dgus_vp(UVB_VP + 1, (uint8_t *)&tmp, 1);
@@ -1368,26 +1403,29 @@ void key_scanf(void)
                 UVB_Off(0);
             }
             break;
-        case 0x1001: // UVB-È·¶¨
-            //Ö»Ö´ĞĞ´ò¿ª²Ù×÷
+        case 0x1001: // UVB-ç¡®å®š
+            //åªæ‰§è¡Œæ‰“å¼€æ“ä½œ
             read_dgus_vp(UVB_VP + 1, (uint8_t *)&tmp, 1);
             UVB_On(tmp);
             break;
-        case 0x1002: // UVB-È¡Ïû
+        case 0x1002: // UVB-å–æ¶ˆ
             write_dgus_vp(UVB_VP + 1, (uint8_t *)&G_Device_Ctrl.UVB.brightness, 1);
             write_dgus_vp(UVB_VP + 2, (uint8_t *)&G_Device_Ctrl.UVB.running_time_h, 1);
             break;
             //===============================UVB End================================//
-            //===============================µÈÀë×Ó start================================//
-        case 0x506: //µÈÀë×Ó¿ª¹Ø
-            tmp = (uint16_t)!G_Device_Ctrl.Plasma.enable;
-            (void)T5lStcSyncLocalMappedControl(T5L_STC_MAPPED_PLASMA,
-                                          T5L_STC_MAPPED_FIELD_ENABLED,
-                                          tmp, 0U, 0U);
-            Send_Cmd_Ctrl(PLASMA_CMDWORD, (uint8_t)tmp);
+            //===============================ç­‰ç¦»å­ start================================//
+        case 0x506: //ç­‰ç¦»å­å¼€å…³
+            if(G_Device_Ctrl.Plasma.enable == 0U)
+            {
+                Plasma_On();
+            }
+            else
+            {
+                Plasma_Off();
+            }
             break;
-            //===============================µÈÀë×Ó end================================//
-            //===============================×ÏÍâÏûÉ± start================================//
+            //===============================ç­‰ç¦»å­ end================================//
+            //===============================ç´«å¤–æ¶ˆæ€ start================================//
         case 0x1101:
             SwitchPageById(15);
         case 0x1503:
@@ -1395,17 +1433,17 @@ void key_scanf(void)
             touch_ctrl(5);
             break;
 
-        case 0x1201: //×ÏÍâÏûÉ±-È·ÈÏ
+        case 0x1201: //ç´«å¤–æ¶ˆæ€-ç¡®è®¤
             UVC_On();
             break;
-        case 0x1202: //×ÏÍâÏûÉ±-È¡Ïû
+        case 0x1202: //ç´«å¤–æ¶ˆæ€-å–æ¶ˆ
             write_dgus_vp(UVC_VP + 1, (uint8_t *)&G_Device_Ctrl.UVC.running_time_h, 1);
             break;
-        case 0x1301: //×ÏÍâÏûÉ±-ÖĞ¶Ï
+        case 0x1301: //ç´«å¤–æ¶ˆæ€-ä¸­æ–­
             UVC_Off();
             break;
-        case 0x1501: //×ÏÍâÏûÉ±-ÃÜÂëÈ·ÈÏ
-                     //ÃÜÂë±È¶Ô
+        case 0x1501: //ç´«å¤–æ¶ˆæ€-å¯†ç ç¡®è®¤
+                     //å¯†ç æ¯”å¯¹
             read_dgus_vp(0x5360, u8buf, 3);
             if (compare_passwd(u8buf))
             {
@@ -1413,26 +1451,26 @@ void key_scanf(void)
             }
 
             break;
-            //===============================×ÏÍâÏûÉ± end================================//
-            //===============================ÂËĞ¾ start================================//
+            //===============================ç´«å¤–æ¶ˆæ€ end================================//
+            //===============================æ»¤èŠ¯ start================================//
         case 0x508:
 
             SwitchPageById(34);
             break;
         case 0x3403:
-            //ÔİÊ±ºöÂÔ
+            //æš‚æ—¶å¿½ç•¥
 
             break;
         case 0x3404:
-            //Á¢¼´¸üĞÂ
+            //ç«‹å³æ›´æ–°
 
             break;
         case 0x3402:
-            //È¡Ïû
+            //å–æ¶ˆ
             write_dgus_vp(0x5349, (uint8_t *)&G_Device_Ctrl.Humidifier.filter_remind_month, 1);
             break;
         case 0x3401:
-            //ÂËĞ¾Éè¶¨
+            //æ»¤èŠ¯è®¾å®š
             read_dgus_vp(0x5349, (uint8_t *)&tmp, 1);
             if (G_Device_Ctrl.Humidifier.filter_remind_month != tmp)
             {
@@ -1440,8 +1478,8 @@ void key_scanf(void)
                 Start_Once_SaveData();
             }
             break;
-            //===============================ÂËĞ¾ end================================//
-        case 0x2101: // 21Ò³-È·ÈÏ
+            //===============================æ»¤èŠ¯ end================================//
+        case 0x2101: // 21é¡µ-ç¡®è®¤
             read_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1);
             if (G_Device_Ctrl.Cfg.temp_uint == 1)
             {
@@ -1455,10 +1493,10 @@ void key_scanf(void)
             }
             Flash_SaveData();
             break;
-        case 0x2102: // 21Ò³-È¡Ïû
+        case 0x2102: // 21é¡µ-å–æ¶ˆ
             write_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1);
             break;
-        case 0x2201: // 22Ò³-ÏÔÊ¾-È·ÈÏ
+        case 0x2201: // 22é¡µ-æ˜¾ç¤º-ç¡®è®¤
             read_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp, 2);
             u8buf[0] = (uint8_t)(tmp);
             u8buf[1] = (uint8_t)(tmp);
@@ -1469,24 +1507,24 @@ void key_scanf(void)
 
             Start_Once_SaveData();
             break;
-        case 0x2202: // 22Ò³-ÏÔÊ¾-È¡Ïû
+        case 0x2202: // 22é¡µ-æ˜¾ç¤º-å–æ¶ˆ
             read_dgus_vp(0x82, (uint8_t *)&u8buf, 1);
 
             G_Device_Ctrl.Cfg.ligth_value = u8buf[0];
             tmp = (uint16_t)G_Device_Ctrl.Cfg.ligth_value;
-            write_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp, 1); //ÕæÊµÁÁ¶È
+            write_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp, 1); //çœŸå®äº®åº¦
 
-            tmp = (((uint16_t)(tmp - 20) * 125) / 100);     //·¶Î§20-100
-            write_dgus_vp(LIGHT_VALUE, (uint8_t *)&tmp, 1); // 1.25±¶  20-0 60-50 100-100
+            tmp = (((uint16_t)(tmp - 20) * 125) / 100);     //èŒƒå›´20-100
+            write_dgus_vp(LIGHT_VALUE, (uint8_t *)&tmp, 1); // 1.25å€  20-0 60-50 100-100
 
             tmp = ((uint16_t)G_Device_Ctrl.Cfg.ligth_value - 20) * 4.5; // 0-50  75-180  100-360
-            write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp, 1);         //Ö¸Õë
+            write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp, 1);         //æŒ‡é’ˆ
 
             write_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&G_Device_Ctrl.Cfg.off_display_time_min, 1);
             write_dgus_vp(SCREEN_SAVESTA_VP, (uint8_t *)&G_Device_Ctrl.Cfg.screen_save, 1);
             break;
         case 0x2601:
-            //ÃÜÂëÉèÖÃÈ·ÈÏ
+            //å¯†ç è®¾ç½®ç¡®è®¤
             read_dgus_vp(0x5370, &u8buf[0], 18);
 
             if (check_passwd_format(&u8buf[0]))
@@ -1499,19 +1537,19 @@ void key_scanf(void)
                         {
                             if (0 == memcmp(&u8buf[6], &u8buf[12], 4))
                             {
-                                //ÃÜÂëÕıÈ·
+                                //å¯†ç æ­£ç¡®
                                 memcpy(G_Device_Ctrl.Cfg.passwd, &u8buf[6], 4);
                                 Start_Once_SaveData();
                             }
                             else
                             {
-                                write_dgus_vp(0x535A, "\x00\x03", 1); //ÃÜÂë´íÎó
+                                write_dgus_vp(0x535A, "\x00\x03", 1); //å¯†ç é”™è¯¯
                                 G_Queue.showsuccse_time_ms = 1500;
                             }
                         }
                         else
                         {
-                            write_dgus_vp(0x535A, "\x00\x03", 1); //ÃÜÂë´íÎó
+                            write_dgus_vp(0x535A, "\x00\x03", 1); //å¯†ç é”™è¯¯
                             G_Queue.showsuccse_time_ms = 1500;
                         }
                     }
@@ -1545,14 +1583,14 @@ void key_scanf(void)
         case 0x3002:
             write_dgus_vp(VOLUME_ADD_SUB_VP, (uint8_t *)&G_Device_Ctrl.Cfg.volume, 1);
             tmp = G_Device_Ctrl.Cfg.volume * 3.6;
-            write_dgus_vp(VOLUME_NEEDLE_VP, (uint8_t *)&tmp, 1); //Ö¸Õë
+            write_dgus_vp(VOLUME_NEEDLE_VP, (uint8_t *)&tmp, 1); //æŒ‡é’ˆ
             break;
         case 0x3101:
             break;
         case 0x3102:
             break;
         case 0x3201:
-            //ÓïÑÔ-È·ÈÏ
+            //è¯­è¨€-ç¡®è®¤
             read_dgus_vp(0x535B, (uint8_t *)&G_Device_Ctrl.Cfg.language, 1);
             Start_Once_SaveData();
             break;
@@ -1572,32 +1610,32 @@ void SysCfg_Init()
     Flash_DataInit();
     sys_config(1, 0);
 
-    //ÏµÍ³ÏÔÊ¾
+    //ç³»ç»Ÿæ˜¾ç¤º
     u8buf[0] = G_Device_Ctrl.Cfg.ligth_value;
     u8buf[1] = G_Device_Ctrl.Cfg.ligth_value;
-    write_dgus_vp(0x82, (uint8_t *)&u8buf, 1); //ÁÁ¶È
+    write_dgus_vp(0x82, (uint8_t *)&u8buf, 1); //äº®åº¦
 
     tmp = (uint16_t)G_Device_Ctrl.Cfg.ligth_value;
-    write_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp, 1); //ÕæÊµÁÁ¶È
+    write_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp, 1); //çœŸå®äº®åº¦
 
-    tmp2 = (((uint16_t)(tmp - 20) * 125) / 100);     //·¶Î§20-100
-    write_dgus_vp(LIGHT_VALUE, (uint8_t *)&tmp2, 1); // 1.25±¶  20-0 60-50 100-100
+    tmp2 = (((uint16_t)(tmp - 20) * 125) / 100);     //èŒƒå›´20-100
+    write_dgus_vp(LIGHT_VALUE, (uint8_t *)&tmp2, 1); // 1.25å€  20-0 60-50 100-100
 
     tmp2 = (tmp - 20) * 4.5;                             // 0-50  75-180  100-360
-    write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp2, 1); //Ö¸Õë
+    write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp2, 1); //æŒ‡é’ˆ
 
-    //Ï¢ÆÁorÆÁ±£
+    //æ¯å±orå±ä¿
     G_Device_Ctrl.Cfg.off_display_flag = (uint8_t)G_Device_Ctrl.Cfg.screen_save & 0x0F;
-    //¶ÁÈ¡Ê±¼ä
+    //è¯»å–æ—¶é—´
     read_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&G_Device_Ctrl.Cfg.off_display_time_min, 1);
     G_Device_Ctrl.Cfg.off_display_time_s = (G_Device_Ctrl.Cfg.off_display_time_min * 5 * 60);
 
-    //ÒôÁ¿
+    //éŸ³é‡
 
     SwitchPageById(3);
 }
 
-//ÅĞ¶ÏÆÁÄ»ÊÇ·ñ±»´¥Ãş
+//åˆ¤æ–­å±å¹•æ˜¯å¦è¢«è§¦æ‘¸
 #define SCREEN_TOUCH_ADDR 0x0016
 uint8_t screen_touch(void)
 {
@@ -1636,11 +1674,11 @@ void Sys_Cfg(void)
             G_Device_Ctrl.Cfg.off_display_flag &= 0X0F;
         }
     }
-    //¶ÁÈ¡ÏµÍ³ÁÁ¶È
-    //´¥ÃşÆÁ±³¹â´ı»úÉèÖÃ£º
-    // D3=¿ªÆôÁÁ¶È£¬0x00-0x64£»±³¹â´ı»ú¿ØÖÆ¹Ø±ÕÊ±£¬D3ÎªÈí¼şÁÁ¶Èµ÷½Ú½Ó¿Ú¡£
-    // D2=¹Ø±ÕÁÁ¶È0x00-0x64£»
-    // D1:0=¿ªÆôÊ±¼ä/10mS¡£
+    //è¯»å–ç³»ç»Ÿäº®åº¦
+    //è§¦æ‘¸å±èƒŒå…‰å¾…æœºè®¾ç½®ï¼š
+    // D3=å¼€å¯äº®åº¦ï¼Œ0x00-0x64ï¼›èƒŒå…‰å¾…æœºæ§åˆ¶å…³é—­æ—¶ï¼ŒD3ä¸ºè½¯ä»¶äº®åº¦è°ƒèŠ‚æ¥å£ã€‚
+    // D2=å…³é—­äº®åº¦0x00-0x64ï¼›
+    // D1:0=å¼€å¯æ—¶é—´/10mSã€‚
     read_dgus_vp(LIGHT_ADD_SUB_VP, (uint8_t *)&tmp1, 1);
     if (tmp1 != (uint16_t)G_Device_Ctrl.Cfg.ligth_value)
     {
@@ -1654,7 +1692,7 @@ void Sys_Cfg(void)
         // write_dgus_vp(0x82, (uint8_t *)&u8buf, 2);
 
         tmp2 = (tmp1 - 20) * 4.5;
-        write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp2, 1); //Ö¸Õë
+        write_dgus_vp(LIGHT_NEEDLE_VP, (uint8_t *)&tmp2, 1); //æŒ‡é’ˆ
     }
 
     // volume
@@ -1663,7 +1701,7 @@ void Sys_Cfg(void)
     {
         volume = tmp1;
         tmp2 = tmp1 * 3.6;
-        write_dgus_vp(VOLUME_NEEDLE_VP, (uint8_t *)&tmp2, 1); //Ö¸Õë
+        write_dgus_vp(VOLUME_NEEDLE_VP, (uint8_t *)&tmp2, 1); //æŒ‡é’ˆ
     }
     //
     if (G_Device_Ctrl.Cfg.off_display_flag == 0x11)
@@ -1700,7 +1738,7 @@ void Sys_Cfg(void)
     }
 }
 
-//·ÅÈëÃëÖĞ¶Ï
+//æ”¾å…¥ç§’ä¸­æ–­
 void Dev_Time_Check()
 {
     if (G_Device_Ctrl.Cfg.save_interval_times)
@@ -1708,7 +1746,7 @@ void Dev_Time_Check()
         G_Device_Ctrl.Cfg.save_interval_times--;
     }
 
-    //ÏÔÊ¾
+    //æ˜¾ç¤º
     if (G_Device_Ctrl.Cfg.off_display_time_s)
     {
         G_Device_Ctrl.Cfg.off_display_time_s--;
@@ -1716,11 +1754,11 @@ void Dev_Time_Check()
         {
             if ((G_Device_Ctrl.Cfg.off_display_flag & 0xF1) == 0x01)
             {
-                G_Device_Ctrl.Cfg.off_display_flag |= 0x11; //ÆÁ±£1
+                G_Device_Ctrl.Cfg.off_display_flag |= 0x11; //å±ä¿1
             }
             else if ((G_Device_Ctrl.Cfg.off_display_flag & 0xF1) == 0x21)
             {
-                G_Device_Ctrl.Cfg.off_display_flag |= 0x31; //ÆÁ±£2
+                G_Device_Ctrl.Cfg.off_display_flag |= 0x31; //å±ä¿2
             }
             else if ((G_Device_Ctrl.Cfg.off_display_flag & 0xF2) == 0x02)
             {
@@ -1927,14 +1965,14 @@ void STC_ReporData_Procese(uint32_t addr)
     }
     else
     {
-        //ÎÂ¶È GXHTC3_¹ÊÕÏÂë
+        //æ¸©åº¦ GXHTC3_æ•…éšœç 
         write_dgus_vp(0x5310, "\x00\x01", 1);
     }
     write_dgus_vp(0x5311, (uint8_t *)&G_Device_Ctrl.environment.temperature, 1);
 
     if (u16buf[6] != 0)
     {
-        //ÅÅ·çÉÈ_¹ÊÕÏÂë
+        //æ’é£æ‰‡_æ•…éšœç 
         write_dgus_vp(0x5328, "\x00\x01", 1);
     }
     else
@@ -1944,13 +1982,13 @@ void STC_ReporData_Procese(uint32_t addr)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  :uint16_t Calculate_CRC16_Flash(unsigned char *updata, unsigned char len)
- ¹¦ÄÜÃèÊö  : CRC-16Ğ£Ñé
- ËµÃ÷: ÔÚÍ¨ĞÅĞ­ÒéÖĞ£¬·¢ËÍ·½½« Ô­Ê¼Êı¾İ + Æä CRC Ğ£ÑéÂë Ò»Æğ´«Êä¡£½ÓÊÕ·½µ÷ÓÃ´Ëº¯Êı¼ÆËãÕû¸öÊı¾İ°ü(°üÀ¨Ğ£ÑéÂë²¿·Ö)µÄCRCÖµ£¬Èô½á¹ûÎª0£¬ÔòËµÃ÷Êı¾İÎŞ´«Êä´íÎó
- ÊäÈë²ÎÊı  : updata		Òª´¦ÀíµÄÊı¾İ
-            len	³¤¶È
-            mode  0ÓÃÓÚÑéËãCRC      1ÓÃÓÚÉú³ÉCRCÖµ£¬²¢¸´ÖÆµ½Êı×éÖĞ
- Êä³ö²ÎÊı  :
+ å‡½ æ•° å  :uint16_t Calculate_CRC16_Flash(unsigned char *updata, unsigned char len)
+ åŠŸèƒ½æè¿°  : CRC-16æ ¡éªŒ
+ è¯´æ˜: åœ¨é€šä¿¡åè®®ä¸­ï¼Œå‘é€æ–¹å°† åŸå§‹æ•°æ® + å…¶ CRC æ ¡éªŒç  ä¸€èµ·ä¼ è¾“ã€‚æ¥æ”¶æ–¹è°ƒç”¨æ­¤å‡½æ•°è®¡ç®—æ•´ä¸ªæ•°æ®åŒ…(åŒ…æ‹¬æ ¡éªŒç éƒ¨åˆ†)çš„CRCå€¼ï¼Œè‹¥ç»“æœä¸º0ï¼Œåˆ™è¯´æ˜æ•°æ®æ— ä¼ è¾“é”™è¯¯
+ è¾“å…¥å‚æ•°  : updata		è¦å¤„ç†çš„æ•°æ®
+            len	é•¿åº¦
+            mode  0ç”¨äºéªŒç®—CRC      1ç”¨äºç”ŸæˆCRCå€¼ï¼Œå¹¶å¤åˆ¶åˆ°æ•°ç»„ä¸­
+ è¾“å‡ºå‚æ•°  :
 *****************************************************************************/
 uint16_t Calculate_CRC16_Flash(unsigned char *updata, unsigned int len, unsigned char mode)
 {
@@ -1990,7 +2028,7 @@ void Flash_DataInit(void)
     memset(&G_Device_Ctrl, 0, 64);
     memset(&databuf, 0, 64);
 
-    //¶ÁÖ÷ÇøºÍ±¸·İÇø
+    //è¯»ä¸»åŒºå’Œå¤‡ä»½åŒº
     T5lNorFlashRW(flashREAD_FLAG, 0, MAIN_ADDR, MAIN_ADDR, (uint8_t *)&databuf, DATALEN / 2);
     T5lNorFlashRW(flashREAD_FLAG, 0, MAIN_ADDR, MAIN_ADDR, (uint8_t *)&backdatabuf, DATALEN / 2);
 
@@ -2012,21 +2050,21 @@ void Flash_DataInit(void)
         crc2 = 0;
     }
 
-    err_sta = 0; // Îª0Ê±,´ú±íÕı³£,ÎŞĞè¸üĞÂÊı¾İ
+    err_sta = 0; // ä¸º0æ—¶,ä»£è¡¨æ­£å¸¸,æ— éœ€æ›´æ–°æ•°æ®
 
     if (crc1 == 0 && crc2 == 0)
     {
         /*
-         * 1. ³ö³¡ÉèÖÃ
-         * 2. Á½·İ¶¼ÊÇ´íÎóµÄ,ĞèÒªÖ´ĞĞ³ö³§³õÊ¼»¯
+         * 1. å‡ºåœºè®¾ç½®
+         * 2. ä¸¤ä»½éƒ½æ˜¯é”™è¯¯çš„,éœ€è¦æ‰§è¡Œå‡ºå‚åˆå§‹åŒ–
          * */
         memset(&databuf, 0, DATALEN);
-        //ÅÅ·ç
+        //æ’é£
         databuf[0] = G_Device_Ctrl.Exhaust.speed = 2;
         databuf[1] = G_Device_Ctrl.Exhaust.interval_time_h = OutWind_TIMER_1H;
-        write_dgus_vp(0x5101, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //ÅÅ·ç
+        write_dgus_vp(0x5101, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //æ’é£
         write_dgus_vp(0x5102, (uint8_t *)&G_Device_Ctrl.Exhaust.interval_time_h, 1);
-        // write_dgus_vp(0x5328, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //ÅÅ·ç
+        // write_dgus_vp(0x5328, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //æ’é£
 
         // UVB
         databuf[2] = G_Device_Ctrl.UVB.brightness = 2;
@@ -2034,26 +2072,26 @@ void Flash_DataInit(void)
         write_dgus_vp(0x510D, (uint8_t *)&G_Device_Ctrl.UVB.brightness, 1); // UVB
         write_dgus_vp(0x510E, (uint8_t *)&G_Device_Ctrl.UVB.running_time_h, 1);
 
-        //Îí»¯
+        //é›¾åŒ–
         databuf[4] = G_Device_Ctrl.Humidifier.interval_time_h = MIST_INTERVAL_TIMER_2H;
         databuf[5] = G_Device_Ctrl.Humidifier.running_time_h = MIST_RUN_TIMER_1H;
-        write_dgus_vp(0x5111, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1); //Îí»¯
+        write_dgus_vp(0x5111, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1); //é›¾åŒ–
         write_dgus_vp(0x5112, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1);
-        //µÆ¹â
+        //ç¯å…‰
         databuf[6] = G_Device_Ctrl.Light.brightness = 2;
-        write_dgus_vp(0x5115, (uint8_t *)&G_Device_Ctrl.Light.brightness, 1); //µÆ¹â
+        write_dgus_vp(0x5115, (uint8_t *)&G_Device_Ctrl.Light.brightness, 1); //ç¯å…‰
 
-        //¼ÓÈÈ
+        //åŠ çƒ­
         databuf[7] = G_Device_Ctrl.Heater.set_temp = 26;
-        write_dgus_vp(0x5119, (uint8_t *)&G_Device_Ctrl.Heater.set_temp, 1); //¼ÓÈÈ
+        write_dgus_vp(0x5119, (uint8_t *)&G_Device_Ctrl.Heater.set_temp, 1); //åŠ çƒ­
 
         // UVC
         databuf[8] = G_Device_Ctrl.UVC.running_time_h = UVC_TIMER_15M;
         write_dgus_vp(0x5109, (uint8_t *)&G_Device_Ctrl.UVC.running_time_h, 1); // UVC
 
-        //ÎÂ¶Èµ¥Î»
+        //æ¸©åº¦å•ä½
         databuf[9] = G_Device_Ctrl.Cfg.temp_uint = 1;
-        write_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1); //ÎÂ¶Èµ¥Î»
+        write_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1); //æ¸©åº¦å•ä½
         if (G_Device_Ctrl.Cfg.temp_uint == 1)
         {
             tmp = (uint16_t)(45 << 8) | 0;
@@ -2064,31 +2102,31 @@ void Flash_DataInit(void)
             tmp = (uint16_t)(6 << 8) | 0;
             write_dgus_vp(0x5800 + 7, (uint8_t *)&tmp, 1);
         }
-        //ÆÁ±£&Ï¢ÆÁ
+        //å±ä¿&æ¯å±
         read_dgus_vp(0x82, u8buf, 1);
         databuf[10] = G_Device_Ctrl.Cfg.ligth_value = u8buf[0];
         databuf[11] = G_Device_Ctrl.Cfg.screen_save = 1;
         databuf[12] = G_Device_Ctrl.Cfg.off_display_time_min = 1;
-        write_dgus_vp(SCREEN_SAVESTA_VP, (uint8_t *)&databuf[11], 1); //ÆÁ±£&Ï¢ÆÁ
-        write_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&databuf[12], 1);     //ÆÁ±£&Ï¢ÆÁ
+        write_dgus_vp(SCREEN_SAVESTA_VP, (uint8_t *)&databuf[11], 1); //å±ä¿&æ¯å±
+        write_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&databuf[12], 1);     //å±ä¿&æ¯å±
 
-        //ÒôÁ¿
+        //éŸ³é‡
         databuf[13] = G_Device_Ctrl.Cfg.volume = 50;
         write_dgus_vp(VOLUME_ADD_SUB_VP, (uint8_t *)&databuf[13], 1); //
 
-        //½ø·ç
+        //è¿›é£
         databuf[14] = G_Device_Ctrl.Inlet_Fan.speed = 2;
         databuf[15] = 0;
 
-        //ÃÜÂë
+        //å¯†ç 
         memcpy(&G_Device_Ctrl.Cfg.passwd[0], PASSWD, 4);
         memcpy(&databuf[16], &G_Device_Ctrl.Cfg.passwd[0], 4);
 
-        //ÓïÑÔ
+        //è¯­è¨€
         databuf[18] = G_Device_Ctrl.Cfg.language = 1;
         write_dgus_vp(0x535B, (uint8_t *)&G_Device_Ctrl.Cfg.language, 1);
 
-        //ÂËĞ¾ÌáĞÑ
+        //æ»¤èŠ¯æé†’
         databuf[19] = G_Device_Ctrl.Humidifier.filter_remind_month = 2;
         set_filter_month();
         databuf[20] = G_Device_Ctrl.TargetDate.year;
@@ -2098,7 +2136,7 @@ void Flash_DataInit(void)
         databuf[22] =G_Device_Ctrl.Humidifier.filter_need_replace = 0;
 
         Calculate_CRC16_Flash((uint8_t *)&databuf, DATALEN - 2, 1);
-        // ¸´ÖÆµ½±¸·İ
+        // å¤åˆ¶åˆ°å¤‡ä»½
         T5lNorFlashRW(flashWRITE_FLAG, 0, BACK_ADDR, MAIN_ADDR, (uint8_t *)&databuf, DATALEN / 2);
         T5lNorFlashRW(flashWRITE_FLAG, 0, MAIN_ADDR, BACK_ADDR, (uint8_t *)&databuf, DATALEN / 2);
         err_sta = 4;
@@ -2106,12 +2144,12 @@ void Flash_DataInit(void)
     else if (crc1 == 1 || crc2 == 1)
     {
 
-        if (crc1 == 1 && crc2 == 0) // ½öÖ÷·İÕı³£
+        if (crc1 == 1 && crc2 == 0) // ä»…ä¸»ä»½æ­£å¸¸
         {
             T5lNorFlashRW(flashWRITE_FLAG, 0, BACK_ADDR, MAIN_ADDR, (uint8_t *)&databuf, DATALEN / 2);
             err_sta = 2;
         }
-        else if (crc1 == 0 && crc2 == 1) // ½ö±¸·İÕı³£
+        else if (crc1 == 0 && crc2 == 1) // ä»…å¤‡ä»½æ­£å¸¸
         {
             memcpy(&databuf, &backdatabuf, DATALEN);
             T5lNorFlashRW(flashWRITE_FLAG, 0, MAIN_ADDR, BACK_ADDR, (uint8_t *)&backdatabuf, DATALEN / 2);
@@ -2119,36 +2157,36 @@ void Flash_DataInit(void)
         }
         G_Device_Ctrl.Exhaust.speed = databuf[0];
         G_Device_Ctrl.Exhaust.interval_time_h = databuf[1];
-        write_dgus_vp(0x5101, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1);           //ÅÅ·ç
-        write_dgus_vp(0x5102, (uint8_t *)&G_Device_Ctrl.Exhaust.interval_time_h, 1); //ÅÅ·ç
-        // write_dgus_vp(0x5328, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //ÅÅ·ç
+        write_dgus_vp(0x5101, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1);           //æ’é£
+        write_dgus_vp(0x5102, (uint8_t *)&G_Device_Ctrl.Exhaust.interval_time_h, 1); //æ’é£
+        // write_dgus_vp(0x5328, (uint8_t *)&G_Device_Ctrl.Exhaust.speed, 1); //æ’é£
 
         G_Device_Ctrl.UVB.brightness = databuf[2];
         G_Device_Ctrl.UVB.running_time_h = databuf[3];
         write_dgus_vp(0x510D, (uint8_t *)&G_Device_Ctrl.UVB.brightness, 1); // UVB
         write_dgus_vp(0x510E, (uint8_t *)&G_Device_Ctrl.UVB.running_time_h, 1);
 
-        //Îí»¯
+        //é›¾åŒ–
         G_Device_Ctrl.Humidifier.interval_time_h = databuf[4];
         G_Device_Ctrl.Humidifier.running_time_h = databuf[5];
-        write_dgus_vp(0x5111, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1); //Îí»¯
+        write_dgus_vp(0x5111, (uint8_t *)&G_Device_Ctrl.Humidifier.interval_time_h, 1); //é›¾åŒ–
         write_dgus_vp(0x5112, (uint8_t *)&G_Device_Ctrl.Humidifier.running_time_h, 1);
-        //µÆ¹â
+        //ç¯å…‰
         G_Device_Ctrl.Light.brightness = databuf[6];
-        write_dgus_vp(0x5115, (uint8_t *)&G_Device_Ctrl.Light.brightness, 1); //µÆ¹â
-        // write_dgus_vp(0x5320,(uint8_t*)&G_Device_Ctrl.Light.brightness,1);//¸üĞÂµÆ¹â×´Ì¬Ò³Í¼±ê×´Ì¬
+        write_dgus_vp(0x5115, (uint8_t *)&G_Device_Ctrl.Light.brightness, 1); //ç¯å…‰
+        // write_dgus_vp(0x5320,(uint8_t*)&G_Device_Ctrl.Light.brightness,1);//æ›´æ–°ç¯å…‰çŠ¶æ€é¡µå›¾æ ‡çŠ¶æ€
 
-        //¼ÓÈÈ
+        //åŠ çƒ­
         G_Device_Ctrl.Heater.set_temp = databuf[7];
-        write_dgus_vp(0x5119, (uint8_t *)&G_Device_Ctrl.Heater.set_temp, 1); //¼ÓÈÈ
+        write_dgus_vp(0x5119, (uint8_t *)&G_Device_Ctrl.Heater.set_temp, 1); //åŠ çƒ­
 
         // UVC
         G_Device_Ctrl.UVC.running_time_h = databuf[8];
         write_dgus_vp(0x5109, (uint8_t *)&G_Device_Ctrl.UVC.running_time_h, 1); // UVC
 
-        //ÎÂ¶Èµ¥Î»
+        //æ¸©åº¦å•ä½
         G_Device_Ctrl.Cfg.temp_uint = databuf[9];
-        write_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1); //ÎÂ¶Èµ¥Î»
+        write_dgus_vp(0x5126, (uint8_t *)&G_Device_Ctrl.Cfg.temp_uint, 1); //æ¸©åº¦å•ä½
 
         if (G_Device_Ctrl.Cfg.temp_uint == 1)
         {
@@ -2161,27 +2199,27 @@ void Flash_DataInit(void)
             write_dgus_vp(0x5800 + 7, (uint8_t *)&tmp, 1);
         }
 
-        //ÆÁ±£&Ï¢ÆÁ
+        //å±ä¿&æ¯å±
         G_Device_Ctrl.Cfg.ligth_value = databuf[10];
         G_Device_Ctrl.Cfg.screen_save = databuf[11];
         G_Device_Ctrl.Cfg.off_display_time_min = databuf[12];
-        write_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&G_Device_Ctrl.Cfg.off_display_time_min, 1); //ÆÁ±£&Ï¢ÆÁ
+        write_dgus_vp(SCREEN_MIN_VP, (uint8_t *)&G_Device_Ctrl.Cfg.off_display_time_min, 1); //å±ä¿&æ¯å±
         write_dgus_vp(SCREEN_SAVESTA_VP, (uint8_t *)&G_Device_Ctrl.Cfg.screen_save, 1);
-        //ÒôÁ¿
+        //éŸ³é‡
         G_Device_Ctrl.Cfg.volume = databuf[13];
-        write_dgus_vp(VOLUME_ADD_SUB_VP, (uint8_t *)&G_Device_Ctrl.Cfg.volume, 1); //ÆÁ±£&Ï¢ÆÁ
+        write_dgus_vp(VOLUME_ADD_SUB_VP, (uint8_t *)&G_Device_Ctrl.Cfg.volume, 1); //å±ä¿&æ¯å±
 
-        //½ø·ç
+        //è¿›é£
         G_Device_Ctrl.Inlet_Fan.speed = databuf[14];
 
-        //ÃÜÂë
+        //å¯†ç 
         memcpy(&G_Device_Ctrl.Cfg.passwd[0], &databuf[16], 4);
 
-        //ÓïÑÔ
+        //è¯­è¨€
         G_Device_Ctrl.Cfg.language = databuf[18];
         write_dgus_vp(0x535B, (uint8_t *)&G_Device_Ctrl.Cfg.language, 1);
 
-        //ÂËĞ¾ÌáĞÑ
+        //æ»¤èŠ¯æé†’
         G_Device_Ctrl.Humidifier.filter_remind_month = databuf[19];
         G_Device_Ctrl.Humidifier.filter_need_replace = databuf[22];
 
@@ -2208,7 +2246,7 @@ void Flash_SaveData()
         return;
     G_Device_Ctrl.Cfg.save_flag = 0;
     memset(&databuf, 0, DATALEN);
-    //ÅÅ·ç
+    //æ’é£
     databuf[0] = G_Device_Ctrl.Exhaust.speed;
     databuf[1] = G_Device_Ctrl.Exhaust.interval_time_h;
 
@@ -2216,44 +2254,44 @@ void Flash_SaveData()
     databuf[2] = G_Device_Ctrl.UVB.brightness;
     databuf[3] = G_Device_Ctrl.UVB.running_time_h;
 
-    //Îí»¯
+    //é›¾åŒ–
     databuf[4] = G_Device_Ctrl.Humidifier.interval_time_h;
     databuf[5] = G_Device_Ctrl.Humidifier.running_time_h;
 
-    //µÆ¹â
+    //ç¯å…‰
     databuf[6] = G_Device_Ctrl.Light.brightness;
 
-    //¼ÓÈÈ
+    //åŠ çƒ­
     databuf[7] = G_Device_Ctrl.Heater.set_temp;
 
     // UVC
     databuf[8] = G_Device_Ctrl.UVC.running_time_h;
 
-    //ÎÂ¶Èµ¥Î»
+    //æ¸©åº¦å•ä½
     databuf[9] = G_Device_Ctrl.Cfg.temp_uint;
 
-    //ÆÁ±£&Ï¢ÆÁ
+    //å±ä¿&æ¯å±
     databuf[10] = (uint16_t)G_Device_Ctrl.Cfg.ligth_value;
     databuf[11] = G_Device_Ctrl.Cfg.screen_save;
     databuf[12] = G_Device_Ctrl.Cfg.off_display_time_min;
 
-    //ÒôÁ¿
+    //éŸ³é‡
     databuf[13] = G_Device_Ctrl.Cfg.volume;
 
-    //½ø·ç
+    //è¿›é£
     databuf[14] = G_Device_Ctrl.Inlet_Fan.speed;
 
-    //ÃÜÂë
+    //å¯†ç 
     memcpy(&databuf[16], &G_Device_Ctrl.Cfg.passwd[0], 4);
 
-    //ÓïÑÔ
+    //è¯­è¨€
     databuf[18] = G_Device_Ctrl.Cfg.language;
 
-    //ÂËĞ¾ÌáĞÑ
+    //æ»¤èŠ¯æé†’
     databuf[19] = G_Device_Ctrl.Humidifier.filter_remind_month;
     databuf[20] = G_Device_Ctrl.TargetDate.year;
     databuf[21] = ((uint16_t)G_Device_Ctrl.TargetDate.month << 8) | G_Device_Ctrl.TargetDate.day;
-    databuf[22] = G_Device_Ctrl.Humidifier.filter_need_replace; //ÂËĞ¾ÊÇ·ñĞèÒª¸ü»»
+    databuf[22] = G_Device_Ctrl.Humidifier.filter_need_replace; //æ»¤èŠ¯æ˜¯å¦éœ€è¦æ›´æ¢
     Calculate_CRC16_Flash((uint8_t *)&databuf, DATALEN - 2, 1);
     T5lNorFlashRW(flashWRITE_FLAG, 0, BACK_ADDR, MAIN_ADDR, (uint8_t *)&databuf, DATALEN / 2);
     T5lNorFlashRW(flashWRITE_FLAG, 0, MAIN_ADDR, BACK_ADDR, (uint8_t *)&databuf, DATALEN / 2);
@@ -2350,13 +2388,13 @@ void Updata_Vpdata_To_Report()
     write_dgus_vp(0x3010, (uint8_t *)&databuf[0], 55);
 }
 
-// ÅĞ¶ÏÊÇ·ñÎªÈòÄê
+// åˆ¤æ–­æ˜¯å¦ä¸ºé—°å¹´
 bit isLeapYear(unsigned short year)
 {
     return ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
 }
 
-// »ñÈ¡Ä³ÄêÄ³ÔÂµÄÌìÊı
+// è·å–æŸå¹´æŸæœˆçš„å¤©æ•°
 unsigned char getDaysInMonth(unsigned int year, unsigned char month)
 {
     unsigned char days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -2367,7 +2405,7 @@ unsigned char getDaysInMonth(unsigned int year, unsigned char month)
     return days[month - 1];
 }
 
-// ¼ÆËãµ±Ç°ÈÕÆÚ¼ÓÉÏÖ¸¶¨ÔÂÊıºóµÄÈÕÆÚ
+// è®¡ç®—å½“å‰æ—¥æœŸåŠ ä¸ŠæŒ‡å®šæœˆæ•°åçš„æ—¥æœŸ
 TDate addMonths(TDate t, unsigned char monthsToAdd)
 {
     unsigned char maxDay ;
@@ -2378,7 +2416,7 @@ TDate addMonths(TDate t, unsigned char monthsToAdd)
     t.year += yearsToAdd;
     t.month = newMonth;
 
-    // »ñÈ¡Ä¿±êÔÂ·İµÄÌìÊı
+    // è·å–ç›®æ ‡æœˆä»½çš„å¤©æ•°
     maxDay = getDaysInMonth(t.year, t.month);
     if (t.day > maxDay)
     {

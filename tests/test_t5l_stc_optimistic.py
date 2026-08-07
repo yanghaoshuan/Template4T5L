@@ -11,7 +11,7 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.header = (REPO_ROOT / "modules/t5l_stc.h").read_text(encoding="utf-8")
-        cls.source = (REPO_ROOT / "modules/t5l_stc.c").read_text(encoding="gbk")
+        cls.source = (REPO_ROOT / "modules/t5l_stc.c").read_text(encoding="utf-8")
 
     def _function(self, signature: str, next_signature: str) -> str:
         start = self.source.index(signature)
@@ -129,16 +129,33 @@ class T5lStcOptimisticStateTests(unittest.TestCase):
                 self.assertIn(control, body)
                 self.assertLess(body.index("T5lStcSyncLocalMappedControl"), body.index("Send_Cmd_Ctrl"))
 
+    def test_anion_and_plasma_public_switches_are_shared_by_local_control(self) -> None:
+        for function_name in ("Anion_On", "Anion_Off", "Plasma_On", "Plasma_Off"):
+            self.assertIn(f"void {function_name}(void);", self.header)
+
+        functions = (
+            ("void Anion_On(void)", "void Anion_Off(void)",
+             "T5L_STC_MAPPED_ANION", "ANION_CMDWORD", "1U"),
+            ("void Anion_Off(void)", "void Plasma_On(void)",
+             "T5L_STC_MAPPED_ANION", "ANION_CMDWORD", "0U"),
+            ("void Plasma_On(void)", "void Plasma_Off(void)",
+             "T5L_STC_MAPPED_PLASMA", "PLASMA_CMDWORD", "1U"),
+            ("void Plasma_Off(void)", "uint8_t check_passwd_format",
+             "T5L_STC_MAPPED_PLASMA", "PLASMA_CMDWORD", "0U"),
+        )
+        for signature, next_signature, control, command, state in functions:
+            with self.subTest(signature=signature):
+                body = self._function(signature, next_signature)
+                self.assertIn(control, body)
+                sync = body.index("T5lStcSyncLocalMappedControl")
+                send = body.index(f"Send_Cmd_Ctrl({command}, {state})")
+                self.assertLess(sync, send)
+
         key_scan = self._function("void key_scanf", "void SysCfg_Init")
-        for control, command in (
-            ("T5L_STC_MAPPED_ANION", "ANION_CMDWORD"),
-            ("T5L_STC_MAPPED_PLASMA", "PLASMA_CMDWORD"),
-        ):
-            sync = key_scan.index(control)
-            send = key_scan.index(f"Send_Cmd_Ctrl({command}", sync)
-            self.assertLess(sync, send)
-        self.assertEqual(key_scan.count("T5lStcSyncLocalMappedControl"), 2)
-        self.assertNotIn("T5lStcSyncMappedControl", key_scan)
+        for call in ("Anion_On()", "Anion_Off()", "Plasma_On()", "Plasma_Off()"):
+            self.assertIn(call, key_scan)
+        self.assertNotIn("Send_Cmd_Ctrl(ANION_CMDWORD", key_scan)
+        self.assertNotIn("Send_Cmd_Ctrl(PLASMA_CMDWORD", key_scan)
 
     def test_humidifier_cancel_restores_fields_in_vp_order(self) -> None:
         key_scan = self._function("void key_scanf", "void SysCfg_Init")

@@ -511,6 +511,68 @@ uint8_t V851ControlInfoValidateSegment(uint8_t struct_type,
     }
 }
 
+static void V851ControlInfoApplySwitch(uint8_t struct_type,
+                                       uint16_t enabled,
+                                       const uint8_t *record)
+{
+    uint16_t setting;
+
+    if(record == NULL)
+    {
+        return;
+    }
+
+    switch(struct_type)
+    {
+        case V851_TLV_STRUCT_EXHAUST:
+            if(enabled != 0U) Exhaust_On();
+            else Exhaust_Off(0U);
+            break;
+
+        case V851_TLV_STRUCT_LIGHT:
+            setting = V851ControlInfoReadBe16(&record[2]);
+            if(enabled != 0U) Light_On(setting);
+            else Light_Off();
+            break;
+
+        case V851_TLV_STRUCT_UVB:
+            setting = V851ControlInfoReadBe16(&record[2]);
+            if(enabled != 0U) UVB_On(setting);
+            else UVB_Off(0U);
+            break;
+
+        case V851_TLV_STRUCT_ANION:
+            if(enabled != 0U) Anion_On();
+            else Anion_Off();
+            break;
+
+        case V851_TLV_STRUCT_PLASMA:
+            if(enabled != 0U) Plasma_On();
+            else Plasma_Off();
+            break;
+
+        case V851_TLV_STRUCT_CLIMATE:
+            setting = V851ControlInfoReadBe16(&record[2]);
+            if(enabled != 0U) Heater_On((int16_t)setting);
+            else Heater_Off(0U);
+            break;
+
+        case V851_TLV_STRUCT_HUMIDIFIER:
+            if(enabled != 0U) Humidifier_On();
+            else Humidifier_Off(0U);
+            break;
+
+        case V851_TLV_STRUCT_INLET_FAN:
+            setting = V851ControlInfoReadBe16(&record[2]);
+            if(enabled != 0U) InWind_On(setting);
+            else InWind_Off();
+            break;
+
+        default:
+            break;
+    }
+}
+
 uint8_t V851ControlInfoApplySegment(uint8_t struct_type,
                                     const uint8_t *field_bytes,
                                     uint16_t length)
@@ -580,6 +642,10 @@ uint8_t V851ControlInfoApplySegment(uint8_t struct_type,
         (void)T5lStcSyncMappedControl((T5lStcMappedControl)index,
                                       mapped_mask, enabled, secondary,
                                       tertiary);
+        if((mapped_mask & T5L_STC_MAPPED_FIELD_ENABLED) != 0U)
+        {
+            V851ControlInfoApplySwitch(struct_type, enabled, record);
+        }
     }
     return changed;
 }

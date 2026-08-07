@@ -94,7 +94,7 @@ class V851ActuatorFirmwareSourceTests(unittest.TestCase):
             encoding="utf-8"
         )
         cls.stc_h = (REPO_ROOT / "modules/t5l_stc.h").read_text(encoding="utf-8")
-        cls.stc = (REPO_ROOT / "modules/t5l_stc.c").read_text(encoding="gbk")
+        cls.stc = (REPO_ROOT / "modules/t5l_stc.c").read_text(encoding="utf-8")
 
     def test_capacity_mask_and_per_type_word_counts_cover_all_fields(self) -> None:
         for declaration in (

@@ -367,6 +367,10 @@ void UVB_On(uint16_t target_brightness);
 void UVB_Off(uint8_t auto_flag);
 void Humidifier_On();
 void Humidifier_Off(uint8_t auto_flag);
+void Anion_On(void);
+void Anion_Off(void);
+void Plasma_On(void);
+void Plasma_Off(void);
 void Mult_Task();
 
 #endif
