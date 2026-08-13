@@ -624,6 +624,7 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
             return;
         }
         write_dgus_vp(((uint32_t)frame[4] << 8) | frame[5], &frame[6], (frame[2] - 3) >> 1);
+        
         STC_ReporData_Procese(((uint32_t)frame[4] << 8) | frame[5]);
 
        
