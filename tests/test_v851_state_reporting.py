@@ -89,14 +89,19 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("v851_post_ota_success_remaining = (OtaCompleteFlag != 0U) ? 3U : 0U", self.protocol)
         self.assertIn("OtaAcknowledgeComplete();", self.protocol)
 
-    def test_bootstrap_cache_has_all_fields_and_no_dgus_writes(self) -> None:
+    def test_bootstrap_cache_writes_qr_to_planned_dgus_region(self) -> None:
         for name in ("device_sn", "ble_id", "api_endpoint", "bind_status", "qr_url"):
             self.assertIn(name, self.protocol_h)
             self.assertIn(f"v851_bootstrap_result.{name}", self.tlv_app)
         self.assertIn("const V851BootstrapResult *V851BootstrapResultGet(void)", self.tlv_app)
         self.assertIn("return NULL;", self.tlv_app)
         self.assertIn("V851BootstrapApplySegment(segment);", self.tlv_app)
-        self.assertNotIn("write_dgus_vp", self.tlv_app)
+        self.assertIn("V851_BOOTSTRAP_QR_VP_ADDR", self.tlv_app)
+        self.assertIn("0x5500U", self.tlv_app)
+        self.assertIn("V851_BOOTSTRAP_QR_VP_WORDS", self.tlv_app)
+        self.assertIn("64U", self.tlv_app)
+        self.assertIn("v851_bootstrap_qr_buffer", self.tlv_app)
+        self.assertIn("write_dgus_vp(V851_BOOTSTRAP_QR_VP_ADDR", self.tlv_app)
 
     def test_ota_reports_install_verify_reboot_and_failure(self) -> None:
         for stage in (

@@ -40,6 +40,9 @@ BOOTSTRAP_FIELD_LIMITS = {
     0x04: ("bind_status", 32),
     0x05: ("qr_url", 256),
 }
+BOOTSTRAP_QR_VP_ADDR = 0x5500
+BOOTSTRAP_QR_VP_WORDS = 64
+BOOTSTRAP_QR_BYTES = BOOTSTRAP_QR_VP_WORDS * 2
 
 WIFI_CMD_SCAN = 0xC0
 WIFI_CMD_CONNECT = 0xC1
@@ -278,6 +281,14 @@ def decode_bootstrap_result(frame: bytes) -> BootstrapResult:
     if result is None:
         raise ProtocolError("BootstrapResult segment is missing")
     return result
+
+
+def bootstrap_qr_vp_payload(result: BootstrapResult) -> bytes:
+    """Return the exact zero-padded bytes written to the DGUS QR VP."""
+    qr_url = result.qr_url.split(b"\x00", 1)[0]
+    if not qr_url or len(qr_url) >= BOOTSTRAP_QR_BYTES:
+        return bytes(BOOTSTRAP_QR_BYTES)
+    return qr_url.ljust(BOOTSTRAP_QR_BYTES, b"\x00")
 
 
 def encode_wifi_scan(page: int, count: int = 5) -> bytes:

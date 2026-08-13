@@ -4,8 +4,38 @@
 
 #include <string.h>
 
+#define V851_BOOTSTRAP_QR_VP_ADDR                0x5500U
+#define V851_BOOTSTRAP_QR_VP_WORDS               64U
+#define V851_BOOTSTRAP_QR_BYTES                  \
+    (V851_BOOTSTRAP_QR_VP_WORDS * 2U)
+
 static V851BootstrapResult xdata v851_bootstrap_result;
 static uint8_t v851_bootstrap_result_valid;
+static uint8_t xdata
+    v851_bootstrap_qr_buffer[V851_BOOTSTRAP_QR_BYTES];
+
+static void V851BootstrapWriteQr(void)
+{
+    uint16_t length;
+
+    memset(v851_bootstrap_qr_buffer, 0,
+           sizeof(v851_bootstrap_qr_buffer));
+    length = 0U;
+    while((length < sizeof(v851_bootstrap_qr_buffer)) &&
+          (v851_bootstrap_result.qr_url[length] != '\0'))
+    {
+        ++length;
+    }
+    if((length != 0U) &&
+       (length < sizeof(v851_bootstrap_qr_buffer)))
+    {
+        memcpy(v851_bootstrap_qr_buffer,
+               v851_bootstrap_result.qr_url, length);
+    }
+    write_dgus_vp(V851_BOOTSTRAP_QR_VP_ADDR,
+                  v851_bootstrap_qr_buffer,
+                  V851_BOOTSTRAP_QR_VP_WORDS);
+}
 
 static void V851BootstrapCopyString(char *destination,
                                     uint16_t capacity,
@@ -54,6 +84,7 @@ static void V851BootstrapApplySegment(const V851TlvSegment *segment)
         result = V851TlvFieldNext(&cursor, &field);
         if(result == V851_TLV_ITER_END)
         {
+            V851BootstrapWriteQr();
             v851_bootstrap_result_valid = 1U;
             return;
         }

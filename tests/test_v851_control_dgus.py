@@ -181,9 +181,11 @@ class V851ControlDgusTests(unittest.TestCase):
     def test_bootstrap_cache_revalidates_before_writing(self) -> None:
         validate = self.tlv_app.index("Validate again locally")
         clear = self.tlv_app.index("memset(&v851_bootstrap_result")
+        write = self.tlv_app.index("V851BootstrapWriteQr();", clear)
         valid = self.tlv_app.index("v851_bootstrap_result_valid = 1U")
         self.assertLess(validate, clear)
-        self.assertLess(clear, valid)
+        self.assertLess(clear, write)
+        self.assertLess(write, valid)
 
 
 if __name__ == "__main__":

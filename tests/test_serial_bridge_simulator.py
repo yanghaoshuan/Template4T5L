@@ -173,6 +173,30 @@ class TlvCodecTests(unittest.TestCase):
             cache.receive(bad)
         self.assertEqual(cache.get().ble_id, b"NEW")
 
+    def test_bootstrap_qr_vp_payload_boundaries(self) -> None:
+        self.assertEqual(sim.BOOTSTRAP_QR_VP_ADDR, 0x5500)
+        self.assertEqual(sim.BOOTSTRAP_QR_VP_WORDS, 64)
+
+        url = b"https://b.mcqx.pet?b=AVUU69"
+        payload = sim.bootstrap_qr_vp_payload(sim.BootstrapResult(qr_url=url))
+        self.assertEqual(len(payload), 128)
+        self.assertEqual(payload[: len(url)], url)
+        self.assertEqual(payload[len(url) :], bytes(128 - len(url)))
+
+        maximum = b"Q" * 127
+        self.assertEqual(
+            sim.bootstrap_qr_vp_payload(sim.BootstrapResult(qr_url=maximum)),
+            maximum + b"\x00",
+        )
+        for invalid in (b"", b"Q" * 128, b"Q" * 255):
+            with self.subTest(length=len(invalid)):
+                self.assertEqual(
+                    sim.bootstrap_qr_vp_payload(
+                        sim.BootstrapResult(qr_url=invalid)
+                    ),
+                    bytes(128),
+                )
+
 
 class WifiAndOtaTests(unittest.TestCase):
     def test_monitor_defaults_to_uart4_baudrate(self) -> None:
