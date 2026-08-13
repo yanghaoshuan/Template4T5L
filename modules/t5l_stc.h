@@ -8,6 +8,9 @@
 #define ON (1)
 #define OFF (0)
 
+
+
+
 #define LIGHT_ADD_SUB_VP 0x5350
 #define LIGHT_VALUE 0x5351
 #define LIGHT_NEEDLE_VP 0x5352
@@ -16,6 +19,12 @@
 #define SCREEN_MIN_VP 0x5356
 #define VOLUME_ADD_SUB_VP 0x5358
 #define VOLUME_NEEDLE_VP 0x5359
+
+
+#define PASWD26_VP1 0x5370
+#define PASWD26_VP2 0x5375
+#define PASWD26_VP3 0x537A
+
 
 // 每个设置暂用4个地址8字节   1地址:开关状态 2地址:运行状态 3地址:档位 4地址:间隔时长
 #define OUTWIND_VP (0x5100)
@@ -59,8 +68,11 @@ typedef enum
 } T5lStcMappedControl;
 
 #define DATALEN (64)
-#define MAIN_ADDR 0x4000
-#define BACK_ADDR 0x4800
+#define MAIN_ADDR 0x4000U
+#define BACK_ADDR 0x10000U
+
+#define MAIN_DATA_ADDR 0x4800U
+#define BACK_DATA_ADDR 0x10800U
 
 #define PASSWD "1234"
 #define PASSWD_BTYELEN 4
@@ -146,6 +158,7 @@ typedef struct
     uint8_t running_min;       // 单次自动通风时长 固定10分钟（参数固化，可保留配置位）
     uint32_t running_time_sec; // 定时时长（秒）
 
+    uint8_t err_sta;  //0正常  1堵转
     uint8_t auto_vent_en; //自动通风使能 0关闭  1开启
     uint8_t run_status;   // 1关闭运行 2开启运行
     uint8_t running;
@@ -164,6 +177,7 @@ typedef struct
     uint8_t run_status;     // 1关闭运行 2开启运行
     uint8_t auto_force_run; // 自动强制开启标志【重点】加热开启时置1，禁止手动关闭
     uint8_t running;
+    uint8_t err_sta;
 } St_InWind;
 
 // 加热模块
@@ -174,7 +188,7 @@ typedef struct
     uint16_t target_temp;           // 目标温度 20~35 ℃
     int16_t real_temp;          // 传感器实时温度
 
-
+    uint8_t err_sta;  //0正常  1传感器 或加热棒异常
     uint8_t aotu_heater_en;
     uint8_t run_status; // 1关闭运行 2开启运行
     uint8_t running;
@@ -190,14 +204,18 @@ typedef struct
     uint32_t running_time_s; // 单次运行时长s
     uint32_t interval_time_s;     // 循环间隔时长s
 
+    uint8_t err_sta;  //0正常  1传感器 或加热棒异常
     uint8_t auto_mist_en;       // 自动加湿使能
     uint8_t run_status;         // 运行状态  1待机 2运行
     uint8_t running;
-    uint8_t liquid_status;   // 液位状态
+    uint8_t liquid_status;   // 液位状态  0 = 有水，1 = 缺水，2 = 没水
 
-    uint16_t filter_remind_month;//滤芯更换月份
+    uint16_t hour;  //720/1440/2160
+    uint16_t sec;  
+    uint16_t filter_remind_month;//滤芯更换月份 1=1month  2=2month  3=3month
     uint8_t filter_life_percense;//滤芯
-    uint8_t filter_need_replace;//滤芯更换提醒
+    uint16_t filter_need_replace;//0无，1滤芯更换提醒
+    uint8_t save_time_flag;
 } St_Mist;
 
 // 照明模块
@@ -252,13 +270,13 @@ typedef struct
 typedef struct
 {
     uint8_t ligth_value;
-    uint8_t off_display_flag; //高4位=1进入屏保&息屏  低4位=1屏保  2息屏
+    uint8_t off_display_flag; //高4位=1 进入屏保&息屏    (低4位=1屏保  =2息屏 =3常亮不变)
     uint16_t off_display_time_min;
     uint16_t off_display_time_s;
 
     uint16_t temp_uint;   //温度单位 1=°C   2=°F
     uint16_t volume;      //音量
-    uint16_t screen_save; // 1屏保  2息屏
+    uint16_t screen_save; // 1屏保  2息屏 3无
     uint16_t language;
     uint8_t passwd[7];
     uint8_t save_flag;
@@ -291,6 +309,9 @@ typedef struct
     int16_t temperature;          // 舱内温度
     uint16_t humidity;            // 舱内湿度
     int16_t temperaturex10;          // 舱内温度
+
+    uint8_t  GXHTC3_err_sta;//传感器故障
+    uint8_t  NTC_err_sta;//传感器故障
 } St_Sensor;
 
 //==================== 全局联动标志（业务逻辑核心）====================
@@ -299,12 +320,7 @@ typedef struct
     uint8_t heater_priority;   // 加热优先级标志，加热开启=1，离子/等离子跟随加热进风策略
     uint8_t ion_plasma_enable; // 等离子/离子功能总开关（进风联动使用）
 } St_LinkFlag;
-// 定义日期结构体
-typedef struct {
-    unsigned short  year;   // 年份，如2026
-    unsigned char month; // 月份，1-12
-    unsigned char day;   // 日期，1-31
-} TDate;
+
 //==================== 整机总控制结构体 ====================
 typedef struct
 {
@@ -322,7 +338,7 @@ typedef struct
     St_Sensor environment;
     St_LinkFlag link_flag; // 模块联动控制标志位
     SYS_CONFIG Cfg;
-    TDate TargetDate;
+
 } DeviceCtrl;
 
 extern DeviceCtrl G_Device_Ctrl;
@@ -372,5 +388,5 @@ void Anion_Off(void);
 void Plasma_On(void);
 void Plasma_Off(void);
 void Mult_Task();
-
+void PageFunction(void);
 #endif
