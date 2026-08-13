@@ -21,6 +21,8 @@
 #define V851_STATE_SCAN_INTERVAL_MS               500UL
 #define V851_STATE_FULL_INTERVAL_MS               60000UL
 #define V851_POST_OTA_REPORT_INTERVAL_MS          1000UL
+/* Debug capture shares OTA cache B and may be overwritten during an OTA. */
+#define V851_BOOTSTRAP_DEBUG_VP_ADDR               0x7800U
 
 static uint8_t xdata v851_tlv_tx[V851_TLV_TX_DEPTH][V851_TLV_FRAME_MAX];
 static uint16_t v851_tlv_tx_len[V851_TLV_TX_DEPTH];
@@ -413,6 +415,27 @@ static uint8_t V851ProtocolValidateFields(const uint8_t *field_bytes,
     }
 }
 
+static void V851ProtocolWriteBootstrapDebugFrame(const uint8_t *frame,
+                                                  uint16_t len)
+{
+    uint16_t complete_words;
+    uint8_t tail[2];
+
+    complete_words = (uint16_t)(len / 2U);
+    if(complete_words != 0U)
+    {
+        write_dgus_vp(V851_BOOTSTRAP_DEBUG_VP_ADDR,
+                      (uint8_t *)frame, complete_words);
+    }
+    if((len & 1U) != 0U)
+    {
+        tail[0] = frame[len - 1U];
+        tail[1] = 0U;
+        write_dgus_vp(V851_BOOTSTRAP_DEBUG_VP_ADDR + complete_words,
+                      tail, 1U);
+    }
+}
+
 void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
 {
     V851TlvSegment segment;
@@ -434,10 +457,21 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
     /* V851 RX length includes the command byte: total = 4 + length. */
     if((declared_length !=
         (uint16_t)(len - V851_TLV_RX_LENGTH_BASE_SIZE)) ||
-       ((command != V851_TLV_CMD_PROPERTY) &&
-        (command != V851_TLV_CMD_FACTORY) &&
-        (command != V851_TLV_CMD_BOOTSTRAP_RESULT) &&
-        (command != V851_TLV_CMD_OTA_STATUS)))
+        ((command != V851_TLV_CMD_PROPERTY) &&
+         (command != V851_TLV_CMD_FACTORY) &&
+         (command != V851_TLV_CMD_BOOTSTRAP_RESULT) &&
+         (command != V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT) &&
+         (command != V851_TLV_CMD_OTA_STATUS)))
+    {
+        return;
+    }
+
+    if((command == V851_TLV_CMD_BOOTSTRAP_RESULT) ||
+       (command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT))
+    {
+        V851ProtocolWriteBootstrapDebugFrame(frame, len);
+    }
+    if(command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT)
     {
         return;
     }

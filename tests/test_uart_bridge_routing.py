@@ -60,6 +60,7 @@ class UartRoutingTests(unittest.TestCase):
             "V851_TLV_CMD_PROPERTY",
             "V851_TLV_CMD_FACTORY",
             "V851_TLV_CMD_BOOTSTRAP_RESULT",
+            "V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT",
             "V851_TLV_CMD_OTA_STATUS",
         ):
             self.assertIn(command, self.uart)

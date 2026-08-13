@@ -13,6 +13,8 @@
 #define V851_TLV_CMD_FACTORY                     0x36U
 #define V851_TLV_CMD_SNAPSHOT                    0x37U
 #define V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U
+/* Compatibility form observed with 0x6C in the command byte. */
+#define V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT     0x6CU
 /* Project-private OTA status command; synchronized with the V851 firmware. */
 #define V851_TLV_CMD_OTA_STATUS                  0x38U
 
