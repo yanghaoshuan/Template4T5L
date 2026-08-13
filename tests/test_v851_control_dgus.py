@@ -80,40 +80,21 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertLess(second_pass, apply)
         self.assertNotIn("V851ControlInfoApplySegment", self.protocol[first_pass:second_pass])
 
-    def test_command_37_or_6c_raw_frame_is_captured_at_7800(self) -> None:
-        self.assertIn("V851_BOOTSTRAP_DEBUG_VP_ADDR", self.protocol)
-        self.assertIn("0x7800U", self.protocol)
-        self.assertIn("V851_TLV_CMD_BOOTSTRAP_RESULT", self.protocol)
-        self.assertIn("V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT", self.protocol)
+    def test_command_6c_is_accepted_without_7800_debug_write(self) -> None:
         self.assertIn(
             "#define V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT     0x6CU",
             self.protocol_h,
         )
-
-        length_validated = self.protocol.index(
-            "command != V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT"
+        self.assertIn(
+            "command != V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT",
+            self.protocol,
         )
-        capture = self.protocol.index(
-            "V851ProtocolWriteBootstrapDebugFrame(frame, len);"
-        )
-        first_pass = self.protocol.index(
-            "First pass: reject the complete frame before any business write."
-        )
-        self.assertLess(length_validated, capture)
-        self.assertLess(capture, first_pass)
         self.assertIn(
             "if(command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT)",
             self.protocol,
         )
-        self.assertNotIn("bootstrap_segment_found", self.protocol)
-
-        helper = self.protocol[
-            self.protocol.index("static void V851ProtocolWriteBootstrapDebugFrame"):
-            self.protocol.index("void V851ProtocolReceiveFrame")
-        ]
-        self.assertIn("complete_words = (uint16_t)(len / 2U)", helper)
-        self.assertIn("tail[0] = frame[len - 1U]", helper)
-        self.assertIn("tail[1] = 0U", helper)
+        self.assertNotIn("V851ProtocolWriteBootstrapDebugFrame", self.protocol)
+        self.assertNotIn("V851_BOOTSTRAP_DEBUG_VP_ADDR", self.protocol)
 
     def test_remote_write_targets_command_and_optimistic_report_state(self) -> None:
         self.assertIn("uint8_t V851ControlInfoApplySegment", self.header)
