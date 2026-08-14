@@ -39,7 +39,87 @@ class TlvCodecTests(unittest.TestCase):
                 )
                 self.assertEqual(rebuilt, raw)
 
-    def test_multi_segment_length_excludes_command(self) -> None:
+    def test_default_factory_report_matches_document_vector(self) -> None:
+        expected = bytes.fromhex(
+            "AA 55 00 44 36 6A 00 40 "
+            "01 00 02 4A 50 "
+            "03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E "
+            "04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31 "
+            "05 00 07 48 57 2D 56 32 2E 30 "
+            "06 00 09 46 57 2D 56 31 2E 30 2E 30"
+        )
+        frame = sim.encode_factory_report()
+        self.assertEqual(frame, expected)
+        self.assertEqual(len(frame), 72)
+        self.assertEqual(len(frame), 4 + int.from_bytes(frame[2:4], "big"))
+
+    def test_all_documented_alarm_vectors(self) -> None:
+        vectors = {
+            ("TEMP_HIGH", "HIGH"): "AA 55 00 1F 38 6D 00 1B 01 00 01 01 02 00 09 54 45 4D 50 5F 48 49 47 48 03 00 04 48 49 47 48 04 00 01 00",
+            ("TEMP_LOW", "HIGH"): "AA 55 00 1E 38 6D 00 1A 01 00 01 01 02 00 08 54 45 4D 50 5F 4C 4F 57 03 00 04 48 49 47 48 04 00 01 00",
+            ("TEMP_SENSOR_FAULT", "HIGH"): "AA 55 00 27 38 6D 00 23 01 00 01 01 02 00 11 54 45 4D 50 5F 53 45 4E 53 4F 52 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("HEATER_FAULT", "HIGH"): "AA 55 00 22 38 6D 00 1E 01 00 01 01 02 00 0C 48 45 41 54 45 52 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("OVERHEAT_PROTECTION", "CRITICAL"): "AA 55 00 2D 38 6D 00 29 01 00 01 01 02 00 13 4F 56 45 52 48 45 41 54 5F 50 52 4F 54 45 43 54 49 4F 4E 03 00 08 43 52 49 54 49 43 41 4C 04 00 01 00",
+            ("LIQUID_LOW_WARNING", "MEDIUM"): "AA 55 00 2A 38 6D 00 26 01 00 01 01 02 00 12 4C 49 51 55 49 44 5F 4C 4F 57 5F 57 41 52 4E 49 4E 47 03 00 06 4D 45 44 49 55 4D 04 00 01 00",
+            ("LOW_LIQUID", "MEDIUM"): "AA 55 00 22 38 6D 00 1E 01 00 01 01 02 00 0A 4C 4F 57 5F 4C 49 51 55 49 44 03 00 06 4D 45 44 49 55 4D 04 00 01 00",
+            ("NEBULIZER_DRY_BURN", "HIGH"): "AA 55 00 28 38 6D 00 24 01 00 01 01 02 00 12 4E 45 42 55 4C 49 5A 45 52 5F 44 52 59 5F 42 55 52 4E 03 00 04 48 49 47 48 04 00 01 00",
+            ("WATER_LEVEL_SENSOR_FAULT", "HIGH"): "AA 55 00 2E 38 6D 00 2A 01 00 01 01 02 00 18 57 41 54 45 52 5F 4C 45 56 45 4C 5F 53 45 4E 53 4F 52 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("HUMIDITY_SENSOR_FAULT", "HIGH"): "AA 55 00 2B 38 6D 00 27 01 00 01 01 02 00 15 48 55 4D 49 44 49 54 59 5F 53 45 4E 53 4F 52 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("EXHAUST_FAN_FAULT", "HIGH"): "AA 55 00 27 38 6D 00 23 01 00 01 01 02 00 11 45 58 48 41 55 53 54 5F 46 41 4E 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("INLET_FAN_FAULT", "HIGH"): "AA 55 00 25 38 6D 00 21 01 00 01 01 02 00 0F 49 4E 4C 45 54 5F 46 41 4E 5F 46 41 55 4C 54 03 00 04 48 49 47 48 04 00 01 00",
+            ("FILTER_LIFE_EXHAUSTED", "MEDIUM"): "AA 55 00 2D 38 6D 00 29 01 00 01 01 02 00 15 46 49 4C 54 45 52 5F 4C 49 46 45 5F 45 58 48 41 55 53 54 45 44 03 00 06 4D 45 44 49 55 4D 04 00 01 00",
+        }
+        for (code, level), expected_hex in vectors.items():
+            with self.subTest(code=code):
+                self.assertEqual(
+                    sim.encode_event_alarm(code, level, False),
+                    bytes.fromhex(expected_hex),
+                )
+
+        recovery = sim.encode_event_alarm("TEMP_HIGH", "HIGH", True)
+        self.assertEqual(recovery[-1], 1)
+
+    def test_alarm_scan_trigger_recovery_change_and_busy_retry(self) -> None:
+        reporter = sim.AlarmReporterModel()
+        reporter.scan([0] * 10)
+        self.assertIsNone(reporter.next_report())
+
+        active = [0] * 10
+        active[1] = 1
+        reporter.scan(active)
+        self.assertIsNone(reporter.next_report(queue_available=False))
+        self.assertEqual(reporter.reported[1], 0)
+        first = reporter.next_report()
+        self.assertEqual(first[:3], (1, 1, False))
+        self.assertIsNone(reporter.next_report())
+
+        active[1] = 2
+        reporter.scan(active)
+        recovered = reporter.next_report()
+        replacement = reporter.next_report()
+        self.assertEqual(recovered[:3], (1, 1, True))
+        self.assertEqual(replacement[:3], (1, 2, False))
+
+        reporter.scan([0] * 10)
+        self.assertEqual(reporter.next_report()[:3], (1, 2, True))
+
+    def test_alarm_scan_skips_reserved_and_unknown_values(self) -> None:
+        reporter = sim.AlarmReporterModel()
+        values = [9] * 10
+        reporter.scan(values)
+        self.assertIsNone(reporter.next_report())
+
+    def test_alarm_scan_round_robins_multiple_addresses(self) -> None:
+        reporter = sim.AlarmReporterModel()
+        values = [0] * 10
+        values[1] = 3
+        values[2] = 5
+        values[4] = 1
+        reporter.scan(values)
+        reports = [reporter.next_report() for _ in range(3)]
+        self.assertEqual([item[0] for item in reports], [1, 2, 4])
+
+    def test_multi_segment_length_includes_command(self) -> None:
         power = bytes.fromhex(self.vectors["tlv_examples"][0]["hex"])
         door = bytes.fromhex(self.vectors["tlv_examples"][1]["hex"])
         power_segment = sim.decode_tlv_frame(power).segments[0]
@@ -51,8 +131,9 @@ class TlvCodecTests(unittest.TestCase):
                 (door_segment.struct_type, door_segment.fields),
             ],
         )
-        self.assertEqual(frame[2:4], b"\x00\x25")
+        self.assertEqual(frame[2:4], b"\x00\x26")
         self.assertEqual(len(frame), 42)
+        self.assertEqual(len(frame), 4 + int.from_bytes(frame[2:4], "big"))
         self.assertEqual(len(sim.decode_tlv_frame(frame).segments), 2)
 
     def test_snapshot_and_bootstrap_share_command_by_direction(self) -> None:
@@ -77,7 +158,7 @@ class TlvCodecTests(unittest.TestCase):
         field = sim.TlvField(0xFE, b"X" * 2037)
         frame = sim.encode_tlv_frame(0x35, [(0xEE, [field])])
         self.assertEqual(len(frame), 2048)
-        self.assertEqual(frame[2:4], b"\x07\xFB")
+        self.assertEqual(frame[2:4], b"\x07\xFC")
         self.assertEqual(sim.decode_tlv_frame(frame).segments[0].fields[0], field)
 
     def test_tlv_oversize_rejected(self) -> None:
@@ -113,7 +194,7 @@ class TlvCodecTests(unittest.TestCase):
         )
         raw = bytes.fromhex(vector["hex"])
         self.assertEqual(len(raw), 114)
-        self.assertEqual(raw[2:4], b"\x00\x6D")
+        self.assertEqual(raw[2:4], b"\x00\x6E")
         self.assertEqual(raw[6:8], b"\x00\x6A")
 
         cache = sim.BootstrapResultCache()
@@ -167,7 +248,7 @@ class TlvCodecTests(unittest.TestCase):
         malformed = bytes([0x61]) + len(malformed_payload).to_bytes(2, "big")
         malformed += malformed_payload
         segments = first + malformed
-        bad = b"\xAA\x55" + len(segments).to_bytes(2, "big")
+        bad = b"\xAA\x55" + (len(segments) + 1).to_bytes(2, "big")
         bad += bytes([sim.TLV_CMD_BOOTSTRAP_RESULT]) + segments
         with self.assertRaises(sim.ProtocolError):
             cache.receive(bad)
@@ -243,19 +324,20 @@ class WifiAndOtaTests(unittest.TestCase):
             int.from_bytes(corrupted[-2:], "little"),
         )
 
-    def test_private_ota_status_uses_38_6d(self) -> None:
-        frame = sim.encode_tlv_frame(
-            sim.TLV_CMD_OTA_STATUS,
-            [
-                (
-                    sim.TLV_STRUCT_OTA_STATUS,
-                    [sim.field_u8(0x01, 3), sim.field_u8(0x02, 100)],
-                )
-            ],
-        )
+    def test_event_alarm_uses_38_6d(self) -> None:
+        frame = sim.encode_event_alarm("FILTER_LIFE_EXHAUSTED", "MEDIUM", False)
         decoded = sim.decode_tlv_frame(frame)
         self.assertEqual(decoded.command, 0x38)
         self.assertEqual(decoded.segments[0].struct_type, 0x6D)
+        self.assertEqual(
+            decoded.segments[0].fields,
+            (
+                sim.field_u8(0x01, 1),
+                sim.field_text(0x02, "FILTER_LIFE_EXHAUSTED"),
+                sim.field_text(0x03, "MEDIUM"),
+                sim.field_u8(0x04, 0),
+            ),
+        )
 
 
 class StreamRecoveryTests(unittest.TestCase):
@@ -271,16 +353,13 @@ class StreamRecoveryTests(unittest.TestCase):
         self.assertEqual([frame.kind for frame in frames], ["tlv", "wifi", "ota"])
         self.assertEqual(decoder.dropped_bytes, 5)
 
-    def test_bootstrap_and_private_ota_status_are_stream_commands(self) -> None:
+    def test_bootstrap_and_event_alarm_are_stream_commands(self) -> None:
         bootstrap = sim.encode_tlv_frame(
             sim.TLV_CMD_BOOTSTRAP_RESULT,
             [(sim.TLV_STRUCT_BOOTSTRAP_RESULT, [sim.field_text(0x04, "BOUND")])],
         )
-        status = sim.encode_tlv_frame(
-            sim.TLV_CMD_OTA_STATUS,
-            [(sim.TLV_STRUCT_OTA_STATUS, [sim.field_u8(0x02, 100)])],
-        )
-        frames = sim.FrameStreamDecoder().feed(bootstrap + status)
+        alarm = sim.encode_event_alarm("TEMP_HIGH", "HIGH", False)
+        frames = sim.FrameStreamDecoder().feed(bootstrap + alarm)
         self.assertEqual([frame.command for frame in frames], [0x37, 0x38])
 
     def test_bad_bootstrap_then_valid_bootstrap_recovers(self) -> None:

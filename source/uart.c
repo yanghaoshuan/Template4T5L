@@ -858,8 +858,7 @@ void UartReadFrame(UART_TYPE *uart)
                     if((command == V851_TLV_CMD_PROPERTY) ||
                        (command == V851_TLV_CMD_FACTORY) ||
                        (command == V851_TLV_CMD_BOOTSTRAP_RESULT) ||
-                       (command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT) ||
-                       (command == V851_TLV_CMD_OTA_STATUS))
+                       (command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT))
                     {
                         /* V851 RX length includes the command byte. */
                         if((body_len < (V851_TLV_SEGMENT_HEADER_SIZE + 1U)) ||
@@ -897,8 +896,7 @@ void UartReadFrame(UART_TYPE *uart)
                     if((command == V851_TLV_CMD_PROPERTY) ||
                        (command == V851_TLV_CMD_FACTORY) ||
                        (command == V851_TLV_CMD_BOOTSTRAP_RESULT) ||
-                       (command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT) ||
-                       (command == V851_TLV_CMD_OTA_STATUS))
+                       (command == V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT))
                     {
                         V851ProtocolReceiveFrame(&frame[frame_offset],
                                                  one_frame_len);

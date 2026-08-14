@@ -32,7 +32,7 @@ class V851ActuatorWireMappingTests(unittest.TestCase):
         ]
         frame = sim.encode_snapshot(segments)
         expected = bytes.fromhex(
-            "AA 55 00 AB 37 "
+            "AA 55 00 AC 37 "
             "61 00 17 01 00 01 01 02 00 01 03 03 00 08 "
             "40 00 00 00 00 00 00 00 04 00 01 01 "
             "62 00 0C 01 00 01 01 02 00 01 02 03 00 01 01 "
@@ -142,7 +142,7 @@ class V851ActuatorFirmwareSourceTests(unittest.TestCase):
 
     def test_incremental_can_send_valid_subset_but_snapshot_is_atomic(self) -> None:
         queue_start = self.protocol.index("static uint16_t V851ProtocolQueueStateMask")
-        queue_end = self.protocol.index("void V851ProtocolNotifyOtaState", queue_start)
+        queue_end = self.protocol.index("void V851ProtocolRequestFactoryReport", queue_start)
         queue = self.protocol[queue_start:queue_end]
         self.assertIn("included_mask != requested_mask", queue)
         self.assertIn("command == V851_TLV_CMD_SNAPSHOT", queue)

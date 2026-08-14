@@ -179,6 +179,13 @@ extern uint32_t sysFCLK;
 #define blePB03F_UART_ID                 5      /**< 仅在重新启用PB-03F时选择UART */
 #define v851CONTROL_MOCK_ENABLED         0      /**< 旧JSON控制模拟器停用 */
 
+/* V851工厂设备信息，产品变更时可在此覆盖。 */
+#define v851FACTORY_SALES_COUNTRY        "CN"
+#define v851FACTORY_PRODUCT_KEY          "MCQX_PET_CABIN"
+#define v851FACTORY_MODEL                "MCQX-PET-CABIN-V1"
+#define v851FACTORY_HARDWARE_VERSION     "HW-V2.0"
+#define v851FACTORY_FIRMWARE_VERSION     "FW-V1.0.0"
+
 #if pb03fBLE_ENABLED && !v851PROTOCOL_ENABLED
 #error "PB-03F compatibility requires the V851 protocol module."
 #endif

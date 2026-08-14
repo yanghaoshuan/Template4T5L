@@ -22,6 +22,62 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <time.h>
+
+/* §53.4: 滤芯剩余寿命低提醒阈值(百分比), 降至该值触发 filter.life_low */
+#ifndef FILTER_LIFE_LOW_PERCENT
+#define FILTER_LIFE_LOW_PERCENT 20
+#endif
+
+/* §53 注意事项: device.faults 与 device.alarm 成对维护。
+ * 异常发生时更新 faults 并上报告警, 恢复时从 faults 移除并补发 recovered=true。 */
+
+/* 在 device.faults 中新增一条异常(按 code 去重, 已存在则仅更新发生时间) */
+static void device_fault_add(const char *code, FaultLevel level,
+                             const char *module, const char *source)
+{
+    DeviceFullState *st = &g_device_state;
+    int64_t now = (int64_t)time(NULL);
+
+    if (!code || !code[0]) return;
+    for (int i = 0; i < st->device.faults_count; i++) {
+        if (strcmp(st->device.faults[i].code, code) == 0) {
+            st->device.faults[i].occurred_at = now;
+            st->device.faults[i].cleared_at = 0;
+            return;
+        }
+    }
+    if (st->device.faults_count >= 50) return;   /* 上限 50 条 */
+
+    st->device.faults = (FaultEntry *)realloc(st->device.faults,
+                        (st->device.faults_count + 1) * sizeof(FaultEntry));
+    if (!st->device.faults) return;
+    FaultEntry *f = &st->device.faults[st->device.faults_count++];
+    memset(f, 0, sizeof(*f));
+    snprintf(f->code, sizeof(f->code), "%s", code);
+    f->level = level;
+    if (module) snprintf(f->module, sizeof(f->module), "%s", module);
+    if (source) snprintf(f->source, sizeof(f->source), "%s", source);
+    f->occurred_at = now;
+    f->cleared_at = 0;
+}
+
+/* 从 device.faults 移除一条异常, 返回 1=找到并移除, 0=不存在 */
+static int device_fault_remove(const char *code)
+{
+    DeviceFullState *st = &g_device_state;
+    if (!code || !code[0]) return 0;
+    for (int i = 0; i < st->device.faults_count; i++) {
+        if (strcmp(st->device.faults[i].code, code) == 0) {
+            /* 移除并前移后续元素 */
+            memmove(&st->device.faults[i], &st->device.faults[i + 1],
+                    (st->device.faults_count - i - 1) * sizeof(FaultEntry));
+            st->device.faults_count--;
+            return 1;
+        }
+    }
+    return 0;
+}
 
 /* ============================================================================
  * 结构体类型标签 (在 mqttssl_worker.h 中定义)
@@ -218,9 +274,17 @@ static void print_factory_device_tlv(const FactoryDeviceTlv *s)
                 s->model, s->hardware_version, s->firmware_version);
 }
 
+static void print_event_alarm_tlv(const EventAlarmTlv *s)
+{
+    printf_info("[TLV] EventAlarm: is_alarm=%d code=%s level=%s recovered=%d "
+                "payload=%s\n",
+                s->is_alarm, s->code, s->level, s->recovered,
+                s->payload[0] ? s->payload : "(null)");
+}
+
 /* ============================================================================
  * v2: TlvProcessor 查表 — 替代 19 路 switch-case
- * 每个 entry: { struct_type, unpack函数, print函数 }
+ * 每个 entry: { struct_type, unpack函数, print函数, handler }
  * 新增 struct_type 只需在此表中加一行
  * ============================================================================ */
 
@@ -246,6 +310,7 @@ typedef union {
     ActuatorInletFan   inlet_fan;
     ActuatorFilter     filter;
     FactoryDeviceTlv   factory_device;
+    EventAlarmTlv      event_alarm;
 } TlvStructUnion;
 
 /** TLV 处理器入口: 一个 struct_type 对应一个处理器 */
@@ -256,27 +321,309 @@ typedef struct {
     int    (*handler)(const void *src);  /* 业务处理回调, 可为 NULL */
 } TlvProcessor;
 
+/* ============================================================================
+ * Handler 函数: 将 TLV 解析结果同步到 g_device_state
+ * D5 屏通过 0x35 上报的执行器状态需要同步到 g_device_state，
+ * 确保 device.snapshot 上报时使用最新实际状态而非旧值。
+ * ============================================================================ */
+
+static int handle_actuator_exhaust_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.exhaust = u->exhaust;
+    return 0;
+}
+
+static int handle_actuator_light_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.light = u->light;
+    return 0;
+}
+
+static int handle_actuator_uvb_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.uvb = u->uvb;
+    return 0;
+}
+
+static int handle_actuator_anion_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.anion = u->anion;
+    return 0;
+}
+
+static int handle_actuator_plasma_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.plasma = u->plasma;
+    return 0;
+}
+
+static int handle_actuator_climate_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.climate = u->climate;
+    return 0;
+}
+
+static int handle_actuator_humidifier_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.humidifier = u->humidifier;
+    return 0;
+}
+
+static int handle_actuator_inlet_fan_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    g_device_state.actuators.inlet_fan = u->inlet_fan;
+    return 0;
+}
+
+static int handle_actuator_filter_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    /* 滤芯寿命耗尽告警 (§53): 记录上一次寿命, 用于边沿触发 */
+    static int s_prev_life = -1;
+    /* filter.life_low 事件(§53.4): 剩余寿命低提醒, 边沿触发只报一次 */
+    static int s_life_low_sent = 0;
+
+    g_device_state.actuators.filter = u->filter;
+
+    /* 剩余寿命低提醒: life_percent 降至阈值(如 20%) 以下触发一次, 更换(>阈值)后复位 */
+    if (u->filter.life_percent <= FILTER_LIFE_LOW_PERCENT) {
+        if (!s_life_low_sent) {
+            char payload[128];
+            snprintf(payload, sizeof(payload),
+                     "{\"life_percent\":%d,\"need_replace\":%d}",
+                     u->filter.life_percent, u->filter.need_replace);
+            event_report_queue("filter.life_low", "WARN", payload);
+            device_fault_add("FILTER_LIFE_LOW", FAULT_LEVEL_WARN,
+                             "FILTER", "DEVICE");
+            printf_info("[EVENT] event queued: filter.life_low (life %d%%)\n",
+                        u->filter.life_percent);
+            s_life_low_sent = 1;
+        }
+    } else {
+        if (s_life_low_sent) {
+            device_fault_remove("FILTER_LIFE_LOW");
+        }
+        s_life_low_sent = 0;   /* 更换/恢复后允许下次再提醒 */
+    }
+
+    /* 首次上报(s_prev_life==-1)不触发, 只记录基准 */
+    if (s_prev_life >= 0) {
+        /* 从 >0 降到 0 → 触发 FILTER_LIFE_EXHAUSTED 告警 */
+        if (s_prev_life > 0 && u->filter.life_percent <= 0) {
+            char payload[128];
+            snprintf(payload, sizeof(payload),
+                "{\"life_percent\":%d,\"need_replace\":%d}",
+                u->filter.life_percent, u->filter.need_replace);
+            alarm_report_queue("FILTER_LIFE_EXHAUSTED", "MEDIUM", 0, payload);
+            device_fault_add("FILTER_LIFE_EXHAUSTED", FAULT_LEVEL_WARN,
+                             "FILTER", "DEVICE");
+            printf_info("[EVENT] alarm queued: FILTER_LIFE_EXHAUSTED (life %d%% -> %d%%)\n",
+                        s_prev_life, u->filter.life_percent);
+        }
+        /* 从 0 恢复 >0 → 补发 recovered=true 恢复消息 */
+        else if (s_prev_life <= 0 && u->filter.life_percent > 0) {
+            alarm_report_queue("FILTER_LIFE_EXHAUSTED", "MEDIUM", 1, NULL);
+            device_fault_remove("FILTER_LIFE_EXHAUSTED");
+            printf_info("[EVENT] alarm recovered: FILTER_LIFE_EXHAUSTED (life %d%% -> %d%%)\n",
+                        s_prev_life, u->filter.life_percent);
+        }
+    }
+    s_prev_life = u->filter.life_percent;
+    return 0;
+}
+
+static int handle_door_state_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    /* 门状态事件 (§53): 记录上一次门状态, 用于边沿触发 */
+    static DoorStatus s_prev_door = DOOR_STATUS_UNKNOWN;
+
+    g_device_state.door = u->door;
+
+    /* 首次上报(s_prev_door==UNKNOWN)只记录基准, 不触发 */
+    if (s_prev_door != DOOR_STATUS_UNKNOWN && s_prev_door != u->door.door_status) {
+        if (u->door.door_status == DOOR_STATUS_OPEN) {
+            char payload[128];
+            snprintf(payload, sizeof(payload),
+                "{\"door_status\":\"OPEN\",\"lock_status\":\"%s\"}",
+                lock_status_to_str(u->door.lock_status));
+            event_report_queue("door_opened", "INFO", payload);
+            printf_info("[EVENT] event queued: door_opened\n");
+        } else if (u->door.door_status == DOOR_STATUS_CLOSED) {
+            char payload[128];
+            snprintf(payload, sizeof(payload),
+                "{\"door_status\":\"CLOSED\",\"lock_status\":\"%s\"}",
+                lock_status_to_str(u->door.lock_status));
+            event_report_queue("door_closed", "INFO", payload);
+            printf_info("[EVENT] event queued: door_closed\n");
+        }
+    }
+    s_prev_door = u->door.door_status;
+    return 0;
+}
+
+static int handle_environment_state_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+
+    g_device_state.environment = u->environment;
+
+    /* 温度告警 (§53.4 产品定稿阈值, 30s 持续防抖 + 滞回):
+     *   TEMP_HIGH: >35°C 持续30s 触发, 回落 ≤30°C 持续30s 恢复
+     *   TEMP_LOW : <13°C 持续30s 触发, 回升 ≥18°C 持续30s 恢复 */
+    {
+        static int s_temp_high_active = 0;
+        static int s_temp_low_active  = 0;
+        static time_t s_high_since = 0;   /* 温度进入触发/恢复区间的起始时刻 */
+        static time_t s_low_since  = 0;
+        static double s_last_temp = -1000.0;
+        const double temp = u->environment.temperature;
+        const time_t now = time(NULL);
+
+        /* 温度变化才刷新防抖计时 (每次 handler 都刷新会因上报频率导致 30s 永不满足) */
+        if (s_last_temp != temp) {
+            s_last_temp = temp;
+            s_high_since = now;
+            s_low_since  = now;
+        }
+
+        /* ---- TEMP_HIGH ---- */
+        if (s_temp_high_active) {
+            /* 已触发: 回落 ≤30°C 持续30s → 恢复 */
+            if (temp <= 30.0) {
+                if (s_high_since == 0) s_high_since = now;
+                if (now - s_high_since >= 30) {
+                    char payload[128];
+                    snprintf(payload, sizeof(payload),
+                             "{\"temperature\":%.1f,\"threshold\":30}",
+                             temp);
+                    alarm_report_queue("TEMP_HIGH", "HIGH", 1, payload);
+                    device_fault_remove("TEMP_HIGH");
+                    printf_info("[EVENT] alarm recovered: TEMP_HIGH (temp %.1f)\n", temp);
+                    s_temp_high_active = 0;
+                    s_high_since = 0;
+                }
+            } else {
+                s_high_since = 0;
+            }
+        } else {
+            /* 未触发: >35°C 持续30s → 触发 */
+            if (temp > 35.0) {
+                if (s_high_since == 0) s_high_since = now;
+                if (now - s_high_since >= 30) {
+                    char payload[128];
+                    snprintf(payload, sizeof(payload),
+                             "{\"temperature\":%.1f,\"threshold\":35}",
+                             temp);
+                    alarm_report_queue("TEMP_HIGH", "HIGH", 0, payload);
+                    device_fault_add("TEMP_HIGH", FAULT_LEVEL_ERROR,
+                                     "TEMPERATURE", "SENSOR");
+                    printf_info("[EVENT] alarm queued: TEMP_HIGH (temp %.1f)\n", temp);
+                    s_temp_high_active = 1;
+                    s_high_since = 0;
+                }
+            } else {
+                s_high_since = 0;
+            }
+        }
+
+        /* ---- TEMP_LOW ---- */
+        if (s_temp_low_active) {
+            /* 已触发: 回升 ≥18°C 持续30s → 恢复 */
+            if (temp >= 18.0) {
+                if (s_low_since == 0) s_low_since = now;
+                if (now - s_low_since >= 30) {
+                    char payload[128];
+                    snprintf(payload, sizeof(payload),
+                             "{\"temperature\":%.1f,\"threshold\":18}",
+                             temp);
+                    alarm_report_queue("TEMP_LOW", "HIGH", 1, payload);
+                    device_fault_remove("TEMP_LOW");
+                    printf_info("[EVENT] alarm recovered: TEMP_LOW (temp %.1f)\n", temp);
+                    s_temp_low_active = 0;
+                    s_low_since = 0;
+                }
+            } else {
+                s_low_since = 0;
+            }
+        } else {
+            /* 未触发: <13°C 持续30s → 触发 */
+            if (temp < 13.0) {
+                if (s_low_since == 0) s_low_since = now;
+                if (now - s_low_since >= 30) {
+                    char payload[128];
+                    snprintf(payload, sizeof(payload),
+                             "{\"temperature\":%.1f,\"threshold\":13}",
+                             temp);
+                    alarm_report_queue("TEMP_LOW", "HIGH", 0, payload);
+                    device_fault_add("TEMP_LOW", FAULT_LEVEL_ERROR,
+                                     "TEMPERATURE", "SENSOR");
+                    printf_info("[EVENT] alarm queued: TEMP_LOW (temp %.1f)\n", temp);
+                    s_temp_low_active = 1;
+                    s_low_since = 0;
+                }
+            } else {
+                s_low_since = 0;
+            }
+        }
+    }
+    return 0;
+}
+
+static int handle_event_alarm_tlv(const void *src)
+{
+    const TlvStructUnion *u = (const TlvStructUnion *)src;
+    const EventAlarmTlv *e = &u->event_alarm;
+
+    if (!e->code[0]) {
+        printf_info("[EVENT] 0x38 empty code, skip\n");
+        return -1;
+    }
+
+    if (e->is_alarm) {
+        alarm_report_queue(e->code, e->level, e->recovered,
+                           e->payload[0] ? e->payload : NULL);
+        printf_info("[EVENT] 0x38 alarm queued: code=%s level=%s recovered=%d\n",
+                    e->code, e->level, e->recovered);
+    } else {
+        event_report_queue(e->code, e->level,
+                           e->payload[0] ? e->payload : NULL);
+        printf_info("[EVENT] 0x38 event queued: code=%s level=%s\n",
+                    e->code, e->level);
+    }
+    return 0;
+}
+
 static const TlvProcessor g_tlv_processors[] = {
     { TLV_STRUCT_DEVICE,      (int(*)(void*,const uint8_t*,int))device_state_tlv_unpack,      (void(*)(const void*))print_device_state,      NULL },
     { TLV_STRUCT_NETWORK,     (int(*)(void*,const uint8_t*,int))network_state_tlv_unpack,     (void(*)(const void*))print_network_state,     NULL },
     { TLV_STRUCT_POWER,       (int(*)(void*,const uint8_t*,int))power_state_tlv_unpack,       (void(*)(const void*))print_power_state,       NULL },
-    { TLV_STRUCT_DOOR,        (int(*)(void*,const uint8_t*,int))door_state_tlv_unpack,        (void(*)(const void*))print_door_state,        NULL },
-    { TLV_STRUCT_ENVIRONMENT, (int(*)(void*,const uint8_t*,int))environment_state_tlv_unpack, (void(*)(const void*))print_environment_state, NULL },
+    { TLV_STRUCT_DOOR,        (int(*)(void*,const uint8_t*,int))door_state_tlv_unpack,        (void(*)(const void*))print_door_state,        (int(*)(const void*))handle_door_state_tlv },
+    { TLV_STRUCT_ENVIRONMENT, (int(*)(void*,const uint8_t*,int))environment_state_tlv_unpack, (void(*)(const void*))print_environment_state, (int(*)(const void*))handle_environment_state_tlv },
     { TLV_STRUCT_ACTUATOR,    (int(*)(void*,const uint8_t*,int))actuator_state_tlv_unpack,    (void(*)(const void*))print_actuator_state,    NULL },
     { TLV_STRUCT_CAMERA,      (int(*)(void*,const uint8_t*,int))camera_state_tlv_unpack,      (void(*)(const void*))print_camera_state,      NULL },
     { TLV_STRUCT_SETTINGS,    (int(*)(void*,const uint8_t*,int))settings_state_tlv_unpack,    (void(*)(const void*))print_settings_state,    NULL },
     { TLV_STRUCT_FIRMWARE,    (int(*)(void*,const uint8_t*,int))firmware_state_tlv_unpack,    (void(*)(const void*))print_firmware_state,    NULL },
     { TLV_STRUCT_STORAGE,     (int(*)(void*,const uint8_t*,int))storage_state_tlv_unpack,     (void(*)(const void*))print_storage_state,     NULL },
-    { TLV_STRUCT_EXHAUST,     (int(*)(void*,const uint8_t*,int))actuator_exhaust_tlv_unpack,  (void(*)(const void*))print_actuator_exhaust,  NULL },
-    { TLV_STRUCT_LIGHT,       (int(*)(void*,const uint8_t*,int))actuator_light_tlv_unpack,    (void(*)(const void*))print_actuator_light,    NULL },
-    { TLV_STRUCT_UVB,         (int(*)(void*,const uint8_t*,int))actuator_uvb_tlv_unpack,      (void(*)(const void*))print_actuator_uvb,      NULL },
-    { TLV_STRUCT_ANION,       (int(*)(void*,const uint8_t*,int))actuator_anion_tlv_unpack,    (void(*)(const void*))print_actuator_anion,    NULL },
-    { TLV_STRUCT_PLASMA,      (int(*)(void*,const uint8_t*,int))actuator_plasma_tlv_unpack,   (void(*)(const void*))print_actuator_plasma,   NULL },
-    { TLV_STRUCT_CLIMATE,     (int(*)(void*,const uint8_t*,int))actuator_climate_tlv_unpack,  (void(*)(const void*))print_actuator_climate,  NULL },
-    { TLV_STRUCT_HUMIDIFIER,  (int(*)(void*,const uint8_t*,int))actuator_humidifier_tlv_unpack,(void(*)(const void*))print_actuator_humidifier,NULL },
-    { TLV_STRUCT_INLET_FAN,   (int(*)(void*,const uint8_t*,int))actuator_inlet_fan_tlv_unpack,(void(*)(const void*))print_actuator_inlet_fan,NULL },
-    { TLV_STRUCT_FILTER,      (int(*)(void*,const uint8_t*,int))actuator_filter_tlv_unpack,   (void(*)(const void*))print_actuator_filter,   NULL },
+    { TLV_STRUCT_EXHAUST,     (int(*)(void*,const uint8_t*,int))actuator_exhaust_tlv_unpack,  (void(*)(const void*))print_actuator_exhaust,  (int(*)(const void*))handle_actuator_exhaust_tlv },
+    { TLV_STRUCT_LIGHT,       (int(*)(void*,const uint8_t*,int))actuator_light_tlv_unpack,    (void(*)(const void*))print_actuator_light,    (int(*)(const void*))handle_actuator_light_tlv },
+    { TLV_STRUCT_UVB,         (int(*)(void*,const uint8_t*,int))actuator_uvb_tlv_unpack,      (void(*)(const void*))print_actuator_uvb,      (int(*)(const void*))handle_actuator_uvb_tlv },
+    { TLV_STRUCT_ANION,       (int(*)(void*,const uint8_t*,int))actuator_anion_tlv_unpack,    (void(*)(const void*))print_actuator_anion,    (int(*)(const void*))handle_actuator_anion_tlv },
+    { TLV_STRUCT_PLASMA,      (int(*)(void*,const uint8_t*,int))actuator_plasma_tlv_unpack,   (void(*)(const void*))print_actuator_plasma,   (int(*)(const void*))handle_actuator_plasma_tlv },
+    { TLV_STRUCT_CLIMATE,     (int(*)(void*,const uint8_t*,int))actuator_climate_tlv_unpack,  (void(*)(const void*))print_actuator_climate,  (int(*)(const void*))handle_actuator_climate_tlv },
+    { TLV_STRUCT_HUMIDIFIER,  (int(*)(void*,const uint8_t*,int))actuator_humidifier_tlv_unpack,(void(*)(const void*))print_actuator_humidifier,(int(*)(const void*))handle_actuator_humidifier_tlv },
+    { TLV_STRUCT_INLET_FAN,   (int(*)(void*,const uint8_t*,int))actuator_inlet_fan_tlv_unpack,(void(*)(const void*))print_actuator_inlet_fan,(int(*)(const void*))handle_actuator_inlet_fan_tlv },
+    { TLV_STRUCT_FILTER,      (int(*)(void*,const uint8_t*,int))actuator_filter_tlv_unpack,   (void(*)(const void*))print_actuator_filter,   (int(*)(const void*))handle_actuator_filter_tlv },
     { TLV_STRUCT_FACTORY_DEVICE, (int(*)(void*,const uint8_t*,int))factory_device_tlv_unpack, (void(*)(const void*))print_factory_device_tlv, (int(*)(const void*))handle_factory_device_tlv },
+    { TLV_STRUCT_EVENT_ALARM,   (int(*)(void*,const uint8_t*,int))event_alarm_tlv_unpack,   (void(*)(const void*))print_event_alarm_tlv,   (int(*)(const void*))handle_event_alarm_tlv },
 };
 #define TLV_PROCESSOR_COUNT (sizeof(g_tlv_processors) / sizeof(g_tlv_processors[0]))
 
@@ -313,13 +660,13 @@ static int tlv_dispatch(uint8_t struct_type, const uint8_t *data, int data_len)
  *
  * 示例: 发送 PowerState (power_mode=1, battery=85%, charging=0)
  *   输入: struct_type=0x03, data_len=12, tlv_data=01 00 01 01 02 00 01 55 03 00 01 00
- *   输出: AA 55  00 0F  35  03  00 0C  01 00 01 01 02 00 01 55 03 00 01 00
+ *   输出: AA 55  00 10  35  03  00 0C  01 00 01 01 02 00 01 55 03 00 01 00
  *         │      │      │  │    │    └──────────────────────────────────┘
  *         │      │      │  │    │              TLV 数据 (12B)
  *         │      │      │  │    └─ seg_len = 0x000C = 12
  *         │      │      │  └─ struct_type = 0x03 = PowerState
  *         │      │      └─ 命令字 TLV_CMD_PROPERTY (0x35)
- *         │      └─ lenH|lenL = 0x000F = 15 (3+12)
+ *         │      └─ lenH|lenL = 0x0010 = 16 (1+3+12, 含cmd)
  *         └─ 帧头 AA 55
  * ============================================================================ */
 
@@ -327,10 +674,10 @@ int tlv_property_send(uint8_t struct_type, const uint8_t *tlv_data, int data_len
 {
     if (!tlv_data || data_len <= 0 || data_len > 65532) return -1;
 
-    /* 结构体段 = 1B type + 2B seg_len + data */
-    int seg_total = 3 + data_len;
-    /* 总长度 = 5B header + 结构体段 */
-    int total = 5 + seg_total;
+    /* len字段包含cmd: cmd(1) + struct_type(1) + seg_len(2) + data */
+    int seg_total = 4 + data_len;
+    /* 总长度 = AA 55 + len(2) + seg_total */
+    int total = 4 + seg_total;
     char *msg = (char *)malloc(total);
     if (!msg) return -1;
 
@@ -362,13 +709,13 @@ int tlv_property_send(uint8_t struct_type, const uint8_t *tlv_data, int data_len
  *         tlv_data[0]  = 01 00 01 01 02 00 01 55 03 00 01 00   (PowerState, 12B)
  *         tlv_data[1]  = 01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00 (DoorState, 19B)
  *         data_lens    = {12, 19}, count = 2
- *   输出: AA 55  00 25  35  03  00 0C  01 00 01 01 02 00 01 55 03 00 01 00  04  00 13  01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00
+ *   输出: AA 55  00 26  35  03  00 0C  01 00 01 01 02 00 01 55 03 00 01 00  04  00 13  01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00
  *         │      │      │  │    │    └──────────────────────────────────┘ │  │    └────────────────────────────────────────────────────────┘
  *         │      │      │  │    │              PowerState (12B)           │  │                   DoorState (19B)
  *         │      │      │  │    └─ seg_len = 0x000C = 12                  │  └─ seg_len = 0x0013 = 19
  *         │      │      │  └─ struct_type = 0x03 = PowerState             └─ struct_type = 0x04 = DoorState
  *         │      │      └─ 命令字 TLV_CMD_PROPERTY (0x35)
- *         │      └─ lenH|lenL = 0x0025 = 37 (3+12+3+19)
+ *         │      └─ lenH|lenL = 0x0026 = 38 (1+3+12+3+19, 含cmd)
  *         └─ 帧头 AA 55
  * ============================================================================ */
 
@@ -378,14 +725,14 @@ int tlv_property_send_multi(const uint8_t *struct_types,
 {
     if (!struct_types || !tlv_data || !data_lens || count <= 0) return -1;
 
-    /* 计算所有结构体段的总字节数 */
-    int seg_total = 0;
+    /* 计算所有结构体段的总字节数, len字段包含cmd */
+    int seg_total = 1;  /* cmd(1) */
     for (int i = 0; i < count; i++) {
         if (!tlv_data[i] || data_lens[i] <= 0 || data_lens[i] > 65532) return -1;
-        seg_total += 3 + data_lens[i];  /* 1B type + 2B seg_len + data */
+        seg_total += 3 + data_lens[i];  /* struct_type(1) + seg_len(2) + data */
     }
 
-    int total = 5 + seg_total;
+    int total = 4 + seg_total;  /* AA(1)+55(1)+len(2) + seg_total */
     char *msg = (char *)malloc(total);
     if (!msg) return -1;
 
@@ -424,16 +771,18 @@ int tlv_property_send_multi(const uint8_t *struct_types,
  * 分支处理:
  *   0x35 (TLV_CMD_PROPERTY):     多段循环解析, 查表分发各属性结构体
  *   0x36 (TLV_CMD_FACTORY_DEVICE): 单段直接解析, 仅处理 FactoryDeviceTlv
+ *   0x37 (TLV_CMD_SNAPSHOT):     多段循环解析 + 触发 MQTT device.snapshot
+ *   0x38 (TLV_CMD_EVENT_ALARM):  单段直接解析 EventAlarmTlv → device.event / device.alarm
  *
- * 解析示例 (0x35): 收到 AA 55 00 0F 35 03 00 0C 01 00 01 01 02 00 01 55 03 00 01 00
+ * 解析示例 (0x35): 收到 AA 55 00 10 35 03 00 0C 01 00 01 01 02 00 01 55 03 00 01 00
  *   recvdata[0..1] = AA 55  → 帧头 ✓
- *   recvdata[2..3] = 00 0F  → payload_len = 15
+ *   recvdata[2..3] = 00 10  → payload_len = 16 (含cmd)
  *   recvdata[4]    = 35     → cmd = TLV_CMD_PROPERTY → 多段循环解析
  *   recvdata[5]    = 03     → struct_type = 0x03 = PowerState (seg#0)
  *   recvdata[6..7] = 00 0C  → seg_len = 12
  *   recvdata[8..19]= TLV 数据 → tlv_dispatch(0x03, data, 12) → print_power_state
  *
- * 解析示例 (0x36): 收到 AA 55 00 43 36 6A 00 40 01 00 02 ...
+ * 解析示例 (0x36): 收到 AA 55 00 44 36 6A 00 40 01 00 02 ...
  *   recvdata[0..1] = AA 55  → 帧头 ✓
  *   recvdata[4]    = 36     → cmd = TLV_CMD_FACTORY_DEVICE → 单段直接解析
  *   recvdata[5]    = 6A     → struct_type = 0x6A (校验通过)
@@ -542,6 +891,42 @@ int process_tlv_worker_task(void)
 
             const uint8_t *tlv_data = payload + 3;
             printf_info("[TLV-FACTORY] struct_type=0x%02X data_len=%d\n",
+                        struct_type, seg_len);
+
+            tlv_dispatch(struct_type, tlv_data, seg_len);
+        }
+        /* ================================================================
+         * 0x38: 事件/告警上报指令 (TLV_CMD_EVENT_ALARM) — 单段直接解析
+         * D5/LCD 收到告警/事件后发此指令, V851 解析后入队并触发
+         * MQTT device.event (is_alarm=0) 或 device.alarm (is_alarm=1) 上报。
+         * ================================================================ */
+        else if (cmd == TLV_CMD_EVENT_ALARM) {
+            if (payload_len < 3) {
+                printf_info("[TLV-EVENTALARM] invalid payload_len=%d\n", payload_len);
+                free(recvdata);
+                return -1;
+            }
+
+            const uint8_t *payload = (const uint8_t *)(recvdata + 5);
+            uint8_t struct_type = payload[0];
+            int seg_len = (payload[1] << 8) | payload[2];
+
+            if (struct_type != TLV_STRUCT_EVENT_ALARM) {
+                printf_info("[TLV-EVENTALARM] unexpected struct_type=0x%02X, skip\n",
+                            struct_type);
+                free(recvdata);
+                return -1;
+            }
+
+            if (3 + seg_len > payload_len) {
+                printf_info("[TLV-EVENTALARM] seg_len=%d exceeds payload_len=%d, skip\n",
+                            seg_len, payload_len);
+                free(recvdata);
+                return -1;
+            }
+
+            const uint8_t *tlv_data = payload + 3;
+            printf_info("[TLV-EVENTALARM] struct_type=0x%02X data_len=%d\n",
                         struct_type, seg_len);
 
             tlv_dispatch(struct_type, tlv_data, seg_len);

@@ -61,9 +61,9 @@ class UartRoutingTests(unittest.TestCase):
             "V851_TLV_CMD_FACTORY",
             "V851_TLV_CMD_BOOTSTRAP_RESULT",
             "V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT",
-            "V851_TLV_CMD_OTA_STATUS",
         ):
             self.assertIn(command, self.uart)
+        self.assertNotIn("V851_TLV_CMD_EVENT_ALARM", self.uart)
         self.assertIn("V851_TLV_CMD_SNAPSHOT", self.protocol_h)
 
     def test_v851_property_capture_uses_command_inclusive_length(self) -> None:

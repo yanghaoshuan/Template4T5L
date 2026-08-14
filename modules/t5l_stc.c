@@ -83,6 +83,9 @@ uvb：（单独控制或单独连接端子）
 #include "t5l_stc.h"
 #include "uart.h"
 #include "string.h"
+#if v851PROTOCOL_ENABLED
+#include "v851_protocol.h"
+#endif
 DeviceCtrl G_Device_Ctrl;
 DeviceCtrl G_Back_Device_Ctrl;
 
@@ -2174,6 +2177,11 @@ void key_scanf(void)
             tmp = G_Device_Ctrl.Cfg.volume * 3.6;
             write_dgus_vp(VOLUME_NEEDLE_VP, (uint8_t *)&tmp, 1); //指针
             break;
+#if v851PROTOCOL_ENABLED
+        case 0x30A1:
+            V851ProtocolRequestFactoryReport();
+            break;
+#endif
         case 0x3101:
             break;
         case 0x3102:

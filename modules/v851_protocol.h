@@ -15,8 +15,7 @@
 #define V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U
 /* Compatibility form observed with 0x6C in the command byte. */
 #define V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT     0x6CU
-/* Project-private OTA status command; synchronized with the V851 firmware. */
-#define V851_TLV_CMD_OTA_STATUS                  0x38U
+#define V851_TLV_CMD_EVENT_ALARM                 0x38U
 
 #define V851_TLV_FRAME_MAX                       2048U
 #define V851_TLV_FRAME_FIXED_SIZE                5U
@@ -48,8 +47,7 @@
 #define V851_TLV_STRUCT_FACTORY_DEVICE           0x6AU
 #define V851_TLV_STRUCT_FACTORY_REJECTION        0x6BU
 #define V851_TLV_STRUCT_BOOTSTRAP_RESULT         0x6CU
-/* Project-private OTA status structure. */
-#define V851_TLV_STRUCT_OTA_STATUS               0x6DU
+#define V851_TLV_STRUCT_EVENT_ALARM              0x6DU
 
 /* PowerState. */
 #define V851_TLV_TAG_POWER_MODE                  0x01U
@@ -142,10 +140,12 @@
 #define V851_TLV_TAG_BOOT_API_ENDPOINT           0x03U
 #define V851_TLV_TAG_BOOT_BIND_STATUS            0x04U
 #define V851_TLV_TAG_BOOT_QR_URL                 0x05U
-/* T5L OTA status extension. */
-#define V851_TLV_TAG_OTA_STAGE                   0x01U
-#define V851_TLV_TAG_OTA_PROGRESS                0x02U
-#define V851_TLV_TAG_OTA_ERROR_CODE              0x03U
+/* EventAlarm: T5L -> V851. */
+#define V851_TLV_TAG_EA_IS_ALARM                 0x01U
+#define V851_TLV_TAG_EA_CODE                     0x02U
+#define V851_TLV_TAG_EA_LEVEL                    0x03U
+#define V851_TLV_TAG_EA_RECOVERED                0x04U
+#define V851_TLV_TAG_EA_PAYLOAD                  0x05U
 
 #define V851_BOOTSTRAP_DEVICE_SN_SIZE            64U
 #define V851_BOOTSTRAP_BLE_ID_SIZE               32U
@@ -191,26 +191,15 @@ typedef enum
     V851_TLV_ITER_INVALID = 2
 } V851TlvIterResult;
 
-typedef enum
-{
-    V851_OTA_STAGE_INSTALLING = 0,
-    V851_OTA_STAGE_VERIFYING,
-    V851_OTA_STAGE_REBOOTING,
-    V851_OTA_STAGE_SUCCESS,
-    V851_OTA_STAGE_FAILED
-} V851OtaStage;
-
 void V851ProtocolInit(void);
 void V851ProtocolTask(void);
+void V851ProtocolRequestFactoryReport(void);
 void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len);
 uint8_t V851ProtocolSendSegments(uint8_t command,
                                  const V851TlvSegment *segments,
                                  uint8_t count);
 uint8_t V851ProtocolSendWifiFrame(const uint8_t *frame, uint16_t len);
 uint8_t V851ProtocolSendOtaFrame(const uint8_t *frame, uint16_t len);
-void V851ProtocolNotifyOtaState(V851OtaStage stage,
-                                uint8_t progress,
-                                const char *error_code);
 
 void V851TlvFieldCursorInit(V851TlvFieldCursor *cursor,
                             const uint8_t *bytes,

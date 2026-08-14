@@ -74,19 +74,24 @@ class V851StateAndWifiTests(unittest.TestCase):
         tlv = self.protocol.index("if(v851_tlv_tx_count != 0U)", wifi)
         self.assertLess(ota, wifi)
         self.assertLess(wifi, tlv)
+        task_start = self.protocol.index("void V851ProtocolTask(void)")
+        task = self.protocol[task_start:]
+        alarm = task.index("V851ProtocolServiceAlarm(tick)")
+        factory = task.index("V851ProtocolServiceFactory()")
+        state = task.index("V851ProtocolServiceState(tick)")
+        self.assertLess(alarm, factory)
+        self.assertLess(factory, state)
 
-    def test_bootstrap_is_37_6c_and_ota_status_is_38_6d(self) -> None:
+    def test_bootstrap_is_37_6c_and_event_alarm_is_38_6d(self) -> None:
         self.assertIn("V851_TLV_CMD_SNAPSHOT                    0x37U", self.protocol_h)
         self.assertIn("V851_TLV_CMD_BOOTSTRAP_RESULT            0x37U", self.protocol_h)
         self.assertIn("V851_TLV_STRUCT_BOOTSTRAP_RESULT         0x6CU", self.protocol_h)
-        self.assertIn("V851_TLV_CMD_OTA_STATUS                  0x38U", self.protocol_h)
-        self.assertIn("V851_TLV_STRUCT_OTA_STATUS               0x6DU", self.protocol_h)
-        self.assertIn("V851_TLV_CMD_OTA_STATUS", self.protocol)
-        self.assertIn("V851_TLV_STRUCT_OTA_STATUS", self.protocol)
-        self.assertIn("V851_TLV_TAG_OTA_STAGE", self.protocol)
-        self.assertIn("V851_TLV_TAG_OTA_PROGRESS", self.protocol)
-        self.assertIn("V851_TLV_TAG_OTA_ERROR_CODE", self.protocol)
-        self.assertIn("v851_post_ota_success_remaining = (OtaCompleteFlag != 0U) ? 3U : 0U", self.protocol)
+        self.assertIn("V851_TLV_CMD_EVENT_ALARM                 0x38U", self.protocol_h)
+        self.assertIn("V851_TLV_STRUCT_EVENT_ALARM              0x6DU", self.protocol_h)
+        for tag in ("EA_IS_ALARM", "EA_CODE", "EA_LEVEL", "EA_RECOVERED", "EA_PAYLOAD"):
+            self.assertIn(f"V851_TLV_TAG_{tag}", self.protocol_h)
+        self.assertNotIn("V851_TLV_CMD_OTA_STATUS", self.protocol_h)
+        self.assertNotIn("V851ProtocolNotifyOtaState", self.ota)
         self.assertIn("OtaAcknowledgeComplete();", self.protocol)
 
     def test_bootstrap_cache_writes_qr_to_planned_dgus_region(self) -> None:
@@ -103,14 +108,10 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("v851_bootstrap_qr_buffer", self.tlv_app)
         self.assertIn("write_dgus_vp(V851_BOOTSTRAP_QR_VP_ADDR", self.tlv_app)
 
-    def test_ota_reports_install_verify_reboot_and_failure(self) -> None:
-        for stage in (
-            "V851_OTA_STAGE_INSTALLING",
-            "V851_OTA_STAGE_VERIFYING",
-            "V851_OTA_STAGE_REBOOTING",
-            "V851_OTA_STAGE_FAILED",
-        ):
-            self.assertIn(stage, self.ota)
+    def test_ota_keeps_abcd_transport_without_tlv_status(self) -> None:
+        self.assertIn("V851ProtocolSendOtaFrame(buf, len)", self.ota)
+        self.assertNotIn("V851ProtocolNotifyOtaState", self.ota)
+        self.assertNotIn("V851_OTA_STAGE_", self.ota)
 
     def test_wifi_uses_r11_addresses_and_commands(self) -> None:
         for value in ("0x0600UL", "0x04B0UL", "0x04C0UL", "0x05B8UL", "0x05BEUL", "0x06D8UL"):

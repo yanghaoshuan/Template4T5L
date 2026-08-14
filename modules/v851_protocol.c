@@ -17,10 +17,24 @@
 #define V851_WIFI_TX_DEPTH                        2U
 #define V851_WIFI_TX_MAX                          96U
 #define V851_OTA_TX_MAX                           64U
-#define V851_OTA_ERROR_MAX                        32U
 #define V851_STATE_SCAN_INTERVAL_MS               500UL
 #define V851_STATE_FULL_INTERVAL_MS               60000UL
-#define V851_POST_OTA_REPORT_INTERVAL_MS          1000UL
+#define V851_ALARM_SCAN_INTERVAL_MS               500UL
+#define V851_ALARM_VP_BASE                        0x3080UL
+#define V851_ALARM_VP_COUNT                       10U
+#define V851_FACTORY_FIELD_MAX_BYTES              80U
+#define V851_EVENT_ALARM_FIELD_MAX_BYTES          48U
+
+typedef char V851FactoryCountryLengthCheck[
+    ((sizeof(v851FACTORY_SALES_COUNTRY) - 1U) <= 7U) ? 1 : -1];
+typedef char V851FactoryProductKeyLengthCheck[
+    ((sizeof(v851FACTORY_PRODUCT_KEY) - 1U) <= 63U) ? 1 : -1];
+typedef char V851FactoryModelLengthCheck[
+    ((sizeof(v851FACTORY_MODEL) - 1U) <= 63U) ? 1 : -1];
+typedef char V851FactoryHardwareLengthCheck[
+    ((sizeof(v851FACTORY_HARDWARE_VERSION) - 1U) <= 31U) ? 1 : -1];
+typedef char V851FactoryFirmwareLengthCheck[
+    ((sizeof(v851FACTORY_FIRMWARE_VERSION) - 1U) <= 31U) ? 1 : -1];
 
 static uint8_t xdata v851_tlv_tx[V851_TLV_TX_DEPTH][V851_TLV_FRAME_MAX];
 static uint16_t v851_tlv_tx_len[V851_TLV_TX_DEPTH];
@@ -44,16 +58,11 @@ static uint16_t v851_state_dirty_mask;
 static uint32_t v851_state_scan_tick;
 static uint32_t v851_state_full_tick;
 
-static uint8_t v851_ota_status_pending;
-static V851OtaStage v851_ota_status_stage;
-static uint8_t v851_ota_status_progress;
-static char v851_ota_status_error[V851_OTA_ERROR_MAX + 1U];
-static uint8_t v851_post_ota_success_remaining;
-static uint32_t v851_post_ota_success_tick;
-
-static uint8_t V851ProtocolQueueOtaStatus(V851OtaStage stage,
-                                          uint8_t progress,
-                                          const char *error_code);
+static uint8_t v851_factory_report_pending;
+static uint16_t xdata v851_alarm_current[V851_ALARM_VP_COUNT];
+static uint16_t xdata v851_alarm_reported[V851_ALARM_VP_COUNT];
+static uint8_t v851_alarm_next_index;
+static uint32_t v851_alarm_scan_tick;
 
 static void V851WriteBe16(uint8_t *bytes, uint16_t value)
 {
@@ -298,7 +307,7 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
        ((command != V851_TLV_CMD_PROPERTY) &&
         (command != V851_TLV_CMD_FACTORY) &&
         (command != V851_TLV_CMD_SNAPSHOT) &&
-        (command != V851_TLV_CMD_OTA_STATUS)) ||
+         (command != V851_TLV_CMD_EVENT_ALARM)) ||
        (v851_tlv_tx_count >= V851_TLV_TX_DEPTH))
     {
         return 0U;
@@ -310,6 +319,13 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
         if((command == V851_TLV_CMD_SNAPSHOT) &&
            ((segments[index].struct_type < V851_TLV_STRUCT_EXHAUST) ||
             (segments[index].struct_type > V851_TLV_STRUCT_FILTER)))
+        {
+            return 0U;
+        }
+        if(((command == V851_TLV_CMD_FACTORY) &&
+            (segments[index].struct_type != V851_TLV_STRUCT_FACTORY_DEVICE)) ||
+           ((command == V851_TLV_CMD_EVENT_ALARM) &&
+            (segments[index].struct_type != V851_TLV_STRUCT_EVENT_ALARM)))
         {
             return 0U;
         }
@@ -339,7 +355,8 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
     slot = v851_tlv_tx_head;
     v851_tlv_tx[slot][0] = V851_FRAME_MAGIC_HIGH;
     v851_tlv_tx[slot][1] = V851_FRAME_MAGIC_LOW;
-    V851WriteBe16(&v851_tlv_tx[slot][2], segment_bytes);
+    /* 最新AA55协议的长度包含命令字，总帧长为4 + length。 */
+    V851WriteBe16(&v851_tlv_tx[slot][2], (uint16_t)(segment_bytes + 1U));
     v851_tlv_tx[slot][4] = command;
     offset = V851_TLV_FRAME_FIXED_SIZE;
     for(index = 0U; index < count; ++index)
@@ -437,8 +454,7 @@ void V851ProtocolReceiveFrame(const uint8_t *frame, uint16_t len)
         ((command != V851_TLV_CMD_PROPERTY) &&
          (command != V851_TLV_CMD_FACTORY) &&
          (command != V851_TLV_CMD_BOOTSTRAP_RESULT) &&
-         (command != V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT) &&
-         (command != V851_TLV_CMD_OTA_STATUS)))
+         (command != V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT)))
     {
         return;
     }
@@ -550,109 +566,222 @@ static uint16_t V851ProtocolQueueStateMask(uint8_t command,
     return 0U;
 }
 
-void V851ProtocolNotifyOtaState(V851OtaStage stage,
-                                uint8_t progress,
-                                const char *error_code)
+void V851ProtocolRequestFactoryReport(void)
 {
-    uint8_t index;
-
-    if(progress > 100U)
-    {
-        progress = 100U;
-    }
-    v851_ota_status_stage = stage;
-    v851_ota_status_progress = progress;
-    index = 0U;
-    if(error_code != NULL)
-    {
-        while((index < V851_OTA_ERROR_MAX) && (error_code[index] != '\0'))
-        {
-            v851_ota_status_error[index] = error_code[index];
-            ++index;
-        }
-    }
-    v851_ota_status_error[index] = '\0';
-    if(V851ProtocolQueueOtaStatus(v851_ota_status_stage,
-                                  v851_ota_status_progress,
-                                  v851_ota_status_error) != 0U)
-    {
-        v851_ota_status_pending = 0U;
-    }
-    else
-    {
-        v851_ota_status_pending = 1U;
-    }
+    v851_factory_report_pending = 1U;
 }
 
-static uint8_t V851ProtocolQueueOtaStatus(V851OtaStage stage,
-                                          uint8_t progress,
-                                          const char *error_code)
+static uint8_t V851ProtocolQueueFactoryReport(void)
 {
     V851TlvSegment segment;
-    uint8_t fields[48];
+    uint8_t fields[V851_FACTORY_FIELD_MAX_BYTES];
     uint16_t offset;
-    uint16_t error_length;
+
+    offset = 0U;
+    if((V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_FACTORY_SALES_COUNTRY,
+                          (const uint8_t *)v851FACTORY_SALES_COUNTRY,
+                          (uint16_t)(sizeof(v851FACTORY_SALES_COUNTRY) - 1U)) == 0U) ||
+       (V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_FACTORY_PRODUCT_KEY,
+                          (const uint8_t *)v851FACTORY_PRODUCT_KEY,
+                          (uint16_t)(sizeof(v851FACTORY_PRODUCT_KEY) - 1U)) == 0U) ||
+       (V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_FACTORY_MODEL,
+                          (const uint8_t *)v851FACTORY_MODEL,
+                          (uint16_t)(sizeof(v851FACTORY_MODEL) - 1U)) == 0U) ||
+       (V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_FACTORY_HW_VERSION,
+                          (const uint8_t *)v851FACTORY_HARDWARE_VERSION,
+                          (uint16_t)(sizeof(v851FACTORY_HARDWARE_VERSION) - 1U)) == 0U) ||
+       (V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_FACTORY_FW_VERSION,
+                          (const uint8_t *)v851FACTORY_FIRMWARE_VERSION,
+                          (uint16_t)(sizeof(v851FACTORY_FIRMWARE_VERSION) - 1U)) == 0U))
+    {
+        return 0U;
+    }
+
+    segment.struct_type = V851_TLV_STRUCT_FACTORY_DEVICE;
+    segment.payload = fields;
+    segment.length = offset;
+    return V851ProtocolSendSegments(V851_TLV_CMD_FACTORY, &segment, 1U);
+}
+
+static uint8_t V851ProtocolServiceFactory(void)
+{
+    if(v851_factory_report_pending == 0U)
+    {
+        return 0U;
+    }
+    if(V851ProtocolQueueFactoryReport() != 0U)
+    {
+        v851_factory_report_pending = 0U;
+    }
+    return 1U;
+}
+
+static uint8_t V851ProtocolGetAlarmInfo(uint8_t vp_index,
+                                        uint16_t value,
+                                        const char **alarm_code,
+                                        const char **alarm_level)
+{
+    *alarm_code = NULL;
+    *alarm_level = NULL;
+    switch(vp_index)
+    {
+    case 1U:
+        *alarm_level = "HIGH";
+        switch(value)
+        {
+        case 1U: *alarm_code = "TEMP_HIGH"; break;
+        case 2U: *alarm_code = "TEMP_LOW"; break;
+        case 3U: *alarm_code = "TEMP_SENSOR_FAULT"; break;
+        case 4U: *alarm_code = "HEATER_FAULT"; break;
+        case 5U:
+            *alarm_code = "OVERHEAT_PROTECTION";
+            *alarm_level = "CRITICAL";
+            break;
+        default: break;
+        }
+        break;
+    case 2U:
+        *alarm_level = "HIGH";
+        switch(value)
+        {
+        case 1U:
+            *alarm_code = "LIQUID_LOW_WARNING";
+            *alarm_level = "MEDIUM";
+            break;
+        case 2U:
+            *alarm_code = "LOW_LIQUID";
+            *alarm_level = "MEDIUM";
+            break;
+        case 3U: *alarm_code = "NEBULIZER_DRY_BURN"; break;
+        case 4U: *alarm_code = "WATER_LEVEL_SENSOR_FAULT"; break;
+        case 5U: *alarm_code = "HUMIDITY_SENSOR_FAULT"; break;
+        default: break;
+        }
+        break;
+    case 4U:
+        if(value == 1U)
+        {
+            *alarm_code = "EXHAUST_FAN_FAULT";
+            *alarm_level = "HIGH";
+        }
+        break;
+    case 5U:
+        if(value == 1U)
+        {
+            *alarm_code = "INLET_FAN_FAULT";
+            *alarm_level = "HIGH";
+        }
+        break;
+    case 7U:
+        if(value == 1U)
+        {
+            *alarm_code = "FILTER_LIFE_EXHAUSTED";
+            *alarm_level = "MEDIUM";
+        }
+        break;
+    default:
+        break;
+    }
+    return (*alarm_code != NULL) ? 1U : 0U;
+}
+
+/* 返回0表示队列忙，1表示成功，2表示该VP值没有协议映射。 */
+static uint8_t V851ProtocolQueueEventAlarm(uint8_t vp_index,
+                                           uint16_t value,
+                                           uint8_t recovered)
+{
+    V851TlvSegment segment;
+    const char *alarm_code;
+    const char *alarm_level;
+    uint8_t fields[V851_EVENT_ALARM_FIELD_MAX_BYTES];
+    uint16_t offset;
+
+    if(V851ProtocolGetAlarmInfo(vp_index, value,
+                                &alarm_code, &alarm_level) == 0U)
+    {
+        return 2U;
+    }
 
     offset = 0U;
     if((V851TlvWriteU8(fields, sizeof(fields), &offset,
-                       V851_TLV_TAG_OTA_STAGE, (uint8_t)stage) == 0U) ||
-       (V851TlvWriteU8(fields, sizeof(fields), &offset,
-                       V851_TLV_TAG_OTA_PROGRESS, progress) == 0U))
-    {
-        return 0U;
-    }
-    error_length = 0U;
-    if(error_code != NULL)
-    {
-        while((error_length < V851_OTA_ERROR_MAX) &&
-              (error_code[error_length] != '\0'))
-        {
-            ++error_length;
-        }
-    }
-    if((error_length != 0U) &&
+                       V851_TLV_TAG_EA_IS_ALARM, 1U) == 0U) ||
        (V851TlvWriteBytes(fields, sizeof(fields), &offset,
-                          V851_TLV_TAG_OTA_ERROR_CODE,
-                          (const uint8_t *)error_code,
-                          error_length) == 0U))
+                          V851_TLV_TAG_EA_CODE,
+                          (const uint8_t *)alarm_code,
+                          (uint16_t)strlen(alarm_code)) == 0U) ||
+       (V851TlvWriteBytes(fields, sizeof(fields), &offset,
+                          V851_TLV_TAG_EA_LEVEL,
+                          (const uint8_t *)alarm_level,
+                          (uint16_t)strlen(alarm_level)) == 0U) ||
+       (V851TlvWriteU8(fields, sizeof(fields), &offset,
+                       V851_TLV_TAG_EA_RECOVERED, recovered) == 0U))
     {
         return 0U;
     }
-    segment.struct_type = V851_TLV_STRUCT_OTA_STATUS;
+
+    segment.struct_type = V851_TLV_STRUCT_EVENT_ALARM;
     segment.payload = fields;
     segment.length = offset;
-    return V851ProtocolSendSegments(V851_TLV_CMD_OTA_STATUS, &segment, 1U);
+    return V851ProtocolSendSegments(V851_TLV_CMD_EVENT_ALARM, &segment, 1U);
 }
 
-static void V851ProtocolServiceOtaStatus(uint32_t tick)
+static uint8_t V851ProtocolServiceAlarm(uint32_t tick)
 {
-    if(v851_post_ota_success_remaining != 0U)
+    uint16_t current;
+    uint16_t reported;
+    uint8_t index;
+    uint8_t queue_result;
+    uint8_t scanned;
+
+    if((uint32_t)(tick - v851_alarm_scan_tick) >=
+       V851_ALARM_SCAN_INTERVAL_MS)
     {
-        if((uint32_t)(tick - v851_post_ota_success_tick) >=
-           V851_POST_OTA_REPORT_INTERVAL_MS)
+        v851_alarm_scan_tick = tick;
+        read_dgus_vp(V851_ALARM_VP_BASE,
+                     (uint8_t *)v851_alarm_current,
+                     V851_ALARM_VP_COUNT);
+    }
+
+    for(scanned = 0U; scanned < V851_ALARM_VP_COUNT; ++scanned)
+    {
+        index = (uint8_t)((v851_alarm_next_index + scanned) %
+                          V851_ALARM_VP_COUNT);
+        current = v851_alarm_current[index];
+        reported = v851_alarm_reported[index];
+
+        if((reported != 0U) && (reported != current))
         {
-            if(V851ProtocolQueueOtaStatus(V851_OTA_STAGE_SUCCESS, 100U,
-                                          NULL) != 0U)
+            queue_result = V851ProtocolQueueEventAlarm(index, reported, 1U);
+            if(queue_result == 1U)
             {
-                --v851_post_ota_success_remaining;
-                v851_post_ota_success_tick = tick;
-#if otaOTA_ENABLED
-                if(v851_post_ota_success_remaining == 0U)
-                {
-                    OtaAcknowledgeComplete();
-                }
-#endif
+                v851_alarm_reported[index] = 0U;
+                v851_alarm_next_index = (uint8_t)((index + 1U) %
+                                                   V851_ALARM_VP_COUNT);
+            }
+            return 1U;
+        }
+        if((current != 0U) && (reported != current))
+        {
+            queue_result = V851ProtocolQueueEventAlarm(index, current, 0U);
+            if(queue_result == 1U)
+            {
+                v851_alarm_reported[index] = current;
+                v851_alarm_next_index = (uint8_t)((index + 1U) %
+                                                   V851_ALARM_VP_COUNT);
+                return 1U;
+            }
+            if(queue_result == 0U)
+            {
+                return 1U;
             }
         }
-        return;
     }
-    if((v851_ota_status_pending != 0U) &&
-       (V851ProtocolQueueOtaStatus(v851_ota_status_stage,
-                                   v851_ota_status_progress,
-                                   v851_ota_status_error) != 0U))
-    {
-        v851_ota_status_pending = 0U;
-    }
+    return 0U;
 }
 
 static void V851ProtocolServiceState(uint32_t tick)
@@ -737,16 +866,19 @@ void V851ProtocolInit(void)
     v851_ota_tx_len = 0U;
     v851_ota_tx_pending = 0U;
     v851_state_dirty_mask = 0U;
-    v851_ota_status_pending = 0U;
-    v851_ota_status_error[0] = '\0';
+    v851_factory_report_pending = 0U;
+    memset(v851_alarm_current, 0, sizeof(v851_alarm_current));
+    memset(v851_alarm_reported, 0, sizeof(v851_alarm_reported));
+    v851_alarm_next_index = 0U;
     tick = GetSysTick();
     v851_state_scan_tick = tick;
     v851_state_full_tick = tick;
-    v851_post_ota_success_tick = tick - V851_POST_OTA_REPORT_INTERVAL_MS;
+    v851_alarm_scan_tick = tick;
 #if otaOTA_ENABLED
-    v851_post_ota_success_remaining = (OtaCompleteFlag != 0U) ? 3U : 0U;
-#else
-    v851_post_ota_success_remaining = 0U;
+    if(OtaCompleteFlag != 0U)
+    {
+        OtaAcknowledgeComplete();
+    }
 #endif
 }
 
@@ -755,8 +887,13 @@ void V851ProtocolTask(void)
     uint32_t tick;
 
     tick = GetSysTick();
-    V851ProtocolServiceOtaStatus(tick);
-    V851ProtocolServiceState(tick);
+    if(V851ProtocolServiceAlarm(tick) == 0U)
+    {
+        if(V851ProtocolServiceFactory() == 0U)
+        {
+            V851ProtocolServiceState(tick);
+        }
+    }
     V851ProtocolServiceTx();
 }
 

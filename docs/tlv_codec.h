@@ -45,15 +45,15 @@
  * 01 00 01 01 02 00 01 55 03 00 01 00
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 0F  35  03  00 0C
+ * AA 55  00 10  35  03  00 0C
  * │      │      │  │   └───── seg_len = 12
  * │      │      │  └─ struct_type = 0x03
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x000F = 15 (3 + 12)
+ * │      └─ lenH|lenL = 0x0010 = 16 (1+3+12, 含cmd)
  * └─ 帧头
  *
- * + 12 字节 TLV payload → 共 20 字节
- * 一行 hex: AA 55 00 0F 35 03 00 0C 01 00 01 01 02 00 01 55 03 00 01 00
+ * + 12 字节 TLV payload → 共 21 字节
+ * 一行 hex: AA 55 00 10 35 03 00 0C 01 00 01 01 02 00 01 55 03 00 01 00
  *
  * ---- DoorState {door=1, lock=0, last_open=0} ----
  * ---- 逐字段 TLV 编码 ----
@@ -85,15 +85,15 @@
  * 01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 16  35  04  00 13
+ * AA 55  00 17  35  04  00 13
  * │      │      │  │   └───── seg_len = 19
  * │      │      │  └─ struct_type = 0x04
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x0016 = 22 (3 + 19)
+ * │      └─ lenH|lenL = 0x0017 = 23 (1+3+19, 含cmd)
  * └─ 帧头
  *
- * + 19 字节 TLV payload → 共 27 字节
- * 一行 hex: AA 55 00 16 35 04 00 13 01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00
+ * + 19 字节 TLV payload → 共 28 字节
+ * 一行 hex: AA 55 00 17 35 04 00 13 01 00 01 01 02 00 01 00 03 00 08 00 00 00 00 00 00 00 00
  *
  * ---- ActuatorLight {enabled=1, brightness=80, running=1} ----
  * ---- 逐字段 TLV 编码 ----
@@ -125,15 +125,15 @@
  * 01 00 01 01 02 00 01 50 03 00 01 01
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 0F  35  62  00 0C
+ * AA 55  00 10  35  62  00 0C
  * │      │      │  │   └───── seg_len = 12
  * │      │      │  └─ struct_type = 0x62
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x000F = 15 (3 + 12)
+ * │      └─ lenH|lenL = 0x0010 = 16 (1+3+12, 含cmd)
  * └─ 帧头
  *
- * + 12 字节 TLV payload → 共 20 字节
- * 一行 hex: AA 55 00 0F 35 62 00 0C 01 00 01 01 02 00 01 50 03 00 01 01
+ * + 12 字节 TLV payload → 共 21 字节
+ * 一行 hex: AA 55 00 10 35 62 00 0C 01 00 01 01 02 00 01 50 03 00 01 01
  *
  * ---- ActuatorClimate {enabled=1, target=30.0C, ctrl_status=1, running=1} ----
  * ---- 逐字段 TLV 编码 ----
@@ -171,15 +171,15 @@
  * 01 00 01 01 02 00 08 40 3E 00 00 00 00 00 00 03 00 01 01 04 00 01 01
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 1B  35  66  00 18
+ * AA 55  00 1C  35  66  00 18
  * │      │      │  │   └───── seg_len = 24
  * │      │      │  └─ struct_type = 0x66
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x001B = 27 (3 + 24)
+ * │      └─ lenH|lenL = 0x001C = 28 (1+3+24, 含cmd)
  * └─ 帧头
  *
- * + 24 字节 TLV payload → 共 32 字节
- * 一行 hex: AA 55 00 1B 35 66 00 18 01 00 01 01 02 00 08 40 3E 00 00 00 00 00 00 03 00 01 01 04 00 01 01
+ * + 24 字节 TLV payload → 共 33 字节
+ * 一行 hex: AA 55 00 1C 35 66 00 18 01 00 01 01 02 00 08 40 3E 00 00 00 00 00 00 03 00 01 01 04 00 01 01
  *
  * ---- ActuatorFilter {life=80%, need_replace=0} ----
  * ---- 逐字段 TLV 编码 ----
@@ -205,15 +205,15 @@
  * 01 00 01 50 02 00 01 00
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 0B  35  69  00 08
+ * AA 55  00 0C  35  69  00 08
  * │      │      │  │   └───── seg_len = 8
  * │      │      │  └─ struct_type = 0x69
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x000B = 11 (3 + 8)
+ * │      └─ lenH|lenL = 0x000C = 12 (1+3+8, 含cmd)
  * └─ 帧头
  *
- * + 8 字节 TLV payload → 共 16 字节
- * 一行 hex: AA 55 00 0B 35 69 00 08 01 00 01 50 02 00 01 00
+ * + 8 字节 TLV payload → 共 17 字节
+ * 一行 hex: AA 55 00 0C 35 69 00 08 01 00 01 50 02 00 01 00
  *
  * ---- FirmwareState {fw="2.1.0", hw="R1", config_ver=5} ----
  * ---- 逐字段 TLV 编码 ----
@@ -245,15 +245,15 @@
  * 01 00 05 32 2E 31 2E 30 02 00 02 52 31 03 00 04 00 00 00 05
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 1A  35  09  00 17
+ * AA 55  00 1B  35  09  00 17
  * │      │      │  │   └───── seg_len = 23
  * │      │      │  └─ struct_type = 0x09
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x001A = 26 (3 + 23)
+ * │      └─ lenH|lenL = 0x001B = 27 (1+3+23, 含cmd)
  * └─ 帧头
  *
- * + 23 字节 TLV payload → 共 31 字节
- * 一行 hex: AA 55 00 1A 35 09 00 17 01 00 05 32 2E 31 2E 30 02 00 02 52 31 03 00 04 00 00 00 05
+ * + 23 字节 TLV payload → 共 32 字节
+ * 一行 hex: AA 55 00 1B 35 09 00 17 01 00 05 32 2E 31 2E 30 02 00 02 52 31 03 00 04 00 00 00 05
  *
  * ---- StorageState {total=8192MB, free=4096MB} ----
  * ---- 逐字段 TLV 编码 ----
@@ -279,15 +279,15 @@
  * 01 00 04 00 00 20 00 02 00 04 00 00 10 00
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 11  35  0A  00 0E
+ * AA 55  00 12  35  0A  00 0E
  * │      │      │  │   └───── seg_len = 14
  * │      │      │  └─ struct_type = 0x0A
  * │      │      └─ 命令字 0x35
- * │      └─ lenH|lenL = 0x0011 = 17 (3 + 14)
+ * │      └─ lenH|lenL = 0x0012 = 18 (1+3+14, 含cmd)
  * └─ 帧头
  *
- * + 14 字节 TLV payload → 共 22 字节
- * 一行 hex: AA 55 00 11 35 0A 00 0E 01 00 04 00 00 20 00 02 00 04 00 00 10 00
+ * + 14 字节 TLV payload → 共 23 字节
+ * 一行 hex: AA 55 00 12 35 0A 00 0E 01 00 04 00 00 20 00 02 00 04 00 00 10 00
  *
  * ============================================================================
  * FactoryDeviceTlv 编码示例 (出厂烧录上报, mac 由本机 WiFi 获取, secret 内部生成)
@@ -341,17 +341,17 @@
  * 06 00 09 46 57 2D 56 31 2E 30 2E 30
  *
  * ---- 完整消息 (含帧头) ----
- * AA 55  00 43  36  6A  00 40
+ * AA 55  00 44  36  6A  00 40
  * │      │      │  │   └───── seg_len = 0x0040 = 64
  * │      │      │  └─ struct_type = 0x6A
  * │      │      └─ 命令字 TLV_CMD_FACTORY_DEVICE (0x36)
- * │      └─ lenH|lenL = 0x0043 = 67 (3 + 64)
+ * │      └─ lenH|lenL = 0x0044 = 68 (1+3+64, 含cmd)
  * └─ 帧头 AA 55
  *
- * + 64 字节 TLV payload (同上) → 共 72 字节
+ * + 64 字节 TLV payload (同上) → 共 73 字节
  *
  * 一行 hex:
- * AA 55 00 43 36 6A 00 40 01 00 02 4A 50 03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E 04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31 05 00 07 48 57 2D 56 32 2E 30 06 00 09 46 57 2D 56 31 2E 30 2E 30
+ * AA 55 00 44 36 6A 00 40 01 00 02 4A 50 03 00 0E 4D 43 51 58 5F 50 45 54 5F 43 41 42 49 4E 04 00 11 4D 43 51 58 2D 50 45 54 2D 43 41 42 49 4E 2D 56 31 05 00 07 48 57 2D 56 32 2E 30 06 00 09 46 57 2D 56 31 2E 30 2E 30
  *
  * ============================================================================
  * FactoryDeviceTlv 解码与打印示例
@@ -616,6 +616,13 @@ int tlv_generic_unpack(void *dst, const TlvFieldDesc *fields,
 #define TLV_TAG_BOOT_BIND_STATUS        0x04
 #define TLV_TAG_BOOT_QR_URL             0x05
 
+/* ---- EventAlarmTlv (事件/告警上报指令, D5/LCD → V851) ---- */
+#define TLV_TAG_EA_IS_ALARM             0x01  /* u8: 0=event, 1=alarm */
+#define TLV_TAG_EA_CODE                 0x02  /* str: event_code / alarm_code */
+#define TLV_TAG_EA_LEVEL                0x03  /* str: event_level / alarm_level */
+#define TLV_TAG_EA_RECOVERED            0x04  /* u8: 告警恢复标记 0/1 (仅 alarm) */
+#define TLV_TAG_EA_PAYLOAD              0x05  /* str: 可选 payload JSON */
+
 /* ============================================================================
  * TLV pack/unpack — 各结构体 (向后兼容的函数签名)
  *
@@ -713,6 +720,10 @@ int factory_device_rejection_tlv_pack(const FactoryDeviceRejectionTlv *s, uint8_
 /* ---- BootstrapResultTlv (自举结果下发) ---- */
 int bootstrap_result_tlv_pack(const BootstrapResultTlv *s, uint8_t *buf, int buf_size);
 int bootstrap_result_tlv_unpack(BootstrapResultTlv *s, const uint8_t *buf, int buf_size);
+
+/* ---- EventAlarmTlv (事件/告警上报指令) ---- */
+int event_alarm_tlv_pack(const EventAlarmTlv *s, uint8_t *buf, int buf_size);
+int event_alarm_tlv_unpack(EventAlarmTlv *s, const uint8_t *buf, int buf_size);
 
 #ifdef __cplusplus
 }

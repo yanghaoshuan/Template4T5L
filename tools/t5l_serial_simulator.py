@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V851 UART4 AA55 property/Snapshot/Bootstrap TLV, Wi-Fi and OTA simulator."""
+"""V851 UART4 AA55 TLV、Wi-Fi与ABCD OTA协议模拟器。"""
 
 from __future__ import annotations
 
@@ -23,16 +23,16 @@ TLV_CMD_PROPERTY = 0x35
 TLV_CMD_FACTORY = 0x36
 TLV_CMD_SNAPSHOT = 0x37
 TLV_CMD_BOOTSTRAP_RESULT = 0x37
-TLV_CMD_OTA_STATUS = 0x38
+TLV_CMD_EVENT_ALARM = 0x38
 TLV_COMMANDS = {
     TLV_CMD_PROPERTY,
     TLV_CMD_FACTORY,
     TLV_CMD_SNAPSHOT,
-    TLV_CMD_OTA_STATUS,
+    TLV_CMD_EVENT_ALARM,
 }
 
 TLV_STRUCT_BOOTSTRAP_RESULT = 0x6C
-TLV_STRUCT_OTA_STATUS = 0x6D
+TLV_STRUCT_EVENT_ALARM = 0x6D
 BOOTSTRAP_FIELD_LIMITS = {
     0x01: ("device_sn", 64),
     0x02: ("ble_id", 32),
@@ -53,6 +53,22 @@ TLV_FRAME_MAX = 2048
 OTA_FRAME_MAX = 4124
 
 ACTUATOR_STRUCT_TYPES = tuple(range(0x61, 0x6A))
+ALARM_VP_COUNT = 10
+ALARM_VP_MAPPINGS = {
+    (1, 1): ("TEMP_HIGH", "HIGH"),
+    (1, 2): ("TEMP_LOW", "HIGH"),
+    (1, 3): ("TEMP_SENSOR_FAULT", "HIGH"),
+    (1, 4): ("HEATER_FAULT", "HIGH"),
+    (1, 5): ("OVERHEAT_PROTECTION", "CRITICAL"),
+    (2, 1): ("LIQUID_LOW_WARNING", "MEDIUM"),
+    (2, 2): ("LOW_LIQUID", "MEDIUM"),
+    (2, 3): ("NEBULIZER_DRY_BURN", "HIGH"),
+    (2, 4): ("WATER_LEVEL_SENSOR_FAULT", "HIGH"),
+    (2, 5): ("HUMIDITY_SENSOR_FAULT", "HIGH"),
+    (4, 1): ("EXHAUST_FAN_FAULT", "HIGH"),
+    (5, 1): ("INLET_FAN_FAULT", "HIGH"),
+    (7, 1): ("FILTER_LIFE_EXHAUSTED", "MEDIUM"),
+}
 VP_HOUR_TABLES = {
     "exhaust_interval": {1: 0.5, 2: 1.0, 3: 2.0, 4: 4.0, 5: 8.0},
     "humidifier_interval": {1: 2.0, 2: 4.0, 3: 8.0, 4: 12.0},
@@ -117,6 +133,45 @@ class BootstrapResultCache:
         result = decode_bootstrap_result(frame)
         self._result = result
         return result
+
+
+class AlarmReporterModel:
+    """模拟固件的告警扫描、队列忙重试及轮询顺序。"""
+
+    def __init__(self) -> None:
+        self.current = [0] * ALARM_VP_COUNT
+        self.reported = [0] * ALARM_VP_COUNT
+        self.next_index = 0
+
+    def scan(self, values: Iterable[int]) -> None:
+        materialized = list(values)
+        if len(materialized) != ALARM_VP_COUNT:
+            raise ValueError("alarm scan needs ten VP words")
+        self.current[:] = materialized
+
+    def next_report(self, queue_available: bool = True):
+        for scanned in range(ALARM_VP_COUNT):
+            index = (self.next_index + scanned) % ALARM_VP_COUNT
+            current = self.current[index]
+            reported = self.reported[index]
+            if reported and reported != current:
+                if not queue_available:
+                    return None
+                code, level = ALARM_VP_MAPPINGS[(index, reported)]
+                self.reported[index] = 0
+                self.next_index = (index + 1) % ALARM_VP_COUNT
+                return index, reported, True, encode_event_alarm(code, level, True)
+            if current and reported != current:
+                mapping = ALARM_VP_MAPPINGS.get((index, current))
+                if mapping is None:
+                    continue
+                if not queue_available:
+                    return None
+                code, level = mapping
+                self.reported[index] = current
+                self.next_index = (index + 1) % ALARM_VP_COUNT
+                return index, current, False, encode_event_alarm(code, level, False)
+        return None
 
 
 def crc16_modbus(data: bytes) -> int:
@@ -197,7 +252,8 @@ def encode_tlv_frame(
     )
     if not encoded_segments:
         raise ValueError("a TLV frame needs at least one segment")
-    frame = AA55_MAGIC + len(encoded_segments).to_bytes(2, "big")
+    declared_length = 1 + len(encoded_segments)
+    frame = AA55_MAGIC + declared_length.to_bytes(2, "big")
     frame += bytes([command]) + encoded_segments
     if len(frame) > TLV_FRAME_MAX:
         raise ValueError("TLV frame exceeds 2048 bytes")
@@ -212,6 +268,45 @@ def encode_snapshot(
     if tuple(struct_type for struct_type, _ in materialized) != ACTUATOR_STRUCT_TYPES:
         raise ValueError("a snapshot needs exactly one ordered segment for 0x61-0x69")
     return encode_tlv_frame(TLV_CMD_SNAPSHOT, materialized)
+
+
+def encode_factory_report() -> bytes:
+    """按默认产品配置编码T5L到V851的工厂信息帧。"""
+    return encode_tlv_frame(
+        TLV_CMD_FACTORY,
+        [
+            (
+                0x6A,
+                [
+                    field_text(0x01, "JP"),
+                    field_text(0x03, "MCQX_PET_CABIN"),
+                    field_text(0x04, "MCQX-PET-CABIN-V1"),
+                    field_text(0x05, "HW-V2.0"),
+                    field_text(0x06, "FW-V1.0.0"),
+                ],
+            )
+        ],
+    )
+
+
+def encode_event_alarm(code: str, level: str, recovered: bool) -> bytes:
+    """编码0x38/0x6D设备告警；可选payload按当前T5L协议省略。"""
+    if not code or not level:
+        raise ValueError("alarm code and level must not be empty")
+    return encode_tlv_frame(
+        TLV_CMD_EVENT_ALARM,
+        [
+            (
+                TLV_STRUCT_EVENT_ALARM,
+                [
+                    field_u8(0x01, 1),
+                    field_text(0x02, code),
+                    field_text(0x03, level),
+                    field_u8(0x04, int(recovered)),
+                ],
+            )
+        ],
+    )
 
 
 def _decode_fields(payload: bytes) -> tuple[TlvField, ...]:
@@ -236,7 +331,7 @@ def decode_tlv_frame(frame: bytes) -> DecodedFrame:
     command = frame[4]
     if command not in TLV_COMMANDS:
         raise ProtocolError("unsupported TLV command")
-    if len(frame) != 5 + declared or len(frame) > TLV_FRAME_MAX:
+    if declared < 4 or len(frame) != 4 + declared or len(frame) > TLV_FRAME_MAX:
         raise ProtocolError("invalid TLV frame length")
 
     segments: list[TlvSegment] = []
@@ -385,8 +480,8 @@ class FrameStreamDecoder:
             else:
                 command = self.buffer[4]
                 if command in TLV_COMMANDS:
-                    total = 5 + declared
-                    valid_header = 3 <= declared and total <= TLV_FRAME_MAX
+                    total = 4 + declared
+                    valid_header = 4 <= declared and total <= TLV_FRAME_MAX
                 elif command in WIFI_COMMANDS:
                     total = 4 + declared
                     valid_header = 1 <= declared and total <= TLV_FRAME_MAX

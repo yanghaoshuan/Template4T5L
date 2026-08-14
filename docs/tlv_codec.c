@@ -518,6 +518,19 @@ static const TlvFieldDesc bootstrap_result_tlv_fields[] = {
 };
 #define BOOTSTRAP_RESULT_TLV_FIELD_COUNT (sizeof(bootstrap_result_tlv_fields) / sizeof(bootstrap_result_tlv_fields[0]))
 
+/* ---- EventAlarmTlv (事件/告警上报指令, D5/LCD → V851) ----
+ * 例: {is_alarm=1, code="FILTER_LIFE_EXHAUSTED", level="MEDIUM", recovered=0,
+ *      payload="{\"life_percent\":0,\"need_replace\":1}"}
+ * is_alarm/recovered 为 u8, code/level/payload 为 STR */
+static const TlvFieldDesc event_alarm_tlv_fields[] = {
+    { TLV_TAG_EA_IS_ALARM, TLV_FIELD_U8,  offsetof(EventAlarmTlv, is_alarm), 0 },
+    { TLV_TAG_EA_CODE,     TLV_FIELD_STR, offsetof(EventAlarmTlv, code),     sizeof(((EventAlarmTlv*)0)->code)     },
+    { TLV_TAG_EA_LEVEL,    TLV_FIELD_STR, offsetof(EventAlarmTlv, level),    sizeof(((EventAlarmTlv*)0)->level)    },
+    { TLV_TAG_EA_RECOVERED,TLV_FIELD_U8,  offsetof(EventAlarmTlv, recovered),0 },
+    { TLV_TAG_EA_PAYLOAD,  TLV_FIELD_STR, offsetof(EventAlarmTlv, payload),  sizeof(((EventAlarmTlv*)0)->payload)  },
+};
+#define EVENT_ALARM_TLV_FIELD_COUNT (sizeof(event_alarm_tlv_fields) / sizeof(event_alarm_tlv_fields[0]))
+
 /* ============================================================================
  * 简单结构体 — 1 行 wrapper (表驱动)
  * ============================================================================ */
@@ -624,6 +637,11 @@ int bootstrap_result_tlv_pack(const BootstrapResultTlv *s, uint8_t *buf, int buf
     { return tlv_generic_pack(s, bootstrap_result_tlv_fields, BOOTSTRAP_RESULT_TLV_FIELD_COUNT, buf, buf_size); }
 int bootstrap_result_tlv_unpack(BootstrapResultTlv *s, const uint8_t *buf, int buf_size)
     { memset(s, 0, sizeof(*s)); return tlv_generic_unpack(s, bootstrap_result_tlv_fields, BOOTSTRAP_RESULT_TLV_FIELD_COUNT, buf, buf_size); }
+
+int event_alarm_tlv_pack(const EventAlarmTlv *s, uint8_t *buf, int buf_size)
+    { return tlv_generic_pack(s, event_alarm_tlv_fields, EVENT_ALARM_TLV_FIELD_COUNT, buf, buf_size); }
+int event_alarm_tlv_unpack(EventAlarmTlv *s, const uint8_t *buf, int buf_size)
+    { memset(s, 0, sizeof(*s)); return tlv_generic_unpack(s, event_alarm_tlv_fields, EVENT_ALARM_TLV_FIELD_COUNT, buf, buf_size); }
 
 /* ============================================================================
  * 嵌套结构体 — 需要特殊处理

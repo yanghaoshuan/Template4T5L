@@ -185,7 +185,8 @@ class V851ControlDgusTests(unittest.TestCase):
             "DISP_SCREEN_MODE", "LOCAL_PASSWORD", "CONFIG_VERSION",
             "STORAGE_FREE", "FACTORY_FW_VERSION", "FACTORY_REJECT_REASON",
             "BOOT_DEVICE_SN", "BOOT_BLE_ID", "BOOT_API_ENDPOINT",
-            "BOOT_BIND_STATUS", "BOOT_QR_URL",
+            "BOOT_BIND_STATUS", "BOOT_QR_URL", "EA_IS_ALARM", "EA_CODE",
+            "EA_LEVEL", "EA_RECOVERED", "EA_PAYLOAD",
         ):
             self.assertIn(f"V851_TLV_TAG_{name}", self.protocol_h)
 

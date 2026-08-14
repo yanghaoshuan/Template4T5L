@@ -170,6 +170,14 @@ extern uint32_t sysFCLK;
 
 
 #define uartTA_PROTOCOL_ENABLED          0
+
+/* V851工厂设备信息，产品变更时可在此覆盖。 */
+#define v851FACTORY_SALES_COUNTRY        "CN"
+#define v851FACTORY_PRODUCT_KEY          "MCQX_PET_CABIN"
+#define v851FACTORY_MODEL                "MCQX-PET-CABIN-V1"
+#define v851FACTORY_HARDWARE_VERSION     "HW-V2.0"
+#define v851FACTORY_FIRMWARE_VERSION     "FW-V1.0.0"
+
 #define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00

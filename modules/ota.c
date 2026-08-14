@@ -53,7 +53,6 @@ uint8_t OtaCompleteFlag;             /**< OTA完成标志 */
 static uint16_t xdata OtaTimeoutReload;             /**< OTA超时重装值 */
 static uint8_t xdata OtaHeaderBuffer[OTA_HEADER_BYTES]; /**< OTA 4KB头文件缓存 */
 static uint8_t OtaLastResult = 2U;                  /**< 06命令最近一次回复结果，用于超时重发 */
-static uint8_t OtaLastReportedProgress;             /**< UART4 TLV进度限频 */
 
 /**
  * @brief 读取大端16位整数
@@ -424,9 +423,6 @@ static void OtaHandleFileInfo(uint8_t *frame, uint16_t len)
     {
         OtaInit();
         OtaClearNandHeader();
-        #if v851PROTOCOL_ENABLED
-        V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING, 0U, NULL);
-        #endif
     }
 
     OtaStatus.total_num = frame[5];
@@ -508,15 +504,6 @@ static void OtaWritePacketToNand(uint8_t *frame, uint16_t packet_len)
             progress = 100UL;
         }
         OtaSpeedShow((uint8_t)progress);
-        #if v851PROTOCOL_ENABLED
-        if(((uint8_t)progress >= (uint8_t)(OtaLastReportedProgress + 5U)) ||
-           ((uint8_t)progress == 100U))
-        {
-            OtaLastReportedProgress = (uint8_t)progress;
-            V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING,
-                                       (uint8_t)progress, NULL);
-        }
-        #endif
     }
 
     OtaWaitNandIdle();
@@ -543,10 +530,6 @@ static uint8_t OtaFileCrcOk(void)
     blocks = OtaCeilDiv32(file->size, OTA_PACKET_BYTES);
     nand_addr = otaNAND_START_ADDR + ((uint32_t)file->flash_start * OTA_PACKET_BYTES);
 
-    #if v851PROTOCOL_ENABLED
-    V851ProtocolNotifyOtaState(V851_OTA_STAGE_VERIFYING,
-                               OtaLastReportedProgress, NULL);
-    #endif
     OtaWaitNandIdle();
     OtaStartNandCrc(nand_addr, blocks);
     OtaWaitNandIdle();
@@ -606,21 +589,11 @@ static void OtaHandlePacketData(uint8_t *frame, uint16_t len)
             if((OtaStatus.now_num + 1U) >= OtaStatus.total_num)
             {
                 OtaStatus.download_end_flag = 0x01U;
-                OtaLastReportedProgress = 100U;
-                #if v851PROTOCOL_ENABLED
-                V851ProtocolNotifyOtaState(V851_OTA_STAGE_INSTALLING,
-                                           100U, NULL);
-                #endif
             }
         }else
         {
             OtaSendData06(3U);
             OtaSetTimeout(OTA_STEP_WAIT_RESULT_ACK);
-            #if v851PROTOCOL_ENABLED
-            V851ProtocolNotifyOtaState(V851_OTA_STAGE_FAILED,
-                                       OtaLastReportedProgress,
-                                       "HARDWARE_FAULT");
-            #endif
         }
     }else
     {
@@ -741,19 +714,7 @@ static void OtaBuildHeader(void)
 static void OtaFinishUpgrade(void)
 {
     uint8_t boot_cmd[4];
-    uint8_t report_try;
     uint16_t complete_flag_word = 1U;
-
-    #if v851PROTOCOL_ENABLED
-    V851ProtocolNotifyOtaState(V851_OTA_STAGE_REBOOTING, 100U, NULL);
-    for(report_try = 0U; report_try < 4U; ++report_try)
-    {
-        V851ProtocolTask();
-        delay_ms(30);
-    }
-    #else
-    (void)report_try;
-    #endif
 
     OtaBuildHeader();
     write_dgus_vp(otaCACHE_VP_A, OtaHeaderBuffer, OTA_HEADER_WORDS);
@@ -820,7 +781,6 @@ void OtaInit(void)
     OtaTimeout = 0U;
     OtaTimeoutReload = 0U;
     OtaLastResult = 2U;
-    OtaLastReportedProgress = 0U;
 }
 
 /**
