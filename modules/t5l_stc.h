@@ -74,7 +74,7 @@ typedef enum
 #define MAIN_DATA_ADDR 0x4800U
 #define BACK_DATA_ADDR 0x10800U
 
-#define PASSWD "1234"
+#define PASSWD "0000"
 #define PASSWD_BTYELEN 4
 
 
@@ -234,7 +234,7 @@ typedef struct
     uint16_t enable;    // UVC紫外线消杀总开关0关1开
     uint16_t running_time_h;   // 单次运行时长h
     uint32_t running_time_s;
-    uint8_t passwd[4];
+    uint8_t lock_enable;
     uint8_t run_status; // 1关闭运行 2开启运行
     uint8_t running;
 } St_Uvc;
