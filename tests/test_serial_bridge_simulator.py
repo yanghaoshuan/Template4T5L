@@ -138,7 +138,8 @@ class TlvCodecTests(unittest.TestCase):
 
     def test_snapshot_and_bootstrap_share_command_by_direction(self) -> None:
         snapshot = sim.encode_snapshot(
-            [
+            [(0x05, [sim.field_binary64(0x01, 25.3),
+                     sim.field_binary64(0x02, 55.0)])] + [
                 (struct_type, [sim.field_u8(0x01, struct_type & 1)])
                 for struct_type in range(0x61, 0x6A)
             ]
@@ -147,7 +148,7 @@ class TlvCodecTests(unittest.TestCase):
         self.assertEqual(decoded.command, sim.TLV_CMD_SNAPSHOT)
         self.assertEqual(
             [segment.struct_type for segment in decoded.segments],
-            list(range(0x61, 0x6A)),
+            [0x05, *range(0x61, 0x6A)],
         )
         with self.assertRaises(sim.ProtocolError):
             sim.decode_bootstrap_result(snapshot)

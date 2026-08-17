@@ -317,6 +317,7 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
     for(index = 0U; index < count; ++index)
     {
         if((command == V851_TLV_CMD_SNAPSHOT) &&
+           (segments[index].struct_type != V851_TLV_STRUCT_ENVIRONMENT) &&
            ((segments[index].struct_type < V851_TLV_STRUCT_EXHAUST) ||
             (segments[index].struct_type > V851_TLV_STRUCT_FILTER)))
         {
@@ -539,13 +540,13 @@ static uint16_t V851ProtocolQueueStateMask(uint8_t command,
     {
         if((requested_mask & ((uint16_t)1U << index)) != 0U)
         {
+            segments[count].struct_type =
+                V851ControlInfoReportStructType(index);
             length = V851ControlInfoBuildFields(
-                (uint8_t)(V851_TLV_STRUCT_EXHAUST + index),
+                segments[count].struct_type,
                 v851_state_fields[index], sizeof(v851_state_fields[index]));
             if(length != 0U)
             {
-                segments[count].struct_type =
-                    (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
                 segments[count].payload = v851_state_fields[index];
                 segments[count].length = length;
                 included_mask |= (uint16_t)1U << index;

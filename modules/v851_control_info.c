@@ -40,6 +40,21 @@ static uint8_t V851ControlInfoIndex(uint8_t struct_type)
     return (uint8_t)(struct_type - V851_TLV_STRUCT_EXHAUST);
 }
 
+uint8_t V851ControlInfoReportStructType(uint8_t report_index)
+{
+    if(report_index == V851_CONTROL_ENVIRONMENT_INDEX)
+    {
+        return V851_TLV_STRUCT_ENVIRONMENT;
+    }
+    if((report_index >= V851_CONTROL_ACTUATOR_BASE_INDEX) &&
+       (report_index < V851_CONTROL_COUNT))
+    {
+        return (uint8_t)(V851_TLV_STRUCT_EXHAUST + report_index -
+                         V851_CONTROL_ACTUATOR_BASE_INDEX);
+    }
+    return 0U;
+}
+
 static uint32_t V851ControlInfoCommandAddress(uint8_t struct_type)
 {
     switch(struct_type)
@@ -89,6 +104,8 @@ static uint32_t V851ControlInfoReportAddress(uint8_t struct_type)
 {
     switch(struct_type)
     {
+        case V851_TLV_STRUCT_ENVIRONMENT:
+            return V851_CONTROL_REPORT_ENVIRONMENT_ADDR;
         case V851_TLV_STRUCT_EXHAUST:
             return V851_CONTROL_REPORT_EXHAUST_ADDR;
         case V851_TLV_STRUCT_LIGHT:
@@ -116,6 +133,8 @@ static uint8_t V851ControlInfoReportWords(uint8_t struct_type)
 {
     switch(struct_type)
     {
+        case V851_TLV_STRUCT_ENVIRONMENT:
+            return 3U;
         case V851_TLV_STRUCT_HUMIDIFIER:
             return 5U;
         case V851_TLV_STRUCT_EXHAUST:
@@ -666,6 +685,109 @@ static uint8_t V851ControlInfoBuildU8(uint8_t *field_buffer,
                            (uint8_t)value);
 }
 
+/* 将带一位小数的有符号温度转换为IEEE-754 binary64，避免依赖C51的
+ * 32位native float/double布局。 */
+static uint8_t V851ControlInfoWriteTenths(uint8_t *buffer,
+                                          uint16_t capacity,
+                                          uint16_t *offset,
+                                          uint8_t tag,
+                                          int16_t tenths)
+{
+    uint8_t encoded[8];
+    uint8_t bit_index;
+    uint8_t mantissa_bit;
+    uint8_t negative;
+    uint16_t denominator;
+    uint16_t magnitude;
+    uint16_t remainder;
+    uint16_t rounded_remainder;
+    int16_t exponent;
+    uint32_t high_word;
+    uint32_t low_word;
+
+    high_word = 0UL;
+    low_word = 0UL;
+    if(tenths != 0)
+    {
+        negative = (tenths < 0) ? 1U : 0U;
+        magnitude = negative ? (uint16_t)(-(int32_t)tenths) :
+                               (uint16_t)tenths;
+        denominator = 10U;
+        exponent = 0;
+        if(magnitude >= denominator)
+        {
+            while(((uint32_t)denominator << 1U) <= magnitude)
+            {
+                denominator = (uint16_t)(denominator << 1U);
+                ++exponent;
+            }
+            remainder = (uint16_t)(magnitude - denominator);
+        }
+        else
+        {
+            remainder = (uint16_t)(magnitude << 1U);
+            exponent = -1;
+            while(remainder < 10U)
+            {
+                remainder = (uint16_t)(remainder << 1U);
+                --exponent;
+            }
+            remainder = (uint16_t)(remainder - 10U);
+            denominator = 10U;
+        }
+
+        high_word = (uint32_t)(1023 + exponent) << 20;
+        if(negative != 0U)
+        {
+            high_word |= 0x80000000UL;
+        }
+        for(bit_index = 0U; bit_index < 52U; ++bit_index)
+        {
+            remainder = (uint16_t)(remainder << 1U);
+            if(remainder >= denominator)
+            {
+                remainder = (uint16_t)(remainder - denominator);
+                mantissa_bit = (uint8_t)(51U - bit_index);
+                if(mantissa_bit >= 32U)
+                {
+                    high_word |= (uint32_t)1UL << (mantissa_bit - 32U);
+                }
+                else
+                {
+                    low_word |= (uint32_t)1UL << mantissa_bit;
+                }
+            }
+        }
+
+        /* IEEE-754 round-to-nearest, ties-to-even. */
+        rounded_remainder = (uint16_t)(remainder << 1U);
+        if((rounded_remainder > denominator) ||
+           ((rounded_remainder == denominator) &&
+            ((low_word & 1UL) != 0UL)))
+        {
+            if(low_word == 0xFFFFFFFFUL)
+            {
+                low_word = 0UL;
+                ++high_word;
+            }
+            else
+            {
+                ++low_word;
+            }
+        }
+    }
+
+    encoded[0] = (uint8_t)(high_word >> 24);
+    encoded[1] = (uint8_t)(high_word >> 16);
+    encoded[2] = (uint8_t)(high_word >> 8);
+    encoded[3] = (uint8_t)high_word;
+    encoded[4] = (uint8_t)(low_word >> 24);
+    encoded[5] = (uint8_t)(low_word >> 16);
+    encoded[6] = (uint8_t)(low_word >> 8);
+    encoded[7] = (uint8_t)low_word;
+    return V851TlvWriteBytes(buffer, capacity, offset, tag, encoded, 8U);
+}
+
 uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
                                     uint8_t *field_buffer,
                                     uint16_t capacity)
@@ -676,9 +798,28 @@ uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
     uint16_t value;
     uint32_t address;
 
+    if(field_buffer == NULL)
+    {
+        return 0U;
+    }
+    if(struct_type == V851_TLV_STRUCT_ENVIRONMENT)
+    {
+        offset = 0U;
+        if((V851ControlInfoWriteTenths(
+                field_buffer, capacity, &offset, V851_TLV_TAG_TEMPERATURE,
+                G_Device_Ctrl.environment.temperaturex10) == 0U) ||
+           (V851TlvWriteBinary64Uint16(
+                field_buffer, capacity, &offset, V851_TLV_TAG_HUMIDITY,
+                G_Device_Ctrl.environment.humidity) == 0U))
+        {
+            return 0U;
+        }
+        return offset;
+    }
+
     address = V851ControlInfoReportAddress(struct_type);
     words = V851ControlInfoReportWords(struct_type);
-    if((address == 0UL) || (words == 0U) || (field_buffer == NULL))
+    if((address == 0UL) || (words == 0U))
     {
         return 0U;
     }
@@ -789,7 +930,7 @@ uint16_t V851ControlInfoScanChanged(void)
     changed_mask = 0U;
     for(index = 0U; index < V851_CONTROL_COUNT; ++index)
     {
-        struct_type = (uint8_t)(V851_TLV_STRUCT_EXHAUST + index);
+        struct_type = V851ControlInfoReportStructType(index);
         words = V851ControlInfoReportWords(struct_type);
         bytes = (uint8_t)(words * 2U);
         read_dgus_vp(V851ControlInfoReportAddress(struct_type), record, words);

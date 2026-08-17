@@ -11,8 +11,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class V851ActuatorWireMappingTests(unittest.TestCase):
-    def test_nine_segment_snapshot_matches_wire_vector(self) -> None:
+    def test_environment_and_nine_actuator_snapshot_matches_wire_vector(self) -> None:
         segments = [
+            (0x05, [sim.field_binary64(1, 25.3),
+                    sim.field_binary64(2, 55.0)]),
             (0x61, [sim.field_u8(1, 1), sim.field_u8(2, 3),
                     sim.field_binary64(3, 2.0), sim.field_u8(4, 1)]),
             (0x62, [sim.field_u8(1, 1), sim.field_u8(2, 2),
@@ -32,7 +34,9 @@ class V851ActuatorWireMappingTests(unittest.TestCase):
         ]
         frame = sim.encode_snapshot(segments)
         expected = bytes.fromhex(
-            "AA 55 00 AC 37 "
+            "AA 55 00 C5 37 "
+            "05 00 16 01 00 08 40 39 4C CC CC CC CC CD "
+            "02 00 08 40 4B 80 00 00 00 00 00 "
             "61 00 17 01 00 01 01 02 00 01 03 03 00 08 "
             "40 00 00 00 00 00 00 00 04 00 01 01 "
             "62 00 0C 01 00 01 01 02 00 01 02 03 00 01 01 "
@@ -49,7 +53,7 @@ class V851ActuatorWireMappingTests(unittest.TestCase):
         self.assertEqual(frame, expected)
         decoded = sim.decode_tlv_frame(frame)
         self.assertEqual([segment.struct_type for segment in decoded.segments],
-                         list(range(0x61, 0x6A)))
+                         [0x05, *range(0x61, 0x6A)])
 
     def test_all_vp_hour_tables_round_trip_exactly(self) -> None:
         for mapping, table in sim.VP_HOUR_TABLES.items():
@@ -98,8 +102,8 @@ class V851ActuatorFirmwareSourceTests(unittest.TestCase):
 
     def test_capacity_mask_and_per_type_word_counts_cover_all_fields(self) -> None:
         for declaration in (
-            "V851_CONTROL_COUNT                       9U",
-            "V851_CONTROL_FULL_MASK                   0x01FFU",
+            "V851_CONTROL_COUNT                       10U",
+            "V851_CONTROL_FULL_MASK                   0x03FFU",
             "V851_CONTROL_REPORT_MAX_WORDS            5U",
             "V851_CONTROL_FIELD_MAX_BYTES             34U",
         ):

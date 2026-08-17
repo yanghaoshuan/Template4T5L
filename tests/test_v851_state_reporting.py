@@ -27,7 +27,7 @@ class V851StateAndWifiTests(unittest.TestCase):
             "                                                V851_CONTROL_FULL_MASK)",
             self.protocol,
         )
-        self.assertIn("V851_CONTROL_FULL_MASK                   0x01FFU", self.control_h)
+        self.assertIn("V851_CONTROL_FULL_MASK                   0x03FFU", self.control_h)
         self.assertIn("if(sent_mask == V851_CONTROL_FULL_MASK)", self.protocol)
         self.assertIn("v851_state_full_tick = tick", self.protocol)
         self.assertNotIn("v851_state_snapshot_pending", self.protocol)
@@ -61,9 +61,13 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertLess(local, full)
         self.assertEqual(service.count("return;"), 1)
 
-    def test_snapshot_sender_only_accepts_actuator_segments(self) -> None:
+    def test_snapshot_sender_accepts_environment_and_actuator_segments(self) -> None:
         self.assertIn("command != V851_TLV_CMD_SNAPSHOT", self.protocol)
         self.assertIn("command == V851_TLV_CMD_SNAPSHOT", self.protocol)
+        self.assertIn(
+            "segments[index].struct_type != V851_TLV_STRUCT_ENVIRONMENT",
+            self.protocol,
+        )
         self.assertIn("segments[index].struct_type < V851_TLV_STRUCT_EXHAUST", self.protocol)
         self.assertIn("segments[index].struct_type > V851_TLV_STRUCT_FILTER", self.protocol)
 

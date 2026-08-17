@@ -28,6 +28,7 @@ class V851ControlDgusTests(unittest.TestCase):
             "ANION": "0x5124UL",
         }
         report_addresses = {
+            "ENVIRONMENT": "0x3010UL",
             "EXHAUST": "0x301AUL",
             "LIGHT": "0x301FUL",
             "UVB": "0x3024UL",
@@ -154,6 +155,16 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertIn("V851ControlInfoReportAddress(struct_type)", scan)
         self.assertNotIn("V851ControlInfoCommandAddress", build)
         self.assertNotIn("V851ControlInfoCommandAddress", scan)
+
+    def test_environment_temperature_and_humidity_use_shared_report_path(self) -> None:
+        self.assertIn("V851_CONTROL_ENVIRONMENT_INDEX", self.header)
+        self.assertIn("V851ControlInfoReportStructType", self.header)
+        self.assertIn("V851_TLV_STRUCT_ENVIRONMENT", self.source)
+        self.assertIn("V851_TLV_TAG_TEMPERATURE", self.source)
+        self.assertIn("G_Device_Ctrl.environment.temperaturex10", self.source)
+        self.assertIn("V851_TLV_TAG_HUMIDITY", self.source)
+        self.assertIn("G_Device_Ctrl.environment.humidity", self.source)
+        self.assertIn("V851ControlInfoWriteTenths", self.source)
 
     def test_first_scan_silently_establishes_baseline_without_init_api(self) -> None:
         self.assertNotIn("V851ControlInfoInit", self.header)

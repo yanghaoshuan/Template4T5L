@@ -53,6 +53,7 @@ TLV_FRAME_MAX = 2048
 OTA_FRAME_MAX = 4124
 
 ACTUATOR_STRUCT_TYPES = tuple(range(0x61, 0x6A))
+STATE_STRUCT_TYPES = (0x05,) + ACTUATOR_STRUCT_TYPES
 ALARM_VP_COUNT = 10
 ALARM_VP_MAPPINGS = {
     (1, 1): ("TEMP_HIGH", "HIGH"),
@@ -263,10 +264,12 @@ def encode_tlv_frame(
 def encode_snapshot(
     segments: Iterable[tuple[int, Iterable[TlvField] | bytes]],
 ) -> bytes:
-    """Encode one full T5L-to-V851 snapshot with actuator types 0x61-0x69."""
+    """Encode a full T5L-to-V851 Environment + actuator snapshot."""
     materialized = list(segments)
-    if tuple(struct_type for struct_type, _ in materialized) != ACTUATOR_STRUCT_TYPES:
-        raise ValueError("a snapshot needs exactly one ordered segment for 0x61-0x69")
+    if tuple(struct_type for struct_type, _ in materialized) != STATE_STRUCT_TYPES:
+        raise ValueError(
+            "a snapshot needs ordered Environment 0x05 and actuator 0x61-0x69 segments"
+        )
     return encode_tlv_frame(TLV_CMD_SNAPSHOT, materialized)
 
 

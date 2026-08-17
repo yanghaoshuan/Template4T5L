@@ -5,8 +5,10 @@
 
 #if v851PROTOCOL_ENABLED
 
-#define V851_CONTROL_COUNT                       9U
-#define V851_CONTROL_FULL_MASK                   0x01FFU
+#define V851_CONTROL_COUNT                       10U
+#define V851_CONTROL_FULL_MASK                   0x03FFU
+#define V851_CONTROL_ENVIRONMENT_INDEX           0U
+#define V851_CONTROL_ACTUATOR_BASE_INDEX         1U
 #define V851_CONTROL_COMMAND_MAX_WORDS           3U
 #define V851_CONTROL_COMMAND_MAX_BYTES           6U
 #define V851_CONTROL_REPORT_MAX_WORDS            5U
@@ -24,6 +26,7 @@
 #define V851_CONTROL_COMMAND_ANION_ADDR          0x5124UL
 
 /* Actual-state VPs: T5L -> V851 snapshot and incremental reports. */
+#define V851_CONTROL_REPORT_ENVIRONMENT_ADDR     0x3010UL
 #define V851_CONTROL_REPORT_EXHAUST_ADDR         0x301AUL
 #define V851_CONTROL_REPORT_LIGHT_ADDR           0x301FUL
 #define V851_CONTROL_REPORT_UVB_ADDR             0x3024UL
@@ -44,12 +47,15 @@ uint8_t V851ControlInfoApplySegment(uint8_t struct_type,
                                     const uint8_t *field_bytes,
                                     uint16_t length);
 
-/* Encode all documented report fields of one actuator into field_buffer. */
+/* Map report bit/index 0 to Environment and 1..9 to actuator 0x61..0x69. */
+uint8_t V851ControlInfoReportStructType(uint8_t report_index);
+
+/* Encode Environment or one actuator's report fields into field_buffer. */
 uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
                                     uint8_t *field_buffer,
                                     uint16_t capacity);
 
-/* Return one bit per 0x61..0x69 actuator whose report VP fields changed. */
+/* Return bit 0 for Environment and bits 1..9 for changed actuators. */
 uint16_t V851ControlInfoScanChanged(void);
 
 #endif /* v851PROTOCOL_ENABLED */
