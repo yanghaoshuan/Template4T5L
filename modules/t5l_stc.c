@@ -3180,7 +3180,7 @@ void Updata_Vpdata_To_Report()
     write_dgus_vp(0x3000, (uint8_t *)&databuf[0], 6);
 
     *(float *)&databuf[0] = ((float)G_Device_Ctrl.environment.temperaturex10 / 10);
-    databuf[2] = G_Device_Ctrl.environment.humidity;
+    databuf[2] = G_Device_Ctrl.environment.humidity / 10;
     databuf[3] = 0;
     databuf[4] = 0;
     databuf[5] = 0;
