@@ -187,11 +187,14 @@ void V851WifiInit(void)
 {
     uint8_t page_bytes[14];
 
+    FlashToDgus(flashMAIN_BLOCK_ORDER,V851_WIFI_PAGE_CONFIG_ADDR,V851_WIFI_PAGE_CONFIG_ADDR,8);
     memset(&v851_wifi_page, 0, sizeof(v851_wifi_page));
+
     read_dgus_vp(V851_WIFI_PAGE_CONFIG_ADDR, page_bytes, 7U);
     memcpy(&v851_wifi_page, page_bytes, sizeof(page_bytes));
     read_dgus_vp(V851_WIFI_LIST_CONFIG_ADDR,
                  (uint8_t *)&v851_wifi_page.wifi_start_addr, 1U);
+    // v851_wifi_page.wifi_start_addr=0x1900;
     v851_wifi_page_offset = 0U;
 }
 

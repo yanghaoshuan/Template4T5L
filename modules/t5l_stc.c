@@ -1220,10 +1220,10 @@ void sys_config(uint8_t is_beep, uint8_t is_sleep)
 void Exhaust_On()
 {
 
-    if (G_Device_Ctrl.Exhaust.err_sta != 0)
-    {
-        return;
-    }
+    // if (G_Device_Ctrl.Exhaust.err_sta != 0)
+    // {
+    //     return;
+    // }
    G_Device_Ctrl.Exhaust.enable = 0;
 
     read_dgus_vp(OUTWIND_VP + 1, (uint8_t *)&G_Device_Ctrl.Exhaust.target_speed, 1);
@@ -1392,11 +1392,11 @@ void InWind_On(uint16_t speed)
 {
     G_Device_Ctrl.Inlet_Fan.target_speed = speed;
 
-    if (G_Device_Ctrl.Inlet_Fan.err_sta != 0)
-    {
-        InWind_Off();
-        return;
-    }
+    // if (G_Device_Ctrl.Inlet_Fan.err_sta != 0)
+    // {
+    //     InWind_Off();
+    //     return;
+    // }
 
 
     G_Device_Ctrl.Inlet_Fan.enable = 0;
@@ -2845,8 +2845,8 @@ void Flash_DataInit(void)
     if (crc1 == 0 && crc2 == 0)
     {
         
-        idxbuf[0]=0x5a;
-        idxbuf[1]=0xa5;
+        idxbuf[0]=0x5aa5;
+        idxbuf[1]=0xaa55;
         idxbuf[2]=sector_idx=0;
         Calculate_CRC16_Flash((uint8_t *)&idxbuf, IDXLEN-2, 1);
         // 复制到备份
@@ -2862,14 +2862,14 @@ void Flash_DataInit(void)
         }
         else if (crc1 == 0 && crc2 == 1) // 仅备份正常
         {
-            memcpy(&databuf, &backdatabuf, IDXLEN);
+            memcpy(&idxbuf, &backidxbuf, IDXLEN);
             nor_flash_write(MAIN_ADDR, (uint8_t *)&backidxbuf,IDXLEN/2);
             err_sta = 3;
         }
         sector_idx=idxbuf[2];
     }
 
-
+    // UartSendData(&Uart2,&idxbuf,8);
     //读主区和备份区
     nor_flash_read(MAIN_DATA_ADDR+((uint32_t)sector_idx*0x800), (uint8_t *)&databuf, DATALEN / 2);
     nor_flash_read(BACK_DATA_ADDR+((uint32_t)sector_idx*0x800), (uint8_t *)&backdatabuf, DATALEN / 2);
@@ -3079,7 +3079,7 @@ void Flash_DataInit(void)
     }
     // UartSendData(&Uart2,&G_Device_Ctrl.Cfg.passwd[0],4);
 
-    // UartSendData(&Uart2,&G_Device_Ctrl.Cfg.ligth_value,1);
+    
 }
 
 void Start_Once_SaveData()
@@ -3155,12 +3155,12 @@ void Flash_SaveData()
     if(cur_save_cnt>=SAVEFLASH_CNT){
         cur_save_cnt=0;
         sector_idx=(sector_idx+1)%SECTOR_CNT;
-        idxbuf[0]=sector_idx;
+        idxbuf[2]=sector_idx;
         Calculate_CRC16_Flash((uint8_t *)&idxbuf, 6, 1);
         nor_flash_write(MAIN_ADDR, (uint8_t *)&idxbuf,  4);
         nor_flash_write(BACK_ADDR, (uint8_t *)&idxbuf,  4);
-        UartSendData(&Uart2,(uint8_t*)&cur_save_cnt,4);
-        UartSendData(&Uart2,(uint8_t*)&idxbuf,4);
+        // UartSendData(&Uart2,(uint8_t*)&cur_save_cnt,4);
+        // UartSendData(&Uart2,(uint8_t*)&idxbuf[2],2);
     }
     *(uint32_t*)&databuf[28]=cur_save_cnt;//存储次数
     Calculate_CRC16_Flash((uint8_t *)&databuf, DATALEN - 2, 1);
