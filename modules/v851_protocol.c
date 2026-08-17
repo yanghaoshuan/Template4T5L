@@ -19,6 +19,7 @@
 #define V851_OTA_TX_MAX                           64U
 #define V851_STATE_SCAN_INTERVAL_MS               500UL
 #define V851_STATE_FULL_INTERVAL_MS               60000UL
+// #define V851_STATE_FULL_INTERVAL_MS               20000UL
 #define V851_ALARM_SCAN_INTERVAL_MS               500UL
 #define V851_ALARM_VP_BASE                        0x3080UL
 #define V851_ALARM_VP_COUNT                       10U
