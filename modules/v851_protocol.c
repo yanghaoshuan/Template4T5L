@@ -806,6 +806,7 @@ static void V851ProtocolServiceState(uint32_t tick)
         return;
     }
 
+#if v851STATE_FULL_REPORT_ENABLED
     if((uint32_t)(tick - v851_state_full_tick) >=
        V851_STATE_FULL_INTERVAL_MS)
     {
@@ -816,6 +817,7 @@ static void V851ProtocolServiceState(uint32_t tick)
             v851_state_full_tick = tick;
         }
     }
+#endif
 }
 
 static void V851ProtocolServiceTx(void)

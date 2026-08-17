@@ -175,6 +175,7 @@ extern uint32_t sysFCLK;
 
 #define uartTA_PROTOCOL_ENABLED          0
 #define v851PROTOCOL_ENABLED             1      /**< UART4 V851 TLV/Wi-Fi协议 */
+#define v851STATE_FULL_REPORT_ENABLED    0      /**< 暂时关闭每分钟一次的0x37全量上报 */
 #define pb03fBLE_ENABLED                 0      /**< PB-03F源码保留，当前产品禁用 */
 #define blePB03F_UART_ID                 5      /**< 仅在重新启用PB-03F时选择UART */
 #define v851CONTROL_MOCK_ENABLED         0      /**< 旧JSON控制模拟器停用 */
