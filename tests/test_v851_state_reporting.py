@@ -16,8 +16,6 @@ class V851StateAndWifiTests(unittest.TestCase):
         cls.tlv_app = (REPO_ROOT / "modules/v851_tlv_app.c").read_text(encoding="utf-8")
         cls.wifi = (REPO_ROOT / "modules/v851_wifi.c").read_text(encoding="utf-8")
         cls.wifi_h = (REPO_ROOT / "modules/v851_wifi.h").read_text(encoding="utf-8")
-        cls.ota = (REPO_ROOT / "modules/ota.c").read_text(encoding="utf-8")
-        cls.r11 = (REPO_ROOT / "modules/r11_common.c").read_text(encoding="utf-8")
 
     def test_full_snapshot_waits_sixty_seconds_and_retries_until_queued(self) -> None:
         self.assertIn("V851_TLV_CMD_SNAPSHOT                    0x37U", self.protocol_h)
@@ -73,11 +71,11 @@ class V851StateAndWifiTests(unittest.TestCase):
 
     def test_two_slot_tlv_queue_and_priority_order(self) -> None:
         self.assertIn("#define V851_TLV_TX_DEPTH                         2U", self.protocol)
-        ota = self.protocol.index("if(v851_ota_tx_pending != 0U)")
-        wifi = self.protocol.index("if(v851_wifi_tx_count != 0U)", ota)
+        wifi = self.protocol.index("if(v851_wifi_tx_count != 0U)")
         tlv = self.protocol.index("if(v851_tlv_tx_count != 0U)", wifi)
-        self.assertLess(ota, wifi)
         self.assertLess(wifi, tlv)
+        self.assertNotIn("v851_ota_tx", self.protocol)
+        self.assertNotIn("V851ProtocolSendOtaFrame", self.protocol)
         task_start = self.protocol.index("void V851ProtocolTask(void)")
         task = self.protocol[task_start:]
         alarm = task.index("V851ProtocolServiceAlarm(tick)")
@@ -95,8 +93,7 @@ class V851StateAndWifiTests(unittest.TestCase):
         for tag in ("EA_IS_ALARM", "EA_CODE", "EA_LEVEL", "EA_RECOVERED", "EA_PAYLOAD"):
             self.assertIn(f"V851_TLV_TAG_{tag}", self.protocol_h)
         self.assertNotIn("V851_TLV_CMD_OTA_STATUS", self.protocol_h)
-        self.assertNotIn("V851ProtocolNotifyOtaState", self.ota)
-        self.assertIn("OtaAcknowledgeComplete();", self.protocol)
+        self.assertNotIn("OtaAcknowledgeComplete", self.protocol)
 
     def test_bootstrap_cache_writes_qr_to_planned_dgus_region(self) -> None:
         for name in ("device_sn", "ble_id", "api_endpoint", "bind_status", "qr_url"):
@@ -112,10 +109,12 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("v851_bootstrap_qr_buffer", self.tlv_app)
         self.assertIn("write_dgus_vp(V851_BOOTSTRAP_QR_VP_ADDR", self.tlv_app)
 
-    def test_ota_keeps_abcd_transport_without_tlv_status(self) -> None:
-        self.assertIn("V851ProtocolSendOtaFrame(buf, len)", self.ota)
-        self.assertNotIn("V851ProtocolNotifyOtaState", self.ota)
-        self.assertNotIn("V851_OTA_STAGE_", self.ota)
+    def test_application_protocol_has_no_ota_queue_or_status(self) -> None:
+        for removed in (
+            "V851ProtocolSendOtaFrame", "v851_ota_tx", "OtaCompleteFlag",
+            "OtaAcknowledgeComplete", "V851_OTA_STAGE_",
+        ):
+            self.assertNotIn(removed, self.protocol + self.protocol_h)
 
     def test_wifi_uses_r11_addresses_and_commands(self) -> None:
         for value in ("0x0600UL", "0x04B0UL", "0x04C0UL", "0x05B8UL", "0x05BEUL", "0x06D8UL"):
@@ -130,8 +129,6 @@ class V851StateAndWifiTests(unittest.TestCase):
         self.assertIn("declared_length = (uint16_t)(offset - 4U)", self.wifi)
         self.assertIn("V851ProtocolSendWifiFrame(frame, offset)", self.wifi)
         self.assertNotIn("offset + 4U", self.wifi)
-        self.assertIn("UartSendData(&Uart_R11, r11_send_buf, now_len2)", self.r11)
-        self.assertNotIn("UartSendData(&Uart_R11,r11_send_buf,now_len2 + 4)", self.r11)
 
     def test_c5_updates_connected_or_disconnected_vp(self) -> None:
         self.assertIn("status_word = (frame[8] == 2U) ? 2U : 1U", self.wifi)

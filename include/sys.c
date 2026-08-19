@@ -12,12 +12,6 @@
 #include "timer.h"
 #include <string.h>
 
-#if sysBEAUTY_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_netskinAnalyze.h"
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-
 /**
  * @brief 系统任务定时器时钟节拍计数器
  * @details 用于任务调度的时钟基准，由定时器中断递增
@@ -220,7 +214,7 @@ static void GpioInit(void)
     /*************************
      *   .7 1=CAN 接口引出到 P0.2、P0.3， 0=CAN 接口不引出，为 IO 口。 
      *   .6 1=UART2 接口引出到 P0.4、P0.5， 0=UART2 接口不引出，为 IO 口。 
-     *   .5 1=UART3 接口引出到 P0.6、P0.7， 0=UART3 接口不引出，为 IO 口。 
+     *   .5 当前产品保留为 GPIO。
      *   .4-.2 保留 
      *   .1 WDT 控制，1=开启 0=关闭。 
      *   .0 WDT 喂狗，1=喂狗一次（WDT 计数值归零，看门狗的溢出时间为 1 秒）。
@@ -243,29 +237,21 @@ static void InterruptInit(void)
     /******** default interrupt priority ************************************
     *权 值   11  10    9   8   7     6      5    4       3       2      1    0 
     *优先级 最高                                                             最低 
-    *中 断  EX0 UART3 ET0 CAN EX1 UART4-TX ET1 UART4-RX UART2 UART5-TX ET2 UART5-RX
+    *当前产品使用 T0、UART4-TX、UART4-RX、UART2 中断。
     ************************************************************************/
 
     /**************************************************
      ** 分组 IP0对应 IP1对应     中断高优先级    中断低优先级 
-     *   G0  .0      .0          外部中断 0      UART3 中断 
+     *   G0  .0      .0          外部中断 0      未使用
      *   G1  .1      .1          T0 定时器中断   CAN 通信中断 
      *   G2  .2      .2          外部中断 1      UART4 发送中断 
      *   G3  .3      .3          T1 定时器中断   UART4 接收中断 
-     *   G4  .4      .4          UART2 中断      UART5 发送中断 
-     *   G5  .5      .5          T2 定时器中断   UART5 接收中断
+     *   G4  .4      .4          UART2 中断      未使用
+     *   G5  .5      .5          T2 定时器中断   未使用
      ********************************************************/
     
-    #if sysN5CAMERA_MODE_ENABLED
-    IP1 = 0x39;/* 0b0001 1001 */		
-	IP0 = 0x25;/* 0b0000 0101 */
-    #elif sysADVERTISE_MODE_ENABLED || sysBEAUTY_MODE_ENABLED
-    IP1 = 0x39;/* 0b0110 1001 */
-	IP0 = 0x25;/* 0b0010 0101 */
-    #else
     IP1 = sysDEFAULT_ZERO;    
 	IP0 = sysDEFAULT_ZERO;
-    #endif
 }
 
 
@@ -514,8 +500,7 @@ void DgusAutoUpload()
 
 static void first_enter_action(void)
 {
-    #if uartUART2_ENABLED && \
-        !(pb03fBLE_ENABLED && (blePB03F_UART_ID == 2))
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"First Enter Action Executed", sizeof("First Enter Action Executed") - 1);
     #endif /* UART2 is available for debug output */
 }
@@ -523,8 +508,7 @@ static void first_enter_action(void)
 
 static void repeated_enter_action(void)
 {
-    #if uartUART2_ENABLED && \
-        !(pb03fBLE_ENABLED && (blePB03F_UART_ID == 2))
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"Repeated Enter Action Executed", sizeof("Repeated Enter Action Executed") - 1);
     #endif /* UART2 is available for debug output */
 }
@@ -532,8 +516,7 @@ static void repeated_enter_action(void)
 
 static void exit_action(void)
 {
-    #if uartUART2_ENABLED && \
-        !(pb03fBLE_ENABLED && (blePB03F_UART_ID == 2))
+    #if uartUART2_ENABLED
     UartSendData(&Uart2, (uint8_t *)"Exit Action Executed", sizeof("Exit Action Executed") - 1);
     #endif /* UART2 is available for debug output */
 }

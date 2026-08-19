@@ -14,7 +14,6 @@ class V851FactoryAlarmSourceTests(unittest.TestCase):
         cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
         cls.stc = (REPO_ROOT / "modules/t5l_stc.c").read_text(encoding="utf-8")
         cls.uart = (REPO_ROOT / "source/uart.c").read_text(encoding="utf-8")
-        cls.ota = (REPO_ROOT / "modules/ota.c").read_text(encoding="utf-8")
         cls.config_t5l = (REPO_ROOT / "include/T5L/T5LOSConfig.h").read_text(encoding="utf-8")
         cls.config_t5f = (REPO_ROOT / "include/T5F/T5FOSConfig.h").read_text(encoding="utf-8")
 
@@ -28,7 +27,7 @@ class V851FactoryAlarmSourceTests(unittest.TestCase):
 
     def test_factory_defaults_are_configurable_on_t5l_and_t5f(self) -> None:
         defaults = {
-            "v851FACTORY_SALES_COUNTRY": '"JP"',
+            "v851FACTORY_SALES_COUNTRY": '"CN"',
             "v851FACTORY_PRODUCT_KEY": '"MCQX_PET_CABIN"',
             "v851FACTORY_MODEL": '"MCQX-PET-CABIN-V1"',
             "v851FACTORY_HARDWARE_VERSION": '"HW-V2.0"',
@@ -87,11 +86,9 @@ class V851FactoryAlarmSourceTests(unittest.TestCase):
 
     def test_38_is_not_received_or_used_by_ota(self) -> None:
         self.assertNotIn("V851_TLV_CMD_EVENT_ALARM", self.uart)
-        self.assertNotIn("V851ProtocolNotifyOtaState", self.ota)
         self.assertNotIn("V851_TLV_CMD_OTA_STATUS", self.protocol_h)
-        self.assertIn("V851ProtocolSendOtaFrame(buf, len)", self.ota)
-        self.assertIn("if(OtaCompleteFlag != 0U)", self.protocol)
-        self.assertIn("OtaAcknowledgeComplete();", self.protocol)
+        self.assertNotIn("V851ProtocolSendOtaFrame", self.protocol + self.protocol_h)
+        self.assertNotIn("OtaCompleteFlag", self.protocol)
 
 
 if __name__ == "__main__":

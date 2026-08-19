@@ -107,47 +107,6 @@ typedef            long			int32_t;
 
 
 /**
- * @brief 广告屏和美容屏功能使能标志
- * @details 1: 启用广告屏和美容屏功能, 0: 禁用
- * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
- * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
- */
-#define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0
-
-#if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
-#error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
-#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
-
-#if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart3
-#define R11_WIFI_ENABLED              0
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysBEAUTY_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#define R11_HAIR_ANALYZE_ENABLED      1          /**< 头皮检测分析功能使能标志 */
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#endif /* sysADVERTISE_MODE_ENABLED */  
-
-#ifndef R11_WIFI_ENABLED
-#define R11_WIFI_ENABLED              0
-#endif /* R11_WIFI_ENABLED */
-
-#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-
-#if sysSET_FROM_LIB
-extern uint16_t sys_2k_ratio;
-extern uint32_t sysFOSC;
-extern uint32_t sysFCLK;
-#else
-/**
  * @brief 2k分辨率模式
  * @details 1: 1920*1080分辨率屏幕, 0: 其他
  */
@@ -168,17 +127,12 @@ extern uint32_t sysFCLK;
 #endif /* sys2K_RATIO */
 
 #define sysFCLK                      sysFOSC
-#endif /* sysSET_FROM_LIB */
-
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
 
 #define uartTA_PROTOCOL_ENABLED          0
 #define v851PROTOCOL_ENABLED             1      /**< UART4 V851 TLV/Wi-Fi协议 */
 #define v851STATE_FULL_REPORT_ENABLED    1      /**< 暂时关闭每分钟一次的0x37全量上报 */
-#define pb03fBLE_ENABLED                 0      /**< PB-03F源码保留，当前产品禁用 */
-#define blePB03F_UART_ID                 5      /**< 仅在重新启用PB-03F时选择UART */
-#define v851CONTROL_MOCK_ENABLED         0      /**< 旧JSON控制模拟器停用 */
 
 /* V851工厂设备信息，产品变更时可在此覆盖。 */
 #define v851FACTORY_SALES_COUNTRY        "CN"
@@ -186,19 +140,6 @@ extern uint32_t sysFCLK;
 #define v851FACTORY_MODEL                "MCQX-PET-CABIN-V1"
 #define v851FACTORY_HARDWARE_VERSION     "HW-V2.0"
 #define v851FACTORY_FIRMWARE_VERSION     "FW-V1.0.0"
-
-#if pb03fBLE_ENABLED && !v851PROTOCOL_ENABLED
-#error "PB-03F compatibility requires the V851 protocol module."
-#endif
-
-#if pb03fBLE_ENABLED && \
-    ((blePB03F_UART_ID != 2) && (blePB03F_UART_ID != 5))
-#error "blePB03F_UART_ID must be 2 or 5."
-#endif
-
-#if pb03fBLE_ENABLED && (blePB03F_UART_ID == 2) && uartTA_PROTOCOL_ENABLED
-#error "TA protocol cannot share UART2 with PB-03F."
-#endif
 
 #define sysDGUS_AUTO_UPLOAD_ENABLED      0      /**< V851配网直接轮询0x0600，不占用UART2 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
@@ -211,33 +152,6 @@ extern uint32_t sysFCLK;
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
 #define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
-
-/**
- * @brief OTA升级功能配置
- * @details 应用固件通过UART4接收AB CD升级数据帧并写入NAND。
- */
-#define otaOTA_ENABLED                 1              /**< 启用V851应用层OTA */
-#define otaCRC32_CHECK_ENABLED         1              /**< OTA整文件CRC32校验使能标志 */
-#define otaDEBUG_ENABLED               0              /**< OTA调试输出使能标志，当前默认关闭 */
-#define otaTASK_INTERVAL               2              /**< OTA周期任务执行间隔，单位为系统任务节拍 */
-#define otaDOWNLOAD_MAX                20             /**< 单次OTA最多支持的文件数量 */
-
-#define otaNAND_START_ADDR             0x04000000UL   /**< OTA文件下载到NAND Flash的起始地址 */
-#define otaDATA_START_BLOCK            64             /**< OTA文件数据起始4KB块号，0-63块保留给头文件区域 */
-#define otaCACHE_VP_A                  0x7000         /**< OTA写NAND使用的第一个DGUS 4KB缓存区 */
-#define otaCACHE_VP_B                  0x7800         /**< OTA写NAND使用的第二个DGUS 4KB缓存区 */
-#define otaSPEED_VP_ADDR               0x3FFE         /**< OTA下载进度数值VP地址 */
-#define otaSPEED_SP_ADDR               0x4FE0         /**< OTA下载进度控件SP地址 */
-#define otaTEST_TRIGGER_ADDR           0x40C1         /**< OTA测试触发VP地址，写入0x5AA5后发送F3命令 */
-#define otaUPGRADE_FLAG_ADDR           0x51F0         /**< OTA升级完成标志VP/NOR地址 */
-#define otaUPDATE_INFO_ADDR            0x4100         /**< OTA版本号、时间段等信息起始VP地址 */
-#define otaCHARGE_STATUS_ADDR          0x1000         /**< 参考项目保留的充电状态VP地址 */
-
-#if otaOTA_ENABLED && !v851PROTOCOL_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-#error "OTA requires the V851 bridge or one legacy R11 mode."
-#endif /* otaOTA_ENABLED && no transport */
-
-
 
 #define gpioGPIO_ENABLE             0  /**< GPIO使能标志 */
 #define gpioPWM_ENABLE              0  /**< PWM使能标志 */
@@ -285,7 +199,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     4160
+#define uartUART_COMMON_FRAME_SIZE     2048
 
 /**
  * @brief Modbus协议支持使能标志
@@ -331,25 +245,12 @@ extern uint32_t sysFCLK;
     #endif  /* uartUART2_485_ENABLED */
 #endif  /* uartUART2_ENABLED */
 
-/* UART3配置参数，配置同uart2 */
-#define uartUART3_ENABLED               0
-
-#if uartUART3_ENABLED
-    #define uartUART3_TXBUF_SIZE         256
-    #define uartUART3_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
-    #define uartUART3_TIMEOUT_ENABLED    uartUART3_ENABLED
-    #if uartUART3_TIMEOUT_ENABLED
-        #define uartUART3_TIMEOUTSET     5
-    #endif /* uartUART3_TIMEOUT_ENABLED */  
-    #define uartUART3_BAUDRATE           921600
-#endif /* uartUART3_ENABLED */
-
 /* UART4配置参数，配置同uart2 */
 #define uartUART4_ENABLED               1
 
 #if uartUART4_ENABLED
-    #define uartUART4_TXBUF_SIZE         2112
-    #define uartUART4_RXBUF_SIZE         4160
+    #define uartUART4_TXBUF_SIZE         2049
+    #define uartUART4_RXBUF_SIZE         2049
     #define uartUART4_TIMEOUT_ENABLED    uartUART4_ENABLED
     
     #if uartUART4_TIMEOUT_ENABLED
@@ -367,40 +268,14 @@ extern uint32_t sysFCLK;
 #error "V851 protocol requires UART4."
 #endif
 
-#if v851PROTOCOL_ENABLED && (uartUART_COMMON_FRAME_SIZE < 4160U)
-#error "V851 UART scratch buffer must be at least 4160 bytes."
+#if v851PROTOCOL_ENABLED && (uartUART_COMMON_FRAME_SIZE < 2048U)
+#error "V851 UART scratch buffer must be at least 2048 bytes."
 #endif
 
 #if v851PROTOCOL_ENABLED && \
-    ((uartUART4_RXBUF_SIZE < 4160U) || (uartUART4_TXBUF_SIZE <= 2048U))
-#error "V851 UART4 buffers do not meet TLV/OTA limits."
+    ((uartUART4_RXBUF_SIZE <= 2048U) || (uartUART4_TXBUF_SIZE <= 2048U))
+#error "V851 UART4 rings must hold a complete 2048-byte TLV frame plus one empty slot."
 #endif
-
-/* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               (sysBEAUTY_MODE_ENABLED || \
-                                         sysADVERTISE_MODE_ENABLED || \
-                                         (pb03fBLE_ENABLED && \
-                                          (blePB03F_UART_ID == 5)))
-
-#if uartUART5_ENABLED
-    #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         2048
-    #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
-    
-    #if uartUART5_TIMEOUT_ENABLED
-        #define uartUART5_TIMEOUTSET     5
-    #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-    #define uartUART5_BAUDRATE           921600
-    #else
-    #define uartUART5_BAUDRATE           115200
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
-    #define uartUART5_485_ENABLED        0
-    
-    #if uartUART5_485_ENABLED
-        sbit TR5 = P0^1;
-    #endif  /* uartUART5_485_ENABLED */
-#endif  /* uartUART5_ENABLED */
 
 
 /* I2C配置参数 */
@@ -517,7 +392,5 @@ extern uint32_t sysFCLK;
 #endif /* spiSPI_ENABLED */
 
 #define canCAN_ENABLED                  0
-
-#define _4G_AIR780E_ENABLED             0
 
 #endif /* T5LOS_CONFIG_H */

@@ -19,98 +19,83 @@ class UartRoutingTests(unittest.TestCase):
         cls.protocol_h = (REPO_ROOT / "modules/v851_protocol.h").read_text(encoding="utf-8")
         cls.project = (REPO_ROOT / "project/T5L51.uvproj").read_text(encoding="utf-8")
 
-    def test_feature_switches_and_uart_sizes(self) -> None:
-        for expected in (
-            "#define v851PROTOCOL_ENABLED             1",
-            "#define pb03fBLE_ENABLED                 0",
-            "#define otaOTA_ENABLED                 1",
-            "#define uartUART2_ENABLED               1",
-            "#define uartUART5_ENABLED               (sysBEAUTY_MODE_ENABLED ||",
-            "#define uartUART_COMMON_FRAME_SIZE     4160",
-            "#define uartUART4_RXBUF_SIZE         4160",
-            "#define uartUART4_TXBUF_SIZE         2112",
-            "#define uartUART4_BAUDRATE           115200",
-        ):
-            with self.subTest(expected=expected):
-                self.assertIn(expected, self.config)
-        self.assertIn("#define uartUART4_BAUDRATE           115200", self.config_t5f)
+    def test_tlv_uart_buffers_have_exact_budget_and_guards(self) -> None:
+        for config in (self.config, self.config_t5f):
+            for expected in (
+                "#define v851PROTOCOL_ENABLED             1",
+                "#define uartUART2_ENABLED               1",
+                "#define uartUART2_TXBUF_SIZE         256",
+                "#define uartUART2_RXBUF_SIZE         256",
+                "#define uartUART_COMMON_FRAME_SIZE     2048",
+                "#define uartUART4_RXBUF_SIZE         2049",
+                "#define uartUART4_TXBUF_SIZE         2049",
+                "#define uartUART4_BAUDRATE           115200",
+                "uartUART_COMMON_FRAME_SIZE < 2048U",
+                "uartUART4_RXBUF_SIZE <= 2048U",
+                "uartUART4_TXBUF_SIZE <= 2048U",
+            ):
+                with self.subTest(config=config[:30], expected=expected):
+                    self.assertIn(expected, config)
 
-    def test_main_registers_only_v851_wifi_protocol_and_ota_paths(self) -> None:
+    def test_main_registers_only_v851_wifi_and_tlv_tasks(self) -> None:
         self.assertIn("V851WifiInit();", self.main)
         self.assertIn("V851ProtocolInit();", self.main)
         self.assertIn("V851_WIFI_TASK_INTERVAL, V851WifiTask", self.main)
         self.assertIn("V851_PROTOCOL_TASK_INTERVAL, V851ProtocolTask", self.main)
-        self.assertIn("otaTASK_INTERVAL, OtaTask", self.main)
-        self.assertNotIn("V851ControlMockTask", self.main)
-        self.assertNotIn("core_json.h", self.main)
+        for removed in ("Ota", "Pb03f", "R11", "4G_air780e", "core_json"):
+            self.assertNotIn(removed, self.main)
 
-    def test_uart4_dispatches_all_three_length_families(self) -> None:
+    def test_uart4_dispatches_tlv_wifi_and_boot_handoff(self) -> None:
         self.assertIn("V851 RX length includes the command byte", self.uart)
-        self.assertIn("body_len < (V851_TLV_SEGMENT_HEADER_SIZE + 1U)", self.uart)
-        self.assertIn("V851_TLV_RX_LENGTH_BASE_SIZE", self.uart)
-        self.assertNotIn("body_len +\n                                                  V851_TLV_FRAME_FIXED_SIZE", self.uart)
-        self.assertIn("len - V851_TLV_RX_LENGTH_BASE_SIZE", self.protocol)
-        self.assertIn("#define V851_TLV_RX_LENGTH_BASE_SIZE             4U", self.protocol_h)
         self.assertIn("V851ProtocolReceiveFrame(&frame[frame_offset]", self.uart)
         self.assertIn("V851WifiReceiveFrame(&frame[frame_offset]", self.uart)
-        self.assertIn("OtaReceive(&frame[frame_offset], one_frame_len)", self.uart)
-        for obsolete in ("V851_JSON", "ReceiveJson", "BRIDGE_JSON_MAX"):
-            self.assertNotIn(obsolete, self.uart)
-        for command in (
-            "V851_TLV_CMD_PROPERTY",
-            "V851_TLV_CMD_FACTORY",
-            "V851_TLV_CMD_BOOTSTRAP_RESULT",
-            "V851_TLV_CMD_BOOTSTRAP_RESULT_COMPAT",
-        ):
-            self.assertIn(command, self.uart)
-        self.assertNotIn("V851_TLV_CMD_EVENT_ALARM", self.uart)
-        self.assertIn("V851_TLV_CMD_SNAPSHOT", self.protocol_h)
+        self.assertIn("BootHandoffIsUpgradeFrame(&frame[frame_offset]", self.uart)
+        self.assertIn("BootHandoffRequestUpgrade();", self.uart)
+        self.assertNotIn("OtaReceive", self.uart)
+        self.assertNotIn("V851_OTA_FRAME_MAX", self.protocol_h)
+        self.assertNotIn("V851ProtocolSendOtaFrame", self.protocol + self.protocol_h)
 
     def test_v851_property_capture_uses_command_inclusive_length(self) -> None:
-        captures = (
-            bytes.fromhex(
-                "AA 55 00 26 35 67 00 22 "
-                "01 00 01 01 "
-                "02 00 08 40 10 00 00 00 00 00 00 "
-                "03 00 08 40 00 00 00 00 00 00 00 "
-                "04 00 01 01 05 00 01 00"
-            ),
-            bytes.fromhex(
-                "AA 55 00 10 35 62 00 0C "
-                "01 00 01 01 02 00 01 02 03 00 01 01"
-            ),
+        frame = bytes.fromhex(
+            "AA 55 00 10 35 62 00 0C "
+            "01 00 01 01 02 00 01 02 03 00 01 01"
         )
-        for frame in captures:
-            with self.subTest(frame=frame.hex(" ")):
-                declared = int.from_bytes(frame[2:4], "big")
-                self.assertEqual(len(frame), declared + 4)
-                self.assertNotEqual(len(frame), declared + 5)
-                segment_length = int.from_bytes(frame[6:8], "big")
-                self.assertEqual(len(frame), 8 + segment_length)
+        declared = int.from_bytes(frame[2:4], "big")
+        self.assertEqual(len(frame), declared + 4)
+        self.assertEqual(len(frame), 8 + int.from_bytes(frame[6:8], "big"))
+        self.assertIn("len - V851_TLV_RX_LENGTH_BASE_SIZE", self.protocol)
 
-    def test_uart4_overflow_discards_batch(self) -> None:
+    def test_uart4_overflow_discards_batch_and_recovers(self) -> None:
         self.assertIn("uint8_t RxOverflow:1", self.uart_h)
         self.assertIn("if(next_head == Uart4.RxTail)", self.uart)
         self.assertIn("Uart4.RxOverflow = 1U", self.uart)
         self.assertIn("uart->RxTail = uart->RxHead", self.uart)
         self.assertIn("uart->RxOverflow = 0U", self.uart)
 
-    def test_v851_active_protocol_has_no_json_or_pb03f(self) -> None:
-        for obsolete in (
-            "core_json",
-            "bridge_json",
-            "pb03f",
-            "ReceiveJson",
-            "SendJson",
-            "hello",
-            "dedup",
-            "expire_at",
-        ):
-            with self.subTest(obsolete=obsolete):
-                self.assertNotIn(obsolete, self.protocol.lower())
+    def test_removed_product_modules_are_physically_absent(self) -> None:
+        removed = (
+            "source/core_json.c", "source/core_json.h",
+            "modules/ota.c", "modules/ota.h",
+            "modules/bridge_json.c", "modules/bridge_json.h",
+            "modules/pb03f_ble.c", "modules/pb03f_ble.h",
+            "modules/v851_control_mock.c", "modules/v851_control_mock.h",
+            "modules/4G_air780e.c", "modules/4G_air780e.h",
+            "modules/r11_common.c", "modules/r11_common.h",
+            "modules/r11_netskinAnalyze.c", "modules/r11_netskinAnalyze.h",
+            "modules/r11_n5camera.c", "modules/r11_n5camera.h",
+            "modules/r11_advertise.c", "modules/r11_advertise.h",
+            "modules/suggestionsGB2312.h",
+        )
+        for relative in removed:
+            with self.subTest(relative=relative):
+                self.assertFalse((REPO_ROOT / relative).exists())
+                self.assertNotIn(Path(relative).name, self.project)
 
-    def test_new_modules_are_in_keil_project(self) -> None:
-        for filename in ("v851_tlv_app.c", "v851_wifi.c", "v851_wifi.h"):
+    def test_keil_project_contains_handoff_and_active_v851_modules(self) -> None:
+        for filename in (
+            "boot_handoff.c", "boot_handoff.h", "v851_protocol.c",
+            "v851_tlv_app.c", "v851_wifi.c", "v851_wifi.h",
+        ):
             self.assertIn(filename, self.project)
 
 

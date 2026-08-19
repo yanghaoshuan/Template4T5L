@@ -5,9 +5,6 @@
 #include "timer.h"
 #include "uart.h"
 #include "v851_control_info.h"
-#if otaOTA_ENABLED
-#include "ota.h"
-#endif
 
 #include <string.h>
 
@@ -16,7 +13,6 @@
 #define V851_TLV_TX_DEPTH                         2U
 #define V851_WIFI_TX_DEPTH                        2U
 #define V851_WIFI_TX_MAX                          96U
-#define V851_OTA_TX_MAX                           64U
 #define V851_STATE_SCAN_INTERVAL_MS               500UL
 #define V851_STATE_FULL_INTERVAL_MS               60000UL
 // #define V851_STATE_FULL_INTERVAL_MS               20000UL
@@ -48,10 +44,6 @@ static uint16_t v851_wifi_tx_len[V851_WIFI_TX_DEPTH];
 static uint8_t v851_wifi_tx_head;
 static uint8_t v851_wifi_tx_tail;
 static uint8_t v851_wifi_tx_count;
-
-static uint8_t v851_ota_tx[V851_OTA_TX_MAX];
-static uint16_t v851_ota_tx_len;
-static uint8_t v851_ota_tx_pending;
 
 static uint8_t xdata v851_state_fields[V851_CONTROL_COUNT]
                                       [V851_CONTROL_FIELD_MAX_BYTES];
@@ -394,19 +386,6 @@ uint8_t V851ProtocolSendWifiFrame(const uint8_t *frame, uint16_t len)
     v851_wifi_tx_head = (uint8_t)((v851_wifi_tx_head + 1U) %
                                   V851_WIFI_TX_DEPTH);
     ++v851_wifi_tx_count;
-    return 1U;
-}
-
-uint8_t V851ProtocolSendOtaFrame(const uint8_t *frame, uint16_t len)
-{
-    if((frame == NULL) || (len == 0U) || (len > V851_OTA_TX_MAX) ||
-       (v851_ota_tx_pending != 0U))
-    {
-        return 0U;
-    }
-    memcpy(v851_ota_tx, frame, len);
-    v851_ota_tx_len = len;
-    v851_ota_tx_pending = 1U;
     return 1U;
 }
 
@@ -830,12 +809,6 @@ static void V851ProtocolServiceTx(void)
     {
         return;
     }
-    if(v851_ota_tx_pending != 0U)
-    {
-        UartSendData(&Uart4, v851_ota_tx, v851_ota_tx_len);
-        v851_ota_tx_pending = 0U;
-        return;
-    }
     if(v851_wifi_tx_count != 0U)
     {
         slot = v851_wifi_tx_tail;
@@ -867,8 +840,6 @@ void V851ProtocolInit(void)
     v851_wifi_tx_head = 0U;
     v851_wifi_tx_tail = 0U;
     v851_wifi_tx_count = 0U;
-    v851_ota_tx_len = 0U;
-    v851_ota_tx_pending = 0U;
     v851_state_dirty_mask = 0U;
     v851_factory_report_pending = 0U;
     memset(v851_alarm_current, 0, sizeof(v851_alarm_current));
@@ -878,12 +849,6 @@ void V851ProtocolInit(void)
     v851_state_scan_tick = tick;
     v851_state_full_tick = tick;
     v851_alarm_scan_tick = tick;
-#if otaOTA_ENABLED
-    if(OtaCompleteFlag != 0U)
-    {
-        OtaAcknowledgeComplete();
-    }
-#endif
 }
 
 void V851ProtocolTask(void)

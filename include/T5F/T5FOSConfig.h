@@ -107,43 +107,6 @@ typedef            long			int32_t;
 
 
 /**
- * @brief 广告屏和美容屏功能使能标志
- * @details 1: 启用广告屏和美容屏功能, 0: 禁用
- * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
- * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
- */
-#define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0     
-
-#if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
-#error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
-#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
-
-#if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart3
-#define R11_WIFI_ENABLED              0
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysBEAUTY_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#define R11_HAIR_ANALYZE_ENABLED      0          /**< 头皮检测分析功能使能标志 */
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#endif /* sysADVERTISE_MODE_ENABLED */  
-
-#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-
-#if sysSET_FROM_LIB
-extern uint16_t sys_2k_ratio;
-extern uint32_t sysFOSC;
-extern uint32_t sysFCLK;
-#else
-/**
  * @brief 2k分辨率模式
  * @details 1: 1920*1080分辨率屏幕, 0: 其他
  */
@@ -164,12 +127,12 @@ extern uint32_t sysFCLK;
 #endif /* sys2K_RATIO */
 
 #define sysFCLK                      sysFOSC
-#endif /* sysSET_FROM_LIB */
-
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
 
 #define uartTA_PROTOCOL_ENABLED          0
+#define v851PROTOCOL_ENABLED             1
+#define v851STATE_FULL_REPORT_ENABLED    1
 
 /* V851工厂设备信息，产品变更时可在此覆盖。 */
 #define v851FACTORY_SALES_COUNTRY        "CN"
@@ -178,7 +141,7 @@ extern uint32_t sysFCLK;
 #define v851FACTORY_HARDWARE_VERSION     "HW-V2.0"
 #define v851FACTORY_FIRMWARE_VERSION     "FW-V1.0.0"
 
-#define sysDGUS_AUTO_UPLOAD_ENABLED      1      /**< 自动上传使能标志 */
+#define sysDGUS_AUTO_UPLOAD_ENABLED      0      /**< V851配网直接轮询0x0600 */
 #if sysDGUS_AUTO_UPLOAD_ENABLED || uartTA_PROTOCOL_ENABLED
 #define sysDGUS_AUTO_UPLOAD_VP_ADDR            0x0f00
 #define sysDGUS_AUTO_UPLOAD_LEN                 40
@@ -238,7 +201,7 @@ extern uint32_t sysFCLK;
  * @brief UART通用帧缓冲区大小
  * @details 所有UART接口共用的数据帧缓冲区大小，单位为字节
  */
-#define uartUART_COMMON_FRAME_SIZE     4500
+#define uartUART_COMMON_FRAME_SIZE     2048
 
 /**
  * @brief Modbus协议支持使能标志
@@ -284,25 +247,12 @@ extern uint32_t sysFCLK;
     #endif  /* uartUART2_485_ENABLED */
 #endif  /* uartUART2_ENABLED */
 
-/* UART3配置参数，配置同uart2 */
-#define uartUART3_ENABLED               0
-
-#if uartUART3_ENABLED
-    #define uartUART3_TXBUF_SIZE         256
-    #define uartUART3_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
-    #define uartUART3_TIMEOUT_ENABLED    uartUART3_ENABLED
-    #if uartUART3_TIMEOUT_ENABLED
-        #define uartUART3_TIMEOUTSET     5
-    #endif /* uartUART3_TIMEOUT_ENABLED */  
-    #define uartUART3_BAUDRATE           921600
-#endif /* uartUART3_ENABLED */
-
 /* UART4配置参数，配置同uart2 */
 #define uartUART4_ENABLED               1
 
 #if uartUART4_ENABLED
-    #define uartUART4_TXBUF_SIZE         256
-    #define uartUART4_RXBUF_SIZE         256
+    #define uartUART4_TXBUF_SIZE         2049
+    #define uartUART4_RXBUF_SIZE         2049
     #define uartUART4_TIMEOUT_ENABLED    uartUART4_ENABLED
     
     #if uartUART4_TIMEOUT_ENABLED
@@ -316,28 +266,18 @@ extern uint32_t sysFCLK;
     #endif  /* uartUART4_485_ENABLED */
 #endif  /* uartUART4_ENABLED */
 
-/* UART5配置参数，配置同uart2 */
-#define uartUART5_ENABLED               1
+#if v851PROTOCOL_ENABLED && !uartUART4_ENABLED
+#error "V851 protocol requires UART4."
+#endif
 
-#if uartUART5_ENABLED
-    #define uartUART5_TXBUF_SIZE         256
-    #define uartUART5_RXBUF_SIZE         uartUART_COMMON_FRAME_SIZE
-    #define uartUART5_TIMEOUT_ENABLED    uartUART5_ENABLED
-    
-    #if uartUART5_TIMEOUT_ENABLED
-        #define uartUART5_TIMEOUTSET     5
-    #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-    #define uartUART5_BAUDRATE           921600
-    #else 
-    #define uartUART5_BAUDRATE           115200
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
-    #define uartUART5_485_ENABLED        0
-    
-    #if uartUART5_485_ENABLED
-        sbit TR5 = P0^1;
-    #endif  /* uartUART5_485_ENABLED */
-#endif  /* uartUART5_ENABLED */
+#if v851PROTOCOL_ENABLED && (uartUART_COMMON_FRAME_SIZE < 2048U)
+#error "V851 UART scratch buffer must be at least 2048 bytes."
+#endif
+
+#if v851PROTOCOL_ENABLED && \
+    ((uartUART4_RXBUF_SIZE <= 2048U) || (uartUART4_TXBUF_SIZE <= 2048U))
+#error "V851 UART4 rings must hold a complete 2048-byte TLV frame plus one empty slot."
+#endif
 
 
 /* I2C配置参数 */
@@ -454,7 +394,5 @@ extern uint32_t sysFCLK;
 #endif /* spiSPI_ENABLED */
 
 #define canCAN_ENABLED                  0
-
-#define _4G_AIR780E_ENABLED             1
 
 #endif /* T5FOS_CONFIG_H */

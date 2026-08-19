@@ -1,46 +1,6 @@
 
 $NOMOD51
 
-R11_Module_Enable           EQU     1 ;0表示不启用R11模块 1表示启用R11模块
-
-IF R11_Module_Enable == 1
-;以下为配置选项
-;------------------------------------------------------------------------------
-Single_Double_Flag		    EQU     0	;0表示双缓存  1表示单缓存	
-Bit16_Flag		            EQU     1	;0表示8位  1表示16位	
-Display_Debug_Message_Flag	EQU     1	;0表示不显示调试信息  1表示显示调试信息
-XRL_Position		        EQU     0	;０表示校验在最前面　１表示校验在最后面	
-Align_16KB		            EQU     1	;０表示不补全16KB    1表示补全16KB		
-Isr_XRL			            EQU     1
-
-IF XRL_Position == 1	
-	JpegLaber_OS_ADR1_H16   EQU 	0000H	
-	JpegLaber_OS_ADR1_L16   EQU 	8000H
-	JpegLaber_OS_ADR2_H16   EQU 	0001H	
-	JpegLaber_OS_ADR2_L16   EQU 	4000H
-	JpegData_ADR1_H16       EQU     (JpegLaber_OS_ADR1_H16)	
-	JpegData_ADR1_L16       EQU     (JpegLaber_OS_ADR1_L16+1)
-	JpegData_ADR2_H16       EQU     (JpegLaber_OS_ADR2_H16)	
-	JpegData_ADR2_L16       EQU     (JpegLaber_OS_ADR2_L16+1)	
-ELSE	
-	JpegLaber_OS_ADR1_H16   EQU 	0000H	
-	JpegLaber_OS_ADR1_L16   EQU 	8000H
-	JpegLaber_OS_ADR2_H16   EQU 	0001H	
-	JpegLaber_OS_ADR2_L16   EQU 	4000H
-	JpegData_ADR1_H16       EQU     (JpegLaber_OS_ADR1_H16)	
-	JpegData_ADR1_L16       EQU     (JpegLaber_OS_ADR1_L16)
-	JpegData_ADR2_H16       EQU     (JpegLaber_OS_ADR2_H16)	
-	JpegData_ADR2_L16       EQU     (JpegLaber_OS_ADR2_L16)	
-ENDIF	
-	Icon_Overlay_SP         EQU     06A0H
-	Icon_Overlay_VP	        EQU     Icon_Overlay_SP+0
-	Icon_Overlay_X	        EQU     Icon_Overlay_SP+1
-	Icon_Overlay_Y	        EQU     Icon_Overlay_SP+2
-	Icon_Overlay_L	        EQU     Icon_Overlay_SP+3
-	Icon_Overlay_H	        EQU     Icon_Overlay_SP+4
-	Icon_Overlay_Mode	    EQU     Icon_Overlay_SP+5
-	Icon_Overlay_Page	    EQU     Icon_Overlay_SP+6
-ENDIF  ;R11_Module_Enable
 
 ;		--------------------------------------------------------------------------
 ;  This file is part of the C51 Compiler package
@@ -244,207 +204,6 @@ PPAGE_SFR       DATA    0A0H
 	DATA0	DATA	0FDH
 
 
-IF R11_Module_Enable == 1
-;调试信息定义开始，对应文件为r11_common.h
-;------------------------------------------------------------------------------
-EX1_Len	 	            EQU 20H
-Picture_Count 	        EQU 021H
-buf_tail 	            EQU 022H
-buf_tail_H 	            EQU 022H
-buf_tail_L 	            EQU 023H
-buf_os_tail	            EQU 24H
-buf_os_tail_H 	        EQU 24H
-buf_os_tail_L 	        EQU 25H
-Packet_Count 	        EQU 026H	
-Packet_TotalCount	    EQU 027H	
-	
-JpegLaber_OS_ADR	    EQU 028H
-JpegLaber_OS_ADR_3	    EQU 028H
-JpegLaber_OS_ADR_2	    EQU 029H
-JpegLaber_OS_ADR_1	    EQU 02AH
-JpegLaber_OS_ADR_0	    EQU 02BH	
-JpegLaber_DGUSII_VP 	EQU 0x2C
-JpegLaber_DGUSII_VP_3 	EQU 0x2C
-JpegLaber_DGUSII_VP_2 	EQU 0x2D
-JpegLaber_DGUSII_VP_1	EQU 0x2E
-JpegLaber_DGUSII_VP_0	EQU 0x2F
-	
-Other_Cmd_Count 			EQU 30H
-Miss_Align_16KB_Count 		EQU 31H
-NotDeal_OverBuffer_Count 	EQU 32H
-Over_Max_16KB_Count 		EQU 33H
-CRC_ERR_Count 				EQU 34H
-data_write_f 				EQU 35H	
-state 						EQU 36H
-Kind 						EQU 37H
-	
-Icon_Num 					EQU 38H	
-Max_16KB_Count				EQU 39H	
-Big_Small_Flag				EQU 3AH	
-Rx3_Len						EQU 3BH
-END_CRC 					EQU 3CH
-Dgus_Need_Restart 			EQU 3DH	
-Restart_Dgus_Time 			EQU 3EH	
-TimeOut_Count 				EQU 3FH	
-	
-TimeOut 					EQU 40H
-Jpeg_Word_Len 				EQU 41H
-Jpeg_Word_Len_H				EQU 41H	
-Jpeg_Word_Len_L				EQU 42H		
-Bit8_16_Flag				EQU 46H
- 
-
-
-?PR?Display_Debug_Message SEGMENT CODE
-PUBLIC Display_Debug_Message
-RSEG ?PR?Display_Debug_Message
-
-?PR?Judge_Packet_Count SEGMENT CODE; //  ??????????
-PUBLIC Judge_Packet_Count;     //????
-RSEG ?PR?Judge_Packet_Count;    //????l?????????	
-
-Display_Debug_Message:	
-
-	MOV	ADR_H,#00H
-	MOV	ADR_M,#03H	//06F0H~06FFH
-	MOV	ADR_L,#78H
-	MOV	ADR_INC,#01H
-	MOV	RAMMODE,#8FH
-	JNB	APP_ACK,$
-	MOV	R2,#8
-	MOV	R1,#20H
-	Debug_Data_Diplay:	
-	MOV     DATA3,@R1
-	INC	R1
-	MOV     DATA2,@R1
-	INC	R1
-	MOV     DATA1,@R1
-	INC	R1
-	MOV     DATA0,@R1
-	INC	R1
-	SETB    APP_EN
-	JB      APP_EN,$
-	DJNZ	R2,Debug_Data_Diplay
-	MOV	RAMMODE,#00
-	RET
-
-CSEG    AT      0x0003
-LJMP inter_extern0_1_fun
-
-CSEG    AT      0x100
-inter_extern0_1_fun:
-	PUSH	ACC
-	PUSH	DPH
-	PUSH	DPL
-IF Bit16_Flag  == 1	
-	MOV	A,P2
-	PUSH	P1
-	MOV 	DPH,buf_tail_H
-	MOV 	DPL,buf_tail_L
-	MOVX 	@DPTR,A
-	INC 	DPTR
-IF Isr_XRL  == 1		
-	XRL	END_CRC,A
-ENDIF
-	POP	ACC
-	MOVX 	@DPTR,A
-	INC 	DPTR
-	
-IF Isr_XRL  == 1		
-	XRL	END_CRC,A
-ENDIF
-ELSE
-	MOV	A,P1
-	MOV 	DPH,buf_tail_H
-	MOV 	DPL,buf_tail_L
-	MOVX 	@DPTR,A
-	INC 	DPTR
-IF Isr_XRL  == 1		
-	XRL	END_CRC,A
-ENDIF
-ENDIF
-	
-
-	MOV	buf_tail_H,DPH
-	SETB 	buf_tail_H.7
-	MOV 	buf_tail_L,DPL
-
-	POP DPL
-	POP DPH
-	POP ACC
-end_11:	RETI
-
-
-Judge_Packet_Count:		
-
-
-Judge_Packet_Count1:
-
-	MOV		A,Packet_Count
-	JZ		Packet_Count_Zero
-	Packet_Count_Not_Zero:
-	MOV		ADR_H,JpegLaber_OS_ADR+1
-	MOV		ADR_M,JpegLaber_OS_ADR+2
-	MOV		ADR_L,JpegLaber_OS_ADR+3		
-	MOV		ADR_INC,#01H
-	MOV		RAMMODE,#8FH
-	JNB		APP_ACK,$
-	MOV		DPH,buf_os_tail
-	MOV		DPL,buf_os_tail+1
-	MOV		R2,#32
-	Wr_Vp_Loop1:
-	MOV	R3,#128	
-	Wr_Vp_Loop2:
-	MOVX	A,@DPTR
-	INC		DPTR
-	MOV     DATA0,A
-IF Isr_XRL  <> 1		
-	XRL	END_CRC,A
-ENDIF	
-	
-	
-	MOVX	A,@DPTR
-	INC		DPTR        	
-	MOV     DATA1,A	
-IF Isr_XRL  <> 1		
-	XRL	END_CRC,A
-ENDIF
-	
-	MOVX	A,@DPTR
-	INC		DPTR	
-	MOV     DATA2,A
-IF Isr_XRL  <> 1		
-	XRL	END_CRC,A
-ENDIF
-
-	MOVX	A,@DPTR
-	INC		DPTR	
-	MOV     DATA3,A		
-IF Isr_XRL  <> 1		
-	XRL	END_CRC,A
-ENDIF
-	
-
-	
-	
-	SETB    APP_EN
-	JB      APP_EN,$
-	DJNZ	R3,Wr_Vp_Loop2
-	DJNZ	R2,Wr_Vp_Loop1
-	MOV		JpegLaber_OS_ADR+1,ADR_H
-	MOV		JpegLaber_OS_ADR+2,ADR_M
-	MOV		JpegLaber_OS_ADR+3,ADR_L
-	MOV		RAMMODE,#00H 
-
-	MOV		buf_os_tail,DPH
-	MOV		buf_os_tail+1,DPL
-	SETB	buf_os_tail.7		
-	DEC		Packet_Count	
-	;SJMP	Judge_Packet_Count1		
-Packet_Count_Zero:
-	RET
-
-ENDIF ;R11_Module_Enable
 
 ;------------------------------------------------------------------------------
 
@@ -479,7 +238,7 @@ STARTUP1:
 	MOV	CKCON,#00H
 	MOV	DPC,#00H
 	MOV	T2CON,#70H
-	MOV	MUX_SEL,#60H	
+	MOV	MUX_SEL,#40H
 	MOV	RAMMODE,#00H	
 	
 IF IDATALEN <> 0
@@ -548,15 +307,6 @@ EXTRN CODE (?B_SWITCH0)
 ;</h>
 
 
-IF R11_Module_Enable == 1
-		IF Bit16_Flag  == 1	
-			MOV		Bit8_16_Flag,#02H
-		ELSE
-			MOV		Bit8_16_Flag,#01H
-		ENDIF
-ENDIF ;R11_Module_Enable
         LJMP    ?C_START
 
         END
-
-

@@ -20,45 +20,17 @@
 #include "TA_protocal.h"
 #endif /* uartTA_PROTOCOL_ENABLED */
 
-#if otaOTA_ENABLED
-#include "ota.h"
-#endif /* otaOTA_ENABLED */
-
-#if pb03fBLE_ENABLED
-#include "pb03f_ble.h"
-#endif /* pb03fBLE_ENABLED */
-
 #if v851PROTOCOL_ENABLED
 #include "v851_protocol.h"
 #include "v851_wifi.h"
 #endif /* v851PROTOCOL_ENABLED */
 
-#if sysSET_FROM_LIB
-uint16_t sys_2k_ratio;
-uint32_t sysFOSC;
-uint32_t sysFCLK;
-#endif /* sysSET_FROM_LIB */
-
-#if sysBEAUTY_MODE_ENABLED
-#include "r11_netskinAnalyze.h"
-#include "r11_common.h"
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysN5CAMERA_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_n5camera.h"
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_advertise.h"
-#endif /* sysADVERTISE_MODE_ENABLED */
-
+#include "boot_handoff.h"
 
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
-uint8_t Uart2TxBuffer[uartUART2_TXBUF_SIZE+1];
-uint8_t Uart2RxBuffer[uartUART2_RXBUF_SIZE+1];
+uint8_t Uart2TxBuffer[uartUART2_TXBUF_SIZE];
+uint8_t Uart2RxBuffer[uartUART2_RXBUF_SIZE];
 void Uart2Init(const uint32_t bdt)
 {
     uint32_t baud;
@@ -75,16 +47,9 @@ void Uart2Init(const uint32_t bdt)
     PCON &= 0x7F;
     PCON |= 0x80;
 
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        PCON |= 0x80;
-    }
-    #else
     #if sys2K_RATIO
     PCON &= ~0x80;
     #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
     
     if(PCON & 0x80)
     {
@@ -145,71 +110,10 @@ void Uart2TxRxIsr()   interrupt 4
 }
 #endif  /* uartUART2_ENABLED */
 
-#if uartUART3_ENABLED
-UART_TYPE Uart3;
-uint8_t Uart3TxBuffer[uartUART3_TXBUF_SIZE+1];
-uint8_t Uart3RxBuffer[uartUART3_RXBUF_SIZE+1];
-void Uart3Init(const uint32_t bdt)
-{
-    uint32_t baud;
-    memset((uint8_t *)&Uart3, 0, sizeof(UART_TYPE));
-    memset((uint8_t *)Uart3TxBuffer, 0, uartUART3_TXBUF_SIZE);
-    memset((uint8_t *)Uart3RxBuffer, 0, uartUART3_RXBUF_SIZE);
-
-    MUX_SEL |= 0x20;
-    P0MDOUT &=~0x80;
-    P0MDOUT |= 0x40;
-    SCON1 = 0x90;
-    SCON1 = 0x90;
-    
-    baud = 1024- ( uint16_t ) (6451200.0f/bdt);
-    SREL1H = (baud>>8) & 0xff;
-    SREL1L = baud & 0xff;
-
-    IEN2 |= 0x01;
-    EA = 1;
-}
-
-/**
- * @brief UART3收发中断服务程序
- * @details 处理UART3的接收和发送中断，管理数据缓冲区和传输状态
- * @note 中断号16，处理SCON1的接收和发送标志位
- */
-void Uart3TxRxIsr()   interrupt 16
-{
-    if ( (SCON1&0x01) == 0x01 )
-    {
-        Uart3RxBuffer[Uart3.RxHead++] = SBUF1;
-        Uart3.RxHead %= uartUART3_RXBUF_SIZE;
-        Uart3.RxFlag = UART_RECING;
-        #if uartUART3_TIMEOUT_ENABLED
-        Uart3.RxTimeout = uartUART3_TIMEOUTSET;
-        #else
-        Uart3.RxTimeout = 0;
-        #endif
-        SCON1 &= ~0x01;
-        SCON1 &= ~0x01;
-    } 
-    if( (SCON1&0x02) == 0x02 )
-    {
-		SCON1 &= ~0x02;
-        SCON1 &= ~0x02;
-        if (Uart3.TxHead != Uart3.TxTail)
-        {
-            SBUF1 = Uart3TxBuffer[Uart3.TxTail++];
-            Uart3.TxTail %= uartUART3_TXBUF_SIZE;
-        }else
-        {
-            Uart3.TxBusy = 0;
-        } 
-    }
-}
-#endif /* uartUART3_ENABLED */
-
 #if uartUART4_ENABLED
 UART_TYPE Uart4;
-uint8_t Uart4TxBuffer[uartUART4_TXBUF_SIZE+1];
-uint8_t Uart4RxBuffer[uartUART4_RXBUF_SIZE+1];
+uint8_t Uart4TxBuffer[uartUART4_TXBUF_SIZE];
+uint8_t Uart4RxBuffer[uartUART4_RXBUF_SIZE];
 void Uart4Init(const uint32_t bdt)
 {
     uint32_t baud;
@@ -230,21 +134,11 @@ void Uart4Init(const uint32_t bdt)
     SCON2T=0x80;
     SCON2R=0x80;
     
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        baud = (uint16_t)(sysFCLK/16/bdt);
-    }else
-    {
-        baud = (uint16_t)(sysFCLK/8/bdt);
-    }
-    #else
     #if sys2K_RATIO
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
     #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
     BODE2_DIV_H = (baud>>8) & 0xff;
     BODE2_DIV_L = baud & 0xff;
 
@@ -313,119 +207,16 @@ void Uart4TxIsr()   interrupt 10
 }
 #endif /* uartUART4_ENABLED */
 
-#if uartUART5_ENABLED
-UART_TYPE Uart5;
-uint8_t Uart5TxBuffer[uartUART5_TXBUF_SIZE+1];
-uint8_t Uart5RxBuffer[uartUART5_RXBUF_SIZE+1];
-void Uart5Init(const uint32_t bdt)
-{
-    uint32_t baud;
-    memset((uint8_t *)&Uart5, 0, sizeof(UART_TYPE));
-    memset((uint8_t *)Uart5TxBuffer, 0, uartUART5_TXBUF_SIZE);
-    memset((uint8_t *)Uart5RxBuffer, 0, uartUART5_RXBUF_SIZE);
-
-    #if uartUART5_485_ENABLED
-    P0MDOUT |= 0x02;
-    TR5 = 0;
-    #endif
-
-    #if CPU_TYPE==T5F0
-    MUX_SEL1 |= 0x20; 
-	P0MDOUT |= 0x40; 
-	P0MDOUT &= 0x7f; 
-    #endif /* CPU_TYPE==T5F0*/
-    SCON3T=0x80;
-	SCON3R=0x80;
-    
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        baud = (uint16_t)(sysFCLK/16/bdt);
-    }else
-    {
-        baud = (uint16_t)(sysFCLK/8/bdt);
-    }
-    #else
-    #if sys2K_RATIO
-    baud = (uint16_t)(sysFCLK/16/bdt);
-    #else
-    baud = (uint16_t)(sysFCLK/8/bdt);
-    #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
-    BODE3_DIV_H = (baud>>8) & 0xff;
-    BODE3_DIV_L = baud & 0xff;
-
-    ES3T = 1;
-    ES3R = 1;
-    EA   = 1;
-}
-
-/**
- * @brief UART5接收中断服务程序
- * @details 处理UART5的接收中断，管理接收数据缓冲区
- * @note 中断号13，处理SCON3R接收标志位
- */
-void Uart5RxIsr()   interrupt 13
-{
-    if((SCON3R&0x01) == 0x01)
-    {
-        Uart5RxBuffer[Uart5.RxHead++] = SBUF3_RX;
-        Uart5.RxHead %= uartUART5_RXBUF_SIZE;
-        Uart5.RxFlag = UART_RECING;
-        #if uartUART5_TIMEOUT_ENABLED
-        Uart5.RxTimeout = uartUART5_TIMEOUTSET;
-        #else
-        Uart5.RxTimeout = 0;
-        #endif
-        SCON3R &= 0xFE;
-    } 
-}
-
-/**
- * @brief UART5发送中断服务程序
- * @details 处理UART5的发送中断，管理发送数据缓冲区和传输状态
- * @note 中断号12，处理SCON3T发送标志位
- * @note 自动管理RS485方向控制（如果启用）
- */
-void Uart5TxIsr()   interrupt 12
-{
-    if((SCON3T&0x01) == 0x01)
-    {
-        SCON3T &= 0xFE;
-        if (Uart5.TxHead != Uart5.TxTail)
-        {
-            SBUF3_TX = Uart5TxBuffer[Uart5.TxTail++];
-            Uart5.TxTail %= uartUART5_TXBUF_SIZE;
-        }else
-        {
-            Uart5.TxBusy = 0;
-            #if uartUART5_485_ENABLED
-            {
-                TR5 = 0; 
-            }
-            #endif /* uartUART5_485_ENABLED */
-        } 
-    }
-}
-#endif /* uartUART5_ENABLED */
-
 void UartInit(void)
 {
     #if uartUART2_ENABLED
     Uart2Init(uartUART2_BAUDRATE);
     #endif /* uartUART2_ENABLED */
 
-    #if uartUART3_ENABLED
-    Uart3Init(uartUART3_BAUDRATE);
-    #endif /* uartUART3_ENABLED */
-
     #if uartUART4_ENABLED
     Uart4Init(uartUART4_BAUDRATE);
     #endif /* uartUART4_ENABLED */
 
-    #if uartUART5_ENABLED
-    Uart5Init(uartUART5_BAUDRATE);
-    #endif /* uartUART5_ENABLED */
 }
 
 
@@ -443,14 +234,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
             }
         #endif
 
-        #if uartUART3_ENABLED
-            if(uart == &Uart3)
-            {
-                Uart3TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART3_TXBUF_SIZE;
-            }
-        #endif
-
         #if uartUART4_ENABLED
             if(uart == &Uart4)
             {
@@ -459,13 +242,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
             }
         #endif
 
-        #if uartUART5_ENABLED
-            if(uart == &Uart5)
-            {
-                Uart5TxBuffer[uart->TxHead++] = *buf++;
-                uart->TxHead %= uartUART5_TXBUF_SIZE;
-            }
-        #endif
         
     }
 
@@ -486,15 +262,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
         }
         #endif
 
-        #if uartUART3_ENABLED
-        {
-            if(uart == &Uart3)
-            {
-                SCON1 |= 0x02;  
-            }
-        }
-        #endif
-
         #if uartUART4_ENABLED
         {
             if(uart == &Uart4)
@@ -505,20 +272,6 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
                 }
                 #endif
                 SCON2T |= 0x01; 
-            }
-        }
-        #endif
-
-        #if uartUART5_ENABLED
-        {
-            if(uart == &Uart5)
-            {
-                #if uartUART5_485_ENABLED
-                {
-                    TR5 = 1; 
-                }
-                #endif
-                SCON3T |= 0x01; 
             }
         }
         #endif
@@ -683,14 +436,10 @@ void UartReadFrame(UART_TYPE *uart)
 {
     static uint8_t xdata frame[uartUART_COMMON_FRAME_SIZE];
     uint16_t i,rx_head_bak,one_frame_len,total_frame_len,frame_offset;
-    #if v851PROTOCOL_ENABLED
     uint16_t body_len;
+    #if v851PROTOCOL_ENABLED
     uint8_t command;
     #endif /* v851PROTOCOL_ENABLED */
-    #if pb03fBLE_ENABLED
-    uint16_t payload_len,msg_id,raw_len;
-    uint16_t crc_calc,crc_recv;
-    #endif /* pb03fBLE_ENABLED */
     if(uart->RxFlag == UART_NON_REC)
         return;
     if(uart->RxTimeout == 0)
@@ -718,14 +467,6 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART2_ENABLED */
 
-            #if uartUART3_ENABLED
-            if(uart == &Uart3)
-            {
-                frame[i++] = Uart3RxBuffer[uart->RxTail++];
-                uart->RxTail %= uartUART3_RXBUF_SIZE;
-            }
-            #endif /* uartUART3_ENABLED */
-
             #if uartUART4_ENABLED
             if(uart == &Uart4)
             {
@@ -733,13 +474,6 @@ void UartReadFrame(UART_TYPE *uart)
                 uart->RxTail %= uartUART4_RXBUF_SIZE;
             }
             #endif /* uartUART4_ENABLED */
-            #if uartUART5_ENABLED
-            if(uart == &Uart5)
-            {
-                frame[i++] = Uart5RxBuffer[uart->RxTail++];
-                uart->RxTail %= uartUART5_RXBUF_SIZE;
-            }
-            #endif /* uartUART5_ENABLED */
         }   
         total_frame_len = i;
 
@@ -748,13 +482,6 @@ void UartReadFrame(UART_TYPE *uart)
             frame_offset = total_frame_len - i;
             if(i < 2U)
             {
-                #if pb03fBLE_ENABLED
-                if(uart == &PB03F_BLE_UART)
-                {
-                    Pb03fBleReceive(&frame[frame_offset], i);
-                    i = 0U;
-                }
-                #endif /* pb03fBLE_ENABLED */
                 break;
             }
 
@@ -770,74 +497,8 @@ void UartReadFrame(UART_TYPE *uart)
                     break;
                 }
                 UartStandardDwin8283Protocal(uart, &frame[frame_offset], one_frame_len);
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                #if sysN5CAMERA_MODE_ENABLED
-                UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysN5CAMERA_MODE_ENABLED */
                 i -= one_frame_len;
             }
-            #if pb03fBLE_ENABLED
-            else if((uart == &PB03F_BLE_UART) &&
-                    (Pb03fBleIsTransparent() != 0U) &&
-                    (frame[frame_offset] == PB03F_BLE_FRAME_MAGIC_HIGH) &&
-                    (frame[frame_offset + 1U] == PB03F_BLE_FRAME_MAGIC_LOW))
-            {
-                msg_id = 0U;
-                if(i < PB03F_BLE_FRAME_HEADER_SIZE)
-                {
-                    if(i >= 6U)
-                    {
-                        msg_id = ((uint16_t)frame[frame_offset + 4U] << 8) |
-                                 frame[frame_offset + 5U];
-                    }
-                    Pb03fBleFrameError(msg_id, "incomplete frame");
-                    i--;
-                    continue;
-                }
-
-                msg_id = ((uint16_t)frame[frame_offset + 4U] << 8) |
-                         frame[frame_offset + 5U];
-                payload_len =
-                    ((uint16_t)frame[frame_offset + 10U] << 8) |
-                    frame[frame_offset + 11U];
-                if((frame[frame_offset + 2U] !=
-                    PB03F_BLE_FRAME_VERSION) ||
-                   (payload_len == 0U) ||
-                   (payload_len > PB03F_BLE_CHUNK_PAYLOAD_MAX))
-                {
-                    Pb03fBleFrameError(msg_id, "invalid frame header");
-                    i--;
-                    continue;
-                }
-
-                one_frame_len = PB03F_BLE_FRAME_HEADER_SIZE + payload_len +
-                                PB03F_BLE_FRAME_CRC_SIZE;
-                if(i < one_frame_len)
-                {
-                    Pb03fBleFrameError(msg_id, "incomplete frame");
-                    i--;
-                    continue;
-                }
-
-                crc_calc = crc_16(&frame[frame_offset],
-                                  PB03F_BLE_FRAME_HEADER_SIZE + payload_len);
-                crc_recv =
-                    ((uint16_t)frame[frame_offset +
-                                     one_frame_len - 2U] << 8) |
-                    frame[frame_offset + one_frame_len - 1U];
-                if(crc_calc != crc_recv)
-                {
-                    Pb03fBleFrameError(msg_id, "crc error");
-                    i -= one_frame_len;
-                    continue;
-                }
-
-                Pb03fBleReceive(&frame[frame_offset], one_frame_len);
-                i -= one_frame_len;
-            }
-            #endif /* pb03fBLE_ENABLED */
             else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
             {
                 if(i < 4U)
@@ -911,47 +572,9 @@ void UartReadFrame(UART_TYPE *uart)
                 else
                 #endif /* v851PROTOCOL_ENABLED */
                 {
-                    one_frame_len =
-                        ((uint16_t)frame[frame_offset + 2U] << 8 |
-                         frame[frame_offset + 3U]) + 4U;
-                    if(i < one_frame_len)
-                    {
-                        break;
-                    }
-                    #if R11_WIFI_ENABLED
-                    UartR11UserWifiProtocol(uart, &frame[frame_offset], one_frame_len);
-                    #endif /* R11_WIFI_ENABLED */
-                    #if sysBEAUTY_MODE_ENABLED
-                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                    UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                    #endif /* sysBEAUTY_MODE_ENABLED */
-                    #if sysN5CAMERA_MODE_ENABLED
-                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                    UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
-                    #endif /* sysN5CAMERA_MODE_ENABLED */
-                    #if sysADVERTISE_MODE_ENABLED
-                    UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                    UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
-                    #endif /* sysADVERTISE_MODE_ENABLED */
-                    i -= one_frame_len;
+                    i--;
                 }
-            }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0xCC)
-            {
-                if(i < 4U)
-                {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                i -= one_frame_len;
             }
-            #if otaOTA_ENABLED && v851PROTOCOL_ENABLED
             else if((uart == &Uart4) &&
                     (frame[frame_offset] == 0xAB) &&
                     (frame[frame_offset + 1U] == 0xCD))
@@ -963,7 +586,7 @@ void UartReadFrame(UART_TYPE *uart)
                 body_len = ((uint16_t)frame[frame_offset + 2U] << 8) |
                            frame[frame_offset + 3U];
                 if((body_len < 1U) ||
-                   (body_len > (V851_OTA_FRAME_MAX - 4U)))
+                   (body_len > (BOOT_HANDOFF_FILE_INFO_MAX - 4U)))
                 {
                     i--;
                     continue;
@@ -973,32 +596,13 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
-                OtaReceive(&frame[frame_offset], one_frame_len);
-                i -= one_frame_len;
-            }
-            #endif /* otaOTA_ENABLED && v851PROTOCOL_ENABLED */
-            #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-            else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
-            {
-                /**
-                 * @note OTA协议帧只允许从Uart_R11进入，避免普通串口误处理AB CD数据。
-                 */
-                if(i < 4U)
+                if(BootHandoffIsUpgradeFrame(&frame[frame_offset],
+                                             one_frame_len) != 0U)
                 {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                if(uart == &Uart_R11)
-                {
-                    OtaReceive(&frame[frame_offset], one_frame_len);
+                    BootHandoffRequestUpgrade();
                 }
                 i -= one_frame_len;
             }
-            #endif /* otaOTA_ENABLED && R11 mode */
             #if uartMODBUS_PROTOCOL_ENABLED
             else if(frame[frame_offset] == modbusSLAVE_ADDRESS)
             {
@@ -1042,32 +646,7 @@ void UartReadFrame(UART_TYPE *uart)
             #endif /* uartTA_PROTOCOL_ENABLED */
             else
             {
-                #if pb03fBLE_ENABLED
-                if(uart == &PB03F_BLE_UART)
-                {
-                    raw_len = 1U;
-                    while(raw_len < i)
-                    {
-                        if(((raw_len + 1U) < i) &&
-                           (((frame[frame_offset + raw_len] == 0x5aU) &&
-                             (frame[frame_offset + raw_len + 1U] == 0xa5U)) ||
-                            ((Pb03fBleIsTransparent() != 0U) &&
-                             (frame[frame_offset + raw_len] ==
-                              PB03F_BLE_FRAME_MAGIC_HIGH) &&
-                             (frame[frame_offset + raw_len + 1U] ==
-                              PB03F_BLE_FRAME_MAGIC_LOW))))
-                        {
-                            break;
-                        }
-                        raw_len++;
-                    }
-                    Pb03fBleReceive(&frame[frame_offset], raw_len);
-                    i -= raw_len;
-                }else
-                #endif /* pb03fBLE_ENABLED */
-                {
-                    i--;
-                }
+                i--;
             }
         }
     }
@@ -1082,14 +661,8 @@ void UartProtocalHandleTask(void)
     #if uartUART4_ENABLED
     UartReadFrame(&Uart4);
     #endif /* uartUART4_ENABLED */
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-    UartReadFrame(&Uart_R11);
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #if uartTA_PROTOCOL_ENABLED
     TAProtocolUpload(&Uart2);
     #endif /* uartTA_PROTOCOL_ENABLED */
-    #if uartUART5_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-    UartReadFrame(&Uart5);
-    #endif /* standalone UART5 */
 }
 

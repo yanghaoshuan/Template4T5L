@@ -1,7 +1,7 @@
 /**
  * @file    uart.h
  * @brief   UART通信接口驱动程序头文件
- * @details 本文件提供多路UART通信接口的管理和控制功能，支持UART2-UART5，
+ * @details 本文件提供UART2和UART4通信接口的管理和控制功能，
  *          包括数据收发、缓冲区管理和协议处理
  * @author  yangming
  * @version 1.0.0
@@ -59,23 +59,6 @@ extern UART_TYPE Uart2;
 void Uart2Init(const uint32_t bdt);
 #endif /* uartUART2_ENABLED */
 
-#if uartUART3_ENABLED
-/**
- * @brief UART3控制结构体外部声明
- */
-extern UART_TYPE Uart3;
-
-/**
- * @brief UART3初始化函数
- * @details 初始化UART3硬件接口，配置波特率、数据位、停止位等参数
- * @param[in] bdt 波特率设置值 (9600-921600)
- * @return 无
- * @note 函数会自动配置GPIO引脚和中断设置
- * @note 使用固定时钟源6451200Hz计算波特率
- */
-void Uart3Init(const uint32_t bdt);
-#endif /* uartUART3_ENABLED */
-
 #if uartUART4_ENABLED
 /**
  * @brief UART4控制结构体外部声明
@@ -93,25 +76,6 @@ extern UART_TYPE Uart4;
  */
 void Uart4Init(const uint32_t bdt);
 #endif /* uartUART4_ENABLED */
-
-#if uartUART5_ENABLED
-/**
- * @brief UART5控制结构体外部声明
- */
-extern UART_TYPE Uart5;
-
-/**
- * @brief UART5初始化函数
- * @details 初始化UART5硬件接口，配置波特率、数据位、停止位等参数
- * @param[in] bdt 波特率设置值 (9600-921600)
- * @return 无
- * @note 函数会自动配置GPIO引脚和中断设置
- * @note 支持RS485模式配置（如果启用）
- * @note 具有独立的收发中断处理
- */
-void Uart5Init(const uint32_t bdt);
-#endif  /* uartUART5_ENABLED */
-
 
 /**
  * @brief UART模块统一初始化函数

@@ -22,7 +22,6 @@
 #define V851_TLV_RX_LENGTH_BASE_SIZE             4U
 #define V851_TLV_SEGMENT_HEADER_SIZE             3U
 #define V851_TLV_FIELD_HEADER_SIZE               3U
-#define V851_OTA_FRAME_MAX                       4124U
 
 /* Documented structure identifiers. */
 #define V851_TLV_STRUCT_DEVICE                   0x01U
@@ -199,7 +198,6 @@ uint8_t V851ProtocolSendSegments(uint8_t command,
                                  const V851TlvSegment *segments,
                                  uint8_t count);
 uint8_t V851ProtocolSendWifiFrame(const uint8_t *frame, uint16_t len);
-uint8_t V851ProtocolSendOtaFrame(const uint8_t *frame, uint16_t len);
 
 void V851TlvFieldCursorInit(V851TlvFieldCursor *cursor,
                             const uint8_t *bytes,

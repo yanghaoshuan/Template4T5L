@@ -11,10 +11,6 @@
 #include "uart.h"
 #include "t5l_stc.h"
 
-#if otaOTA_ENABLED
-#include "ota.h"
-#endif /* otaOTA_ENABLED */
-
 #if gpioGPIO_ENABLE
 #include "gpio.h"
 #endif /* gpioGPIO_ENABLE */
@@ -105,27 +101,11 @@ void Timer0Isr() interrupt 1
 			Uart2.RxTimeout--;
     #endif /* uartUART2_ENABLED */
 
-    #if uartUART3_ENABLED
-		if(Uart3.RxTimeout)
-			Uart3.RxTimeout--;
-    #endif /* uartUART3_ENABLED */
-
     #if uartUART4_ENABLED
 		if(Uart4.RxTimeout)
 			Uart4.RxTimeout--;
     #endif /* uartUART4_ENABLED */
 
-    #if uartUART5_ENABLED
-		if(Uart5.RxTimeout)
-			Uart5.RxTimeout--;
-    #endif /* uartUART5_ENABLED */
-
-    #if otaOTA_ENABLED
-    /**
-     * @note OTA内部每10ms递减一次超时计数，用于05/06命令超时重发。
-     */
-    OtaTimerTick1ms();
-    #endif /* otaOTA_ENABLED */
     Queue_Time_Check();
     timecnt++;
     if(timecnt>=1000){
