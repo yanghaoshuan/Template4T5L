@@ -804,13 +804,16 @@ uint16_t V851ControlInfoBuildFields(uint8_t struct_type,
     }
     if(struct_type == V851_TLV_STRUCT_ENVIRONMENT)
     {
+        /* 0x3010占两个word保存温度float，0x3012保存湿度u16。 */
+        read_dgus_vp(V851_CONTROL_REPORT_ENVIRONMENT_ADDR, record, 3U);
+        value = V851ControlInfoReadBe16(&record[4]);
         offset = 0U;
         if((V851ControlInfoWriteTenths(
                 field_buffer, capacity, &offset, V851_TLV_TAG_TEMPERATURE,
                 G_Device_Ctrl.environment.temperaturex10) == 0U) ||
            (V851TlvWriteBinary64Uint16(
                 field_buffer, capacity, &offset, V851_TLV_TAG_HUMIDITY,
-                G_Device_Ctrl.environment.humidity) == 0U))
+                value) == 0U))
         {
             return 0U;
         }

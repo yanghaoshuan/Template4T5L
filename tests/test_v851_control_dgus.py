@@ -163,7 +163,12 @@ class V851ControlDgusTests(unittest.TestCase):
         self.assertIn("V851_TLV_TAG_TEMPERATURE", self.source)
         self.assertIn("G_Device_Ctrl.environment.temperaturex10", self.source)
         self.assertIn("V851_TLV_TAG_HUMIDITY", self.source)
-        self.assertIn("G_Device_Ctrl.environment.humidity", self.source)
+        self.assertIn(
+            "read_dgus_vp(V851_CONTROL_REPORT_ENVIRONMENT_ADDR, record, 3U)",
+            self.source,
+        )
+        self.assertIn("V851ControlInfoReadBe16(&record[4])", self.source)
+        self.assertIn("V851TlvWriteBinary64Uint16", self.source)
         self.assertIn("V851ControlInfoWriteTenths", self.source)
 
     def test_first_scan_silently_establishes_baseline_without_init_api(self) -> None:
