@@ -566,6 +566,26 @@
               <FileType>5</FileType>
               <FilePath>..\modules\ota.h</FilePath>
             </File>
+            <File>
+              <FileName>slovak_dictionary.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\slovak_dictionary.c</FilePath>
+            </File>
+            <File>
+              <FileName>slovak_dictionary.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\slovak_dictionary.h</FilePath>
+            </File>
+            <File>
+              <FileName>slovak_ime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\slovak_ime.c</FilePath>
+            </File>
+            <File>
+              <FileName>slovak_ime.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\slovak_ime.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

@@ -18,6 +18,10 @@
 
 #include "rtc.h"
 
+#if sysSLOVAK_IME_ENABLED
+#include "slovak_ime.h"
+#endif /* sysSLOVAK_IME_ENABLED */
+
 #if gpioGPIO_ENABLE
 #include "gpio.h"
 #endif /* gpioGPIO_ENABLE */
@@ -52,6 +56,11 @@ void main(void)
 
 	RtcInit();
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
+
+	#if sysSLOVAK_IME_ENABLED
+	SlovakImeInit();
+	SysTaskAdd(SLOVAK_IME_TASK_ID, SLOVAK_IME_TASK_INTERVAL, SlovakImeTask);
+	#endif /* sysSLOVAK_IME_ENABLED */
 
 	#if otaOTA_ENABLED
 	/**
