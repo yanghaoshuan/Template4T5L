@@ -115,6 +115,7 @@ typedef            long			int32_t;
 #define sysADVERTISE_MODE_ENABLED       0
 #define sysN5CAMERA_MODE_ENABLED       0
 #define sysBEAUTY_MODE_ENABLED         0
+/** 1：注册斯洛伐克语输入法任务；0：从固件中排除该模块。 */
 #define sysSLOVAK_IME_ENABLED           1
 
 #if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)

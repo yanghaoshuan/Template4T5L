@@ -7,6 +7,9 @@
  * Retrieved: 2026-08-25
  * Source SHA-256: b65f4a34d124c791d4fe25cc922b64b1f5c5e86701e87b1257e1eacbb0941abe
  * Filter: NFC, Slovak alphabet only, 2..15 code points, case-folded unique.
+ *
+ * 存储格式：每个词使用 NFC UTF-16 码元并以 U+0000 结束，所有词连续
+ * 编译到 code 区。运行时不复制整张词典，仅用偏移量访问候选词。
  */
 code uint16_t SlovakDictionaryPool[] = {
     0x0073U, 0x0061U, 0x0000U, 0x006EU, 0x0061U, 0x0000U, 0x006AU, 0x0065U, 0x0000U, 0x017EU,
@@ -146,6 +149,7 @@ code uint16_t SlovakDictionaryPool[] = {
     0x0074U, 0x0061U, 0x0073U, 0x0072U, 0x0000U, 0x0074U, 0x0069U, 0x0000U
 };
 
+/* 偏移顺序即候选优先级：数值越靠前，词频排名越高。 */
 code uint16_t SlovakDictionaryOffsets[SLOVAK_DICTIONARY_WORD_COUNT] = {
     0x0000U, 0x0003U, 0x0006U, 0x0009U, 0x000CU, 0x000FU, 0x0012U, 0x0015U,
     0x0019U, 0x001CU, 0x0020U, 0x0023U, 0x0026U, 0x002AU, 0x002DU, 0x0031U,

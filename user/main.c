@@ -58,6 +58,10 @@ void main(void)
 	SysTaskAdd(0, RTC_INTERVAL, RtcTask);
 
 	#if sysSLOVAK_IME_ENABLED
+	/*
+	 * 输入法任务轮询启动 VP(0x0710)与按键 VP(0x0700)。
+	 * 初始化必须在 T5LCpuInit() 之后执行，确保 DGUS VP 接口已经可用。
+	 */
 	SlovakImeInit();
 	SysTaskAdd(SLOVAK_IME_TASK_ID, SLOVAK_IME_TASK_INTERVAL, SlovakImeTask);
 	#endif /* sysSLOVAK_IME_ENABLED */
