@@ -16,7 +16,7 @@
 | `0x0770` | 16 | Caps、容量和光标状态 |
 | `0x0780` | 65 | 最多 64 个 UTF-16 字符和可视光标 |
 
-键盘页仍为页面 11。正文、候选和目标 VP 均使用 UTF-16BE；预览中的 `|`
+斯洛伐克键盘使用页面 11，克罗地亚键盘使用页面 13。正文、候选和目标 VP 均使用 UTF-16BE；预览中的 `|`
 只表示光标，不会写入目标文本。
 
 每个文本输入启动键都应把变量地址设为 `0x0710`，把按键返回值设为目标文本
@@ -29,7 +29,9 @@
 不会按固定 64 words 覆盖较短字段之后的 VP。
 
 控制键保持 `F0/F1/F2/F3/F4/F7/F8`，候选键为 `F101–F104`，语言扩展键
-从 `F200` 开始按 `extended_characters` 的顺序查表。ASCII QWERTY 键继续
+从 `F200` 开始按 `extended_characters` 的顺序查表。`F300` 在活动会话中
+交换主/次语言并进入新语言的 `keyboard_page`，正文、光标和 Caps 均保持。
+没有注册第二语言时会忽略该事件。ASCII QWERTY 键继续
 使用高字节大写、低字节小写的组合键值。
 
 ## 公共接口
@@ -37,13 +39,16 @@
 ```c
 uint8_t MultiInputInit(MultiInputLanguagePack code *language);
 uint8_t MultiInputSetLanguage(MultiInputLanguagePack code *language);
+uint8_t MultiInputSetSecondaryLanguage(MultiInputLanguagePack code *language);
 void MultiInputTask(void);
 ```
 
 `MultiInputInit()` 校验默认语言包并清空输入法 VP。`MultiInputSetLanguage()`
-仅允许在没有活动输入会话时调用，避免编辑过程中改变字符和词典规则。
+和 `MultiInputSetSecondaryLanguage()` 仅允许在没有活动输入会话时调用。
+运行时的 `F300` 会交换两个语言包，所以当前选择会延续到本次上电期间的下一次
+输入会话；重启后仍由 `MultiInputInit()` 指定的斯洛伐克语开始。
 
-语言包包含预组合拉丁字符的大小写表、扩展键字符表以及可选词典。词典单词
+语言包包含预组合拉丁字符的大小写表、扩展键字符表、键盘页号以及可选词典。词典单词
 由 U+0000 分隔，offset 表按候选优先级指向词首；将
 `dictionary_word_count` 设为零即可得到没有联想功能的基础编辑器。
 
@@ -58,11 +63,20 @@ void MultiInputTask(void);
 
 词典来源及可重现排序结果保存在 `slovak-ime-dictionary.tsv`。
 
+## 克罗地亚语言包
+
+`modules/croatian_dictionary.c/h` 导出 `CroatianLanguagePack`。它使用页面 13，
+包含 `č/Č、ć/Ć、đ/Đ、š/Š、ž/Ž` 的大小写映射；`F200–F204` 按键盘物理位置
+依次输入 `š、đ、ž、č、ć`。256 个候选词来自 CLARIN.SI hrWaC 2.1 高频
+词形，NFC 归一化、按大小写折叠去重后生成；查询、响应 SHA-256、原始排名
+和频次记录在 `croatian-ime-dictionary.tsv`。
+
 ## 新增语言
 
 1. 在 `code` 区定义 `MultiInputCasePair`、扩展字符及可选词典数据。
-2. 组装并导出一个 `MultiInputLanguagePack`。
+2. 组装并导出一个 `MultiInputLanguagePack`，同时指定 `keyboard_page`。
 3. 启动时传给 `MultiInputInit()`，或在输入法空闲时传给
-   `MultiInputSetLanguage()`。
+   `MultiInputSetLanguage()`；需要会话内切换时再用
+   `MultiInputSetSecondaryLanguage()` 注册第二语言。
 
 当前底座处理 UTF-16 BMP 内的预组合拉丁字符，不实现组合附加符或死键序列。

@@ -7,7 +7,7 @@
 #define MULTI_INPUT_TASK_ID                 1U
 #define MULTI_INPUT_TASK_INTERVAL           20U
 
-/* 兼容现有屏端工程的 VP 地址和键盘页面。 */
+/* 兼容现有屏端工程的 VP 地址。 */
 #define MULTI_INPUT_KEY_VP                  0x0700U
 #define MULTI_INPUT_LAUNCH_VP               0x0710U
 #define MULTI_INPUT_LENGTH_VP               0x0711U
@@ -18,7 +18,6 @@
 #define MULTI_INPUT_CANDIDATE4_VP           0x0760U
 #define MULTI_INPUT_STATUS_VP               0x0770U
 #define MULTI_INPUT_BUFFER_VP               0x0780U
-#define MULTI_INPUT_KEYBOARD_PAGE           11U
 
 /* 正文最多 64 字符；预览区额外保留一个可视光标字位。 */
 #define MULTI_INPUT_DEFAULT_LENGTH          64U
@@ -50,6 +49,7 @@ typedef struct
     uint8_t case_pair_count;
     uint8_t extended_character_count;
     uint8_t dictionary_max_word_length;
+    uint16_t keyboard_page;
 } MultiInputLanguagePack;
 
 /** 初始化底座、选择默认语言，并清空输入法占用的 DGUS VP。 */
@@ -57,6 +57,9 @@ uint8_t MultiInputInit(MultiInputLanguagePack code *language);
 
 /** 在无活动输入会话时切换语言；成功返回 1，否则返回 0。 */
 uint8_t MultiInputSetLanguage(MultiInputLanguagePack code *language);
+
+/** 在无活动输入会话时注册可由 0xF300 切换的第二语言。 */
+uint8_t MultiInputSetSecondaryLanguage(MultiInputLanguagePack code *language);
 
 /** 消费启动和按键事件；由系统调度器每 20 ms 调用一次。 */
 void MultiInputTask(void);

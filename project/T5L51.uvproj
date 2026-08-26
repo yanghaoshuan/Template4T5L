@@ -511,6 +511,16 @@
               <FileType>5</FileType>
               <FilePath>..\modules\slovak_dictionary.h</FilePath>
             </File>
+            <File>
+              <FileName>croatian_dictionary.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\croatian_dictionary.c</FilePath>
+            </File>
+            <File>
+              <FileName>croatian_dictionary.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\croatian_dictionary.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

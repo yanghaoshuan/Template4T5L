@@ -3,6 +3,7 @@
 #include "rtc.h"
 #include "multi_input.h"
 #include "slovak_dictionary.h"
+#include "croatian_dictionary.h"
 
 void main(void)
 {
@@ -15,7 +16,8 @@ void main(void)
     RtcInit();
     SysTaskAdd(0U, RTC_INTERVAL, RtcTask);
 
-    if(MultiInputInit(&SlovakLanguagePack))
+    if(MultiInputInit(&SlovakLanguagePack) &&
+       MultiInputSetSecondaryLanguage(&CroatianLanguagePack))
     {
         SysTaskAdd(MULTI_INPUT_TASK_ID,
                    MULTI_INPUT_TASK_INTERVAL,

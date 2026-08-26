@@ -26,6 +26,7 @@
 /* 候选键与语言扩展键使用独立事件区，避免与控制键值冲突。 */
 #define MULTI_INPUT_CANDIDATE_KEY_BASE   0xF101U
 #define MULTI_INPUT_EXTENDED_KEY_BASE    0xF200U
+#define MULTI_INPUT_KEY_LANGUAGE_SWITCH  0xF300U
 #define MULTI_INPUT_NO_CANDIDATE         0xFFFFU
 
 /* 候选词输出的三种大小写形式。 */
@@ -37,6 +38,7 @@
 typedef struct
 {
     MultiInputLanguagePack code *language;
+    MultiInputLanguagePack code *secondary_language;
     uint16_t buffer[MULTI_INPUT_MAX_LENGTH + 1U];
     uint16_t candidate_offsets[MULTI_INPUT_CANDIDATE_COUNT];
     uint8_t vp_bytes[MULTI_INPUT_PREVIEW_WORD_COUNT * 2U];
@@ -110,6 +112,10 @@ static uint8_t MultiInputResolveMaximumLength(void)
 static uint8_t MultiInputLanguageIsValid(MultiInputLanguagePack code *language)
 {
     if(language == 0)
+    {
+        return 0U;
+    }
+    if(language->keyboard_page == 0U)
     {
         return 0U;
     }
@@ -686,7 +692,7 @@ static void MultiInputLoadTarget(uint16_t target_vp, uint8_t max_length)
     MultiInputContext.full = 0U;
     MultiInputContext.active = 1U;
     MultiInputRefresh();
-    SwitchPageById(MULTI_INPUT_KEYBOARD_PAGE);
+    SwitchPageById(MultiInputContext.language->keyboard_page);
 }
 
 /** 分派控制键、候选键、扩展字母键以及原 QWERTY/标点返回键。 */
@@ -757,6 +763,23 @@ static void MultiInputHandleKey(uint16_t key)
         return;
     }
 
+    if(key == MULTI_INPUT_KEY_LANGUAGE_SWITCH)
+    {
+        if(MultiInputContext.secondary_language != 0)
+        {
+            MultiInputLanguagePack code *previous_language;
+
+            /* 交换主/次语言，使选择在本次上电期间及后续会话中继续生效。 */
+            previous_language = MultiInputContext.language;
+            MultiInputContext.language = MultiInputContext.secondary_language;
+            MultiInputContext.secondary_language = previous_language;
+            MultiInputContext.full = 0U;
+            MultiInputRefresh();
+            SwitchPageById(MultiInputContext.language->keyboard_page);
+        }
+        return;
+    }
+
     if((key >= MULTI_INPUT_EXTENDED_KEY_BASE) &&
        (key < MULTI_INPUT_EXTENDED_KEY_BASE +
               MultiInputContext.language->extended_character_count))
@@ -815,6 +838,7 @@ uint8_t MultiInputInit(MultiInputLanguagePack code *language)
         return 0U;
     }
     MultiInputContext.language = language;
+    MultiInputContext.secondary_language = 0;
     MultiInputContext.target_vp = 0U;
     MultiInputContext.source_page = 0U;
     MultiInputContext.length = 0U;
@@ -851,7 +875,23 @@ uint8_t MultiInputSetLanguage(MultiInputLanguagePack code *language)
     {
         return 0U;
     }
+    if(language == MultiInputContext.secondary_language)
+    {
+        MultiInputContext.secondary_language = MultiInputContext.language;
+    }
     MultiInputContext.language = language;
+    return 1U;
+}
+
+/** 注册活动会话中可由 0xF300 交换的第二语言。 */
+uint8_t MultiInputSetSecondaryLanguage(MultiInputLanguagePack code *language)
+{
+    if(MultiInputContext.active || !MultiInputLanguageIsValid(language) ||
+       (language == MultiInputContext.language))
+    {
+        return 0U;
+    }
+    MultiInputContext.secondary_language = language;
     return 1U;
 }
 
