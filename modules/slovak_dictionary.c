@@ -1,5 +1,22 @@
 #include "slovak_dictionary.h"
 
+/* 预组合扩展字符的小写/大写对应关系。 */
+static code MultiInputCasePair SlovakCasePairs[SLOVAK_CASE_PAIR_COUNT] = {
+    {0x00E1U, 0x00C1U}, {0x00E4U, 0x00C4U}, {0x010DU, 0x010CU},
+    {0x010FU, 0x010EU}, {0x00E9U, 0x00C9U}, {0x00EDU, 0x00CDU},
+    {0x013AU, 0x0139U}, {0x013EU, 0x013DU}, {0x0148U, 0x0147U},
+    {0x00F3U, 0x00D3U}, {0x00F4U, 0x00D4U}, {0x0155U, 0x0154U},
+    {0x0161U, 0x0160U}, {0x0165U, 0x0164U}, {0x00FAU, 0x00DAU},
+    {0x00FDU, 0x00DDU}, {0x017EU, 0x017DU}
+};
+
+/* F200..F210 依次输入 á ä č ď é í ĺ ľ ň ó ô ŕ š ť ú ý ž。 */
+static code uint16_t SlovakExtendedCharacters[SLOVAK_EXTENDED_CHARACTER_COUNT] = {
+    0x00E1U, 0x00E4U, 0x010DU, 0x010FU, 0x00E9U, 0x00EDU,
+    0x013AU, 0x013EU, 0x0148U, 0x00F3U, 0x00F4U, 0x0155U,
+    0x0161U, 0x0165U, 0x00FAU, 0x00FDU, 0x017EU
+};
+
 /*
  * Source: Slovak National Corpus prim-11.0-public-all top 1000 words.
  * URL: https://korpus.juls.savba.sk/files/prim-11.0/
@@ -183,4 +200,16 @@ code uint16_t SlovakDictionaryOffsets[SLOVAK_DICTIONARY_WORD_COUNT] = {
     0x04B5U, 0x04C0U, 0x04C7U, 0x04CCU, 0x04D3U, 0x04D9U, 0x04E0U, 0x04E5U,
     0x04EEU, 0x04F4U, 0x04FAU, 0x04FFU, 0x0506U, 0x050BU, 0x0511U, 0x0517U,
     0x051FU, 0x0524U, 0x0527U, 0x052DU, 0x0533U, 0x0537U, 0x053CU, 0x0541U
+};
+
+/* 语言差异集中在此描述表，通用输入法底座不依赖斯洛伐克专用符号。 */
+code MultiInputLanguagePack SlovakLanguagePack = {
+    SlovakCasePairs,
+    SlovakExtendedCharacters,
+    SlovakDictionaryPool,
+    SlovakDictionaryOffsets,
+    SLOVAK_DICTIONARY_WORD_COUNT,
+    SLOVAK_CASE_PAIR_COUNT,
+    SLOVAK_EXTENDED_CHARACTER_COUNT,
+    SLOVAK_DICTIONARY_MAX_WORD_LENGTH
 };

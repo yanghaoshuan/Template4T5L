@@ -194,6 +194,10 @@ void RtcInit(void)
 
 void RtcSetTime(uint8_t *prtc_set)
 {
+    if(prtc_set == NULL)
+    {
+        return;
+    }
     __NOP();
 }
 

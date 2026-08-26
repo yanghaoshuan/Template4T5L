@@ -106,67 +106,17 @@ typedef            long			int32_t;
 
 
 
-/**
- * @brief 广告屏和美容屏功能使能标志
- * @details 1: 启用广告屏和美容屏功能, 0: 禁用
- * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
- * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
- */
-#define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0
-/** 1：注册斯洛伐克语输入法任务；0：从固件中排除该模块。 */
-#define sysSLOVAK_IME_ENABLED           1
-
-#if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
-#error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
-#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
-
-#if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart3
-#define R11_WIFI_ENABLED              0
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysBEAUTY_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#define R11_HAIR_ANALYZE_ENABLED      1          /**< 头皮检测分析功能使能标志 */
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#endif /* sysADVERTISE_MODE_ENABLED */  
-
-#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-
-#if sysSET_FROM_LIB
-extern uint16_t sys_2k_ratio;
-extern uint32_t sysFOSC;
-extern uint32_t sysFCLK;
-#else
-/**
- * @brief 2k分辨率模式
- * @details 1: 1920*1080分辨率屏幕, 0: 其他
- */
+/** 1：使用 2K 屏主频；0：使用普通屏主频。 */
 #define sys2K_RATIO                  0
 
 #if sys2K_RATIO
-/**
- * @brief 系统振荡器频率 (2K分辨率)
- * @details 系统主振荡器频率，单位Hz
- */
 #define sysFOSC                      383385600UL
 #else
-/**
- * @brief 系统振荡器频率 (其他)
- * @details 系统主振荡器频率，单位Hz
- */
 #define sysFOSC                      206438400UL
 #endif /* sys2K_RATIO */
 
+/** 系统内核时钟跟随所选主振荡器频率。 */
 #define sysFCLK                      sysFOSC
-#endif /* sysSET_FROM_LIB */
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
@@ -183,33 +133,6 @@ extern uint32_t sysFCLK;
 #define sysDGUS_CHART_ENABLED              0        /**< 图表功能使能标志 */
 
 #define flashDUAL_BACKUP_ENABLED            0               /**< 双备份使能标志 */
-
-/**
- * @brief OTA升级功能配置
- * @details OTA通过Uart_R11接收AB CD协议帧，将升级文件下载到NAND Flash后触发Boot升级。
- */
-#define otaOTA_ENABLED                 0              /**< 斯洛伐克输入法分支不启用R11 OTA */
-#define otaCRC32_CHECK_ENABLED         1              /**< OTA整文件CRC32校验使能标志 */
-#define otaDEBUG_ENABLED               0              /**< OTA调试输出使能标志，当前默认关闭 */
-#define otaTASK_INTERVAL               2              /**< OTA周期任务执行间隔，单位为系统任务节拍 */
-#define otaDOWNLOAD_MAX                20             /**< 单次OTA最多支持的文件数量 */
-
-#define otaNAND_START_ADDR             0x04000000UL   /**< OTA文件下载到NAND Flash的起始地址 */
-#define otaDATA_START_BLOCK            64             /**< OTA文件数据起始4KB块号，0-63块保留给头文件区域 */
-#define otaCACHE_VP_A                  0x7000         /**< OTA写NAND使用的第一个DGUS 4KB缓存区 */
-#define otaCACHE_VP_B                  0x7800         /**< OTA写NAND使用的第二个DGUS 4KB缓存区 */
-#define otaSPEED_VP_ADDR               0x3FFE         /**< OTA下载进度数值VP地址 */
-#define otaSPEED_SP_ADDR               0x4FE0         /**< OTA下载进度控件SP地址 */
-#define otaTEST_TRIGGER_ADDR           0x40C1         /**< OTA测试触发VP地址，写入0x5AA5后发送F3命令 */
-#define otaUPGRADE_FLAG_ADDR           0x51F0         /**< OTA升级完成标志VP/NOR地址 */
-#define otaUPDATE_INFO_ADDR            0x4100         /**< OTA版本号、时间段等信息起始VP地址 */
-#define otaCHARGE_STATUS_ADDR          0x1000         /**< 参考项目保留的充电状态VP地址 */
-
-#if otaOTA_ENABLED && !(sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-#error "OTA requires Uart_R11. Enable one R11 mode or disable otaOTA_ENABLED."
-#endif /* otaOTA_ENABLED && !R11 mode */
-
-
 
 #define gpioGPIO_ENABLE             0  /**< GPIO使能标志 */
 #define gpioPWM_ENABLE              0  /**< PWM使能标志 */
@@ -346,11 +269,7 @@ extern uint32_t sysFCLK;
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
     #define uartUART5_BAUDRATE           921600
-    #else 
-    #define uartUART5_BAUDRATE           921600
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #define uartUART5_485_ENABLED        0
     
     #if uartUART5_485_ENABLED
@@ -473,7 +392,5 @@ extern uint32_t sysFCLK;
 #endif /* spiSPI_ENABLED */
 
 #define canCAN_ENABLED                  0
-
-#define _4G_AIR780E_ENABLED             0
 
 #endif /* T5LOS_CONFIG_H */

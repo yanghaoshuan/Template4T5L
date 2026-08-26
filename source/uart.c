@@ -20,32 +20,6 @@
 #include "TA_protocal.h"
 #endif /* uartTA_PROTOCOL_ENABLED */
 
-#if otaOTA_ENABLED
-#include "ota.h"
-#endif /* otaOTA_ENABLED */
-
-#if sysSET_FROM_LIB
-uint16_t sys_2k_ratio;
-uint32_t sysFOSC;
-uint32_t sysFCLK;
-#endif /* sysSET_FROM_LIB */
-
-#if sysBEAUTY_MODE_ENABLED
-#include "r11_netskinAnalyze.h"
-#include "r11_common.h"
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysN5CAMERA_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_n5camera.h"
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_advertise.h"
-#endif /* sysADVERTISE_MODE_ENABLED */
-
-
 #if uartUART2_ENABLED
 UART_TYPE Uart2;
 uint8_t Uart2TxBuffer[uartUART2_TXBUF_SIZE+1];
@@ -66,17 +40,11 @@ void Uart2Init(const uint32_t bdt)
     PCON &= 0x7F;
     PCON |= 0x80;
 
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        PCON |= 0x80;
-    }
-    #else
     #if sys2K_RATIO
+    /* 2K 主频下 UART2 使用 64 分频。 */
     PCON &= ~0x80;
     #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
-    
+
     if(PCON & 0x80)
     {
         baud = 1024- ( uint16_t)(sysFOSC/32/bdt);
@@ -220,22 +188,12 @@ void Uart4Init(const uint32_t bdt)
     #endif /* CPU_TYPE==T5F0*/
     SCON2T=0x80;
     SCON2R=0x80;
-    
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        baud = (uint16_t)(sysFCLK/16/bdt);
-    }else
-    {
-        baud = (uint16_t)(sysFCLK/8/bdt);
-    }
-    #else
+
     #if sys2K_RATIO
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
     #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
     BODE2_DIV_H = (baud>>8) & 0xff;
     BODE2_DIV_L = baud & 0xff;
 
@@ -316,22 +274,12 @@ void Uart5Init(const uint32_t bdt)
     #endif /* CPU_TYPE==T5F0*/
     SCON3T=0x80;
 	SCON3R=0x80;
-    
-    #if sysSET_FROM_LIB
-    if(sys_2k_ratio)
-    {
-        baud = (uint16_t)(sysFCLK/16/bdt);
-    }else
-    {
-        baud = (uint16_t)(sysFCLK/8/bdt);
-    }
-    #else
+
     #if sys2K_RATIO
     baud = (uint16_t)(sysFCLK/16/bdt);
     #else
     baud = (uint16_t)(sysFCLK/8/bdt);
     #endif /* sys2K_RATIO */
-    #endif /* sysSET_FROM_LIB */
     BODE3_DIV_H = (baud>>8) & 0xff;
     BODE3_DIV_L = baud & 0xff;
 
@@ -719,78 +667,8 @@ void UartReadFrame(UART_TYPE *uart)
                     break;
                 }
                 UartStandardDwin8283Protocal(uart, &frame[frame_offset], one_frame_len);
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                #if sysN5CAMERA_MODE_ENABLED
-                UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysN5CAMERA_MODE_ENABLED */
-                i -= one_frame_len;
-            }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0x55)
-            {
-                if(i < 4U)
-                {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                #if R11_WIFI_ENABLED
-                UartR11UserWifiProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* R11_WIFI_ENABLED */
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
-                #if sysN5CAMERA_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserN5CameraProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysN5CAMERA_MODE_ENABLED */
-                #if sysADVERTISE_MODE_ENABLED
-                UartR11UserVideoProtocol(uart, &frame[frame_offset], one_frame_len);
-                UartR11UserAdvertiseProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysADVERTISE_MODE_ENABLED */
-                i -= one_frame_len;
-            }else if(frame[frame_offset] == 0xaa && frame[frame_offset + 1] == 0xCC)
-            {
-                if(i < 4U)
-                {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                #if sysBEAUTY_MODE_ENABLED
-                UartR11UserBeautyProtocol(uart, &frame[frame_offset], one_frame_len);
-                #endif /* sysBEAUTY_MODE_ENABLED */
                 i -= one_frame_len;
             }
-            #if otaOTA_ENABLED && (sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED)
-            else if(frame[frame_offset] == 0xAB && frame[frame_offset + 1] == 0xCD)
-            {
-                /**
-                 * @note OTA协议帧只允许从Uart_R11进入，避免普通串口误处理AB CD数据。
-                 */
-                if(i < 4U)
-                {
-                    break;
-                }
-                one_frame_len = (frame[frame_offset + 2] << 8 | frame[frame_offset + 3]) + 4;
-                if(i < one_frame_len)
-                {
-                    break;
-                }
-                if(uart == &Uart_R11)
-                {
-                    OtaReceive(&frame[frame_offset], one_frame_len);
-                }
-                i -= one_frame_len;
-            }
-            #endif /* otaOTA_ENABLED && R11 mode */
             #if uartMODBUS_PROTOCOL_ENABLED
             else if(frame[frame_offset] == modbusSLAVE_ADDRESS)
             {
@@ -850,9 +728,6 @@ void UartProtocalHandleTask(void)
 {
     UartReadFrame(&Uart2);
     UartReadFrame(&Uart4);
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-    UartReadFrame(&Uart_R11);
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #if uartTA_PROTOCOL_ENABLED
     TAProtocolUpload(&Uart2);
     #endif /* uartTA_PROTOCOL_ENABLED */

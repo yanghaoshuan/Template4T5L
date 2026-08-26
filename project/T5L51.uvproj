@@ -322,7 +322,7 @@
             <InterruptVectorAddress>0</InterruptVectorAddress>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>_RX_TEST _USE_POLL _JPGTEST</Define>
+              <Define></Define>
               <Undefine></Undefine>
               <IncludePath>..\include;..\source;..\user;..\modules;..\project;..\include\T5L</IncludePath>
             </VariousControls>
@@ -457,16 +457,6 @@
               <FilePath>..\source\i2c.h</FilePath>
             </File>
             <File>
-              <FileName>core_json.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\source\core_json.c</FilePath>
-            </File>
-            <File>
-              <FileName>core_json.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\source\core_json.h</FilePath>
-            </File>
-            <File>
               <FileName>TA_protocal.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\source\TA_protocal.c</FilePath>
@@ -475,6 +465,16 @@
               <FileName>TA_protocal.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\source\TA_protocal.h</FilePath>
+            </File>
+            <File>
+              <FileName>multi_input.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\source\multi_input.c</FilePath>
+            </File>
+            <File>
+              <FileName>multi_input.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\source\multi_input.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -502,71 +502,6 @@
               <FilePath>..\modules\rtc.h</FilePath>
             </File>
             <File>
-              <FileName>r11_common.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\r11_common.c</FilePath>
-            </File>
-            <File>
-              <FileName>r11_common.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\r11_common.h</FilePath>
-            </File>
-            <File>
-              <FileName>r11_netskinAnalyze.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\r11_netskinAnalyze.c</FilePath>
-            </File>
-            <File>
-              <FileName>r11_netskinAnalyze.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\r11_netskinAnalyze.h</FilePath>
-            </File>
-            <File>
-              <FileName>r11_n5camera.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\r11_n5camera.c</FilePath>
-            </File>
-            <File>
-              <FileName>r11_n5camera.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\r11_n5camera.h</FilePath>
-            </File>
-            <File>
-              <FileName>r11_advertise.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\r11_advertise.c</FilePath>
-            </File>
-            <File>
-              <FileName>r11_advertise.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\r11_advertise.h</FilePath>
-            </File>
-            <File>
-              <FileName>suggestionsGB2312.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\suggestionsGB2312.h</FilePath>
-            </File>
-            <File>
-              <FileName>4G_air780e.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\4G_air780e.c</FilePath>
-            </File>
-            <File>
-              <FileName>4G_air780e.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\4G_air780e.h</FilePath>
-            </File>
-            <File>
-              <FileName>ota.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\ota.c</FilePath>
-            </File>
-            <File>
-              <FileName>ota.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\ota.h</FilePath>
-            </File>
-            <File>
               <FileName>slovak_dictionary.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\modules\slovak_dictionary.c</FilePath>
@@ -575,16 +510,6 @@
               <FileName>slovak_dictionary.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\modules\slovak_dictionary.h</FilePath>
-            </File>
-            <File>
-              <FileName>slovak_ime.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\modules\slovak_ime.c</FilePath>
-            </File>
-            <File>
-              <FileName>slovak_ime.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\modules\slovak_ime.h</FilePath>
             </File>
           </Files>
         </Group>

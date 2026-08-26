@@ -68,8 +68,15 @@ Template4T5L/
 - [x] **RX8130** - 高精度RTC芯片
 - [x] **SD2058** - 低功耗RTC芯片
 
+### 输入法
+- [x] **统一拉丁系底座** - UTF-16BE 编辑、光标、大小写和候选词
+- [x] **斯洛伐克语言包** - 17 个扩展字母和 256 词联想词典
+
 ### 系统功能
 - [x] **看门狗** - 系统监控和复位
+
+输入法的 DGUS VP 协议、公共接口和新增语言方法见
+[`multi-input.md`](multi-input.md)。
 
 ## 🏁 快速开始
 
@@ -88,13 +95,16 @@ cd Template4T5L
 ```c
 /* 系统配置示例 */
 #define sysMAX_TASK_NUM         8           /* 最大任务数量 */
-#define sysFOSC                 206438400UL /* 系统时钟频率 */
+#define sys2K_RATIO             0           /* 0: 206.4384 MHz；1: 383.3856 MHz */
 
 /* 功能模块使能配置 */
 #define uartUART2_ENABLED       1       /* 启用UART2 */
 #define gpioGPIO_ENABLE         1       /* 启用GPIO */
 #define i2cI2C_ENABLED          1       /* 启用I2C */
 ```
+
+`sysFOSC` 和 `sysFCLK` 由 `sys2K_RATIO` 自动选择。UART2、UART4 和 UART5
+会同时切换对应分频，串口波特率配置值无需随主频手动修改。
 
 ### 3. 基本使用示例
 

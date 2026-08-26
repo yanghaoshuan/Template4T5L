@@ -12,12 +12,6 @@
 #include "timer.h"
 #include <string.h>
 
-#if sysBEAUTY_MODE_ENABLED
-#include "r11_common.h"
-#include "r11_netskinAnalyze.h"
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-
 /**
  * @brief 系统任务定时器时钟节拍计数器
  * @details 用于任务调度的时钟基准，由定时器中断递增
@@ -256,16 +250,8 @@ static void InterruptInit(void)
      *   G5  .5      .5          T2 定时器中断   UART5 接收中断
      ********************************************************/
     
-    #if sysN5CAMERA_MODE_ENABLED
-    IP1 = 0x39;/* 0b0001 1001 */		
-	IP0 = 0x25;/* 0b0000 0101 */
-    #elif sysADVERTISE_MODE_ENABLED || sysBEAUTY_MODE_ENABLED
     IP1 = 0x39;/* 0b0110 1001 */
 	IP0 = 0x25;/* 0b0010 0101 */
-    #else
-    IP1 = sysDEFAULT_ZERO;    
-	IP0 = sysDEFAULT_ZERO;
-    #endif
 }
 
 

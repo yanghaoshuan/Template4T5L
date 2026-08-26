@@ -106,65 +106,17 @@ typedef            long			int32_t;
 
 
 
-/**
- * @brief 广告屏和美容屏功能使能标志
- * @details 1: 启用广告屏和美容屏功能, 0: 禁用
- * @warning 打开这个宏后需要去startup文件中配置R11模块,禁用时需要关闭配置R11模块以使用外部中断0
- * @warning 广告屏美容屏和模拟摄像头开关互斥，注意只能打开一个
- */
-#define sysADVERTISE_MODE_ENABLED       0
-#define sysN5CAMERA_MODE_ENABLED       0
-#define sysBEAUTY_MODE_ENABLED         0     
-
-#if ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1)
-#error "ONLY CAN CHOOSE ONE:ADVERTISE,N5CAMERA,BEAUTY!"
-#endif /* ((sysN5CAMERA_MODE_ENABLED + sysBEAUTY_MODE_ENABLED + sysADVERTISE_MODE_ENABLED) > 1) */
-
-#if sysN5CAMERA_MODE_ENABLED
-#define Uart_R11                     Uart3
-#define R11_WIFI_ENABLED              0
-#endif /* sysN5CAMERA_MODE_ENABLED */
-
-#if sysBEAUTY_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#define R11_HAIR_ANALYZE_ENABLED      0          /**< 头皮检测分析功能使能标志 */
-#endif /* sysBEAUTY_MODE_ENABLED */
-
-#if sysADVERTISE_MODE_ENABLED
-#define Uart_R11                     Uart5
-#define R11_WIFI_ENABLED              1
-#endif /* sysADVERTISE_MODE_ENABLED */  
-
-#define sysSET_FROM_LIB              sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-
-#if sysSET_FROM_LIB
-extern uint16_t sys_2k_ratio;
-extern uint32_t sysFOSC;
-extern uint32_t sysFCLK;
-#else
-/**
- * @brief 2k分辨率模式
- * @details 1: 1920*1080分辨率屏幕, 0: 其他
- */
+/** 1：使用 2K 屏主频；0：使用普通屏主频。 */
 #define sys2K_RATIO                  0
 
 #if sys2K_RATIO
-/**
- * @brief 系统振荡器频率 (2K分辨率)
- * @details 系统主振荡器频率，单位Hz
- */
 #define sysFOSC                      383385600UL
 #else
-/**
- * @brief 系统振荡器频率 (其他)
- * @details 系统主振荡器频率，单位Hz
- */
 #define sysFOSC                      206438400UL
 #endif /* sys2K_RATIO */
 
+/** 系统内核时钟跟随所选主振荡器频率。 */
 #define sysFCLK                      sysFOSC
-#endif /* sysSET_FROM_LIB */
 
 #define sysTEST_ENABLED                 1        /**< 测试模式使能标志 */
 
@@ -319,11 +271,7 @@ extern uint32_t sysFCLK;
     #if uartUART5_TIMEOUT_ENABLED
         #define uartUART5_TIMEOUTSET     5
     #endif  /* uartUART5_TIMEOUT_ENABLED */ 
-    #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-    #define uartUART5_BAUDRATE           921600
-    #else 
     #define uartUART5_BAUDRATE           115200
-    #endif /* sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED */
     #define uartUART5_485_ENABLED        0
     
     #if uartUART5_485_ENABLED
@@ -446,7 +394,5 @@ extern uint32_t sysFCLK;
 #endif /* spiSPI_ENABLED */
 
 #define canCAN_ENABLED                  0
-
-#define _4G_AIR780E_ENABLED             1
 
 #endif /* T5FOS_CONFIG_H */
