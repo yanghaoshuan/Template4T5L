@@ -10,6 +10,7 @@
 /* 兼容现有屏端工程的 VP 地址和键盘页面。 */
 #define MULTI_INPUT_KEY_VP                  0x0700U
 #define MULTI_INPUT_LAUNCH_VP               0x0710U
+#define MULTI_INPUT_LENGTH_VP               0x0711U
 #define MULTI_INPUT_COMPOSITION_VP          0x0720U
 #define MULTI_INPUT_CANDIDATE1_VP           0x0730U
 #define MULTI_INPUT_CANDIDATE2_VP           0x0740U
@@ -19,8 +20,10 @@
 #define MULTI_INPUT_BUFFER_VP               0x0780U
 #define MULTI_INPUT_KEYBOARD_PAGE           11U
 
-/* 固定容量与屏端 VP 分配保持一致。 */
-#define MULTI_INPUT_MAX_LENGTH              63U
+/* 正文最多 64 字符；预览区额外保留一个可视光标字位。 */
+#define MULTI_INPUT_DEFAULT_LENGTH          64U
+#define MULTI_INPUT_MAX_LENGTH              64U
+#define MULTI_INPUT_PREVIEW_WORD_COUNT      (MULTI_INPUT_MAX_LENGTH + 1U)
 #define MULTI_INPUT_CANDIDATE_COUNT         4U
 #define MULTI_INPUT_CANDIDATE_MAX_LENGTH    15U
 

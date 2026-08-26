@@ -2,9 +2,10 @@
  * @file multi_input.c
  * @brief 拉丁系单行输入法、编辑器与候选词底座。
  *
- * DGUS 通过 0x0710 发起输入会话，并把目标文本 VP 作为参数传入；键盘页
- * 随后把所有触摸事件写到 0x0700。本模块以 20 ms 周期消费并清零事件，
- * 在 xdata 中维护不含光标标记的 UTF-16 正文，确认时才写回目标 VP。
+ * DGUS 通过 0x0710 发起输入会话，并把目标文本 VP 作为按键返回值传入；
+ * 0x0711 保存本次会话允许的最大字符数。键盘页随后把所有触摸事件写到
+ * 0x0700。本模块以 20 ms 周期消费并清零事件，在 xdata 中维护不含光标
+ * 标记的 UTF-16 正文，确认时才写回目标 VP。
  *
  * DGUS VP 的一个 word 使用高字节在前的 UTF-16BE 格式。为避免依赖 8051
  * 本机整数端序，本文件的所有 VP 读写均显式拆分或合并高、低字节。
@@ -38,10 +39,11 @@ typedef struct
     MultiInputLanguagePack code *language;
     uint16_t buffer[MULTI_INPUT_MAX_LENGTH + 1U];
     uint16_t candidate_offsets[MULTI_INPUT_CANDIDATE_COUNT];
-    uint8_t vp_bytes[(MULTI_INPUT_MAX_LENGTH + 1U) * 2U];
+    uint8_t vp_bytes[MULTI_INPUT_PREVIEW_WORD_COUNT * 2U];
     uint16_t target_vp;
     uint16_t source_page;
     uint8_t length;
+    uint8_t max_length;
     uint8_t cursor;
     uint8_t active;
     uint8_t caps;
@@ -88,6 +90,20 @@ static void MultiInputClearVp(uint32_t vp, uint16_t word_count)
 {
     MultiInputZeroVpBytes(word_count * 2U);
     write_dgus_vp(vp, MultiInputContext.vp_bytes, word_count);
+}
+
+/** 读取并约束 0x0711；零或超过底座容量时使用默认的 64 字符。 */
+static uint8_t MultiInputResolveMaximumLength(void)
+{
+    uint16_t requested_length;
+
+    requested_length = MultiInputReadWord(MULTI_INPUT_LENGTH_VP);
+    if((requested_length == 0U) ||
+       (requested_length > MULTI_INPUT_MAX_LENGTH))
+    {
+        requested_length = MULTI_INPUT_DEFAULT_LENGTH;
+    }
+    return (uint8_t)requested_length;
 }
 
 /** 校验语言描述表，避免后续任务解引用无效的 code 区指针。 */
@@ -204,7 +220,7 @@ static uint16_t MultiInputApplyCase(uint16_t value, uint8_t style, uint8_t posit
  * 将带可视光标的预览写到 0x0780。
  *
  * 竖线只存在于显示副本中，不进入正文缓冲区，也不会在确认时写入目标 VP。
- * 正文最多 63 字符，因此 64-word 显示区恰好容纳正文、光标和终止符。
+ * 正文最多 64 字符，因此预览控件使用 65 words 容纳正文和光标。
  */
 static void MultiInputWritePreview(void)
 {
@@ -212,7 +228,7 @@ static void MultiInputWritePreview(void)
     uint8_t display;
     uint16_t value;
 
-    MultiInputZeroVpBytes((MULTI_INPUT_MAX_LENGTH + 1U) * 2U);
+    MultiInputZeroVpBytes(MULTI_INPUT_PREVIEW_WORD_COUNT * 2U);
     display = 0U;
     for(source = 0U; source < MultiInputContext.length; source++)
     {
@@ -235,21 +251,21 @@ static void MultiInputWritePreview(void)
         MultiInputContext.vp_bytes[(uint16_t)display * 2U + 1U] = '|';
     }
     write_dgus_vp(MULTI_INPUT_BUFFER_VP, MultiInputContext.vp_bytes,
-                  MULTI_INPUT_MAX_LENGTH + 1U);
+                  MULTI_INPUT_PREVIEW_WORD_COUNT);
 }
 
-/** 将不含可视光标的规范正文写回本次会话的动态目标 VP。 */
+/** 按 0x0711 指定的容量，将规范正文写回本次会话的动态目标 VP。 */
 static void MultiInputWriteTarget(void)
 {
     uint8_t i;
-    MultiInputZeroVpBytes((MULTI_INPUT_MAX_LENGTH + 1U) * 2U);
+    MultiInputZeroVpBytes((uint16_t)MultiInputContext.max_length * 2U);
     for(i = 0U; i < MultiInputContext.length; i++)
     {
         MultiInputContext.vp_bytes[(uint16_t)i * 2U] = (uint8_t)(MultiInputContext.buffer[i] >> 8);
         MultiInputContext.vp_bytes[(uint16_t)i * 2U + 1U] = (uint8_t)MultiInputContext.buffer[i];
     }
     write_dgus_vp(MultiInputContext.target_vp, MultiInputContext.vp_bytes,
-                  MULTI_INPUT_MAX_LENGTH + 1U);
+                  MultiInputContext.max_length);
 }
 
 /** 向 16-word 状态暂存区追加一个 ASCII 字符，并返回下一写入位置。 */
@@ -486,7 +502,7 @@ static void MultiInputRefresh(void)
 static uint8_t MultiInputInsertCharacter(uint16_t value)
 {
     uint8_t i;
-    if(MultiInputContext.length >= MULTI_INPUT_MAX_LENGTH)
+    if(MultiInputContext.length >= MultiInputContext.max_length)
     {
         MultiInputContext.full = 1U;
         return 0U;
@@ -573,7 +589,8 @@ static void MultiInputSelectCandidate(uint8_t slot)
     {
         /* 候选更长：先校验容量，再从后向前为差值腾出空间。 */
         difference = candidate_length - old_word_length;
-        if((uint16_t)MultiInputContext.length + difference > MULTI_INPUT_MAX_LENGTH)
+        if((uint16_t)MultiInputContext.length + difference >
+           MultiInputContext.max_length)
         {
             MultiInputContext.full = 1U;
             return;
@@ -607,7 +624,8 @@ static void MultiInputSelectCandidate(uint8_t slot)
     MultiInputContext.cursor = start + candidate_length;
 
     /* 只在词尾原本没有后续空白或标点且仍有容量时补一个空格。 */
-    if((end == old_length) && (MultiInputContext.length < MULTI_INPUT_MAX_LENGTH))
+    if((end == old_length) &&
+       (MultiInputContext.length < MultiInputContext.max_length))
     {
         MultiInputContext.buffer[MultiInputContext.cursor] = 0x0020U;
         MultiInputContext.cursor++;
@@ -634,22 +652,23 @@ static void MultiInputFinish(uint8_t commit)
 }
 
 /**
- * 从动态目标 VP 载入最多 63 个 UTF-16BE 字符，并进入键盘页。
+ * 从动态目标 VP 载入本次允许数量的 UTF-16BE 字符，并进入键盘页。
  * 当前页面会在切换前保存，以便确认或取消后准确返回调用页面。
  */
-static void MultiInputLoadTarget(uint16_t target_vp)
+static void MultiInputLoadTarget(uint16_t target_vp, uint8_t max_length)
 {
     uint8_t i;
     uint16_t value;
 
     MultiInputContext.target_vp = target_vp;
+    MultiInputContext.max_length = max_length;
     MultiInputContext.source_page = MultiInputReadWord(sysDGUS_PIC_NOW);
-    MultiInputZeroVpBytes((MULTI_INPUT_MAX_LENGTH + 1U) * 2U);
+    MultiInputZeroVpBytes((uint16_t)MultiInputContext.max_length * 2U);
     read_dgus_vp(MultiInputContext.target_vp, MultiInputContext.vp_bytes,
-                 MULTI_INPUT_MAX_LENGTH + 1U);
+                 MultiInputContext.max_length);
 
     MultiInputContext.length = 0U;
-    for(i = 0U; i < MULTI_INPUT_MAX_LENGTH; i++)
+    for(i = 0U; i < MultiInputContext.max_length; i++)
     {
         /* 显式合并高低字节，避免 8051 整数端序影响 Unicode。 */
         value = ((uint16_t)MultiInputContext.vp_bytes[(uint16_t)i * 2U] << 8) |
@@ -799,6 +818,7 @@ uint8_t MultiInputInit(MultiInputLanguagePack code *language)
     MultiInputContext.target_vp = 0U;
     MultiInputContext.source_page = 0U;
     MultiInputContext.length = 0U;
+    MultiInputContext.max_length = MULTI_INPUT_DEFAULT_LENGTH;
     MultiInputContext.cursor = 0U;
     MultiInputContext.active = 0U;
     MultiInputContext.caps = 0U;
@@ -813,13 +833,14 @@ uint8_t MultiInputInit(MultiInputLanguagePack code *language)
     /* 事件 VP 由 OS 消费后清零；初始化时先建立相同的空闲状态。 */
     MultiInputWriteWord(MULTI_INPUT_KEY_VP, 0U);
     MultiInputWriteWord(MULTI_INPUT_LAUNCH_VP, 0U);
+    MultiInputWriteWord(MULTI_INPUT_LENGTH_VP, MULTI_INPUT_DEFAULT_LENGTH);
     MultiInputClearVp(MULTI_INPUT_COMPOSITION_VP, 16U);
     MultiInputClearVp(MULTI_INPUT_CANDIDATE1_VP, 16U);
     MultiInputClearVp(MULTI_INPUT_CANDIDATE2_VP, 16U);
     MultiInputClearVp(MULTI_INPUT_CANDIDATE3_VP, 16U);
     MultiInputClearVp(MULTI_INPUT_CANDIDATE4_VP, 16U);
     MultiInputClearVp(MULTI_INPUT_STATUS_VP, 16U);
-    MultiInputClearVp(MULTI_INPUT_BUFFER_VP, MULTI_INPUT_MAX_LENGTH + 1U);
+    MultiInputClearVp(MULTI_INPUT_BUFFER_VP, MULTI_INPUT_PREVIEW_WORD_COUNT);
     return 1U;
 }
 
@@ -844,6 +865,7 @@ void MultiInputTask(void)
 {
     uint16_t launch_target;
     uint16_t key;
+    uint8_t max_length;
 
     launch_target = MultiInputReadWord(MULTI_INPUT_LAUNCH_VP);
     if(launch_target != 0U)
@@ -853,7 +875,11 @@ void MultiInputTask(void)
         if(!MultiInputContext.active)
         {
             MultiInputWriteWord(MULTI_INPUT_KEY_VP, 0U);
-            MultiInputLoadTarget(launch_target);
+            max_length = MultiInputResolveMaximumLength();
+            /* 最大长度是单次启动参数；消费后恢复下一次会话的默认值。 */
+            MultiInputWriteWord(MULTI_INPUT_LENGTH_VP,
+                                MULTI_INPUT_DEFAULT_LENGTH);
+            MultiInputLoadTarget(launch_target, max_length);
         }
     }
 
