@@ -1418,35 +1418,28 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                             {
 
                                                 //在这里查询一次，如果GUI在忙就等待1ms再次查询
+                                                // #define Judge_GUI_BUSY
+                                                #ifdef Judge_GUI_BUSY
+                                                // 查询 GUI 忙状态
                                                 ADR_H = 0x00;
-												ADR_M = 0x00 >> 9;
-												ADR_L = 0x14 >> 1;
-												ADR_INC = 0x00;
-												
-												RAMMODE = 0xAF;
-												while ( !APP_ACK );
-												APP_EN = 1;
-												while ( APP_EN );
-                                                RAMMODE = 0x00;
-                                                // if(DATA3 == 0x00 && DATA2 == 0x01)
-                                                // {
-                                                //     //GUI忙，丢掉这一包
-                                                //     Rx3_Len++;
-                                                //     data_write_f = 0x10;
-                                                //     EX0 = 0;
-                                                //     EX1 = 0;
-                                                // }else
-                                                // {
-
-                                                while(DATA3 == 0x00 && DATA2 == 0x00)
+                                                ADR_M = 0x00 >> 9;
+                                                ADR_L = 0x15 >> 1;
+                                                ADR_INC = 0x00;
+                                                RAMMODE = 0xAF;
+                                                while ( !APP_ACK );
+                                                APP_EN = 1;
+                                                while ( APP_EN );
+                                                //RAMMODE = 0x00;
+                                                while ( DATA1 == 0x00 && DATA0 == 0x01 )
                                                 {
-                                                    delay_ms(1);
-                                                    RAMMODE = 0xAF;
-												    while ( !APP_ACK );
-												    APP_EN = 1;
-												    while ( APP_EN );
                                                     RAMMODE = 0x00;
+                                                    delay_us ( 100 );
+                                                    RAMMODE = 0xAF;
+                                                    while ( !APP_ACK );
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
                                                 }
+                                                #endif
 												ADR_H = JpegLaber_DGUSII_VP >> 17;
 												ADR_M = JpegLaber_DGUSII_VP >> 9;
 												ADR_L = JpegLaber_DGUSII_VP >> 1;
@@ -1464,19 +1457,6 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
 												APP_EN = 1;
 												while ( APP_EN );
 												RAMMODE = 0x00;
-
-
-                                                while (DATA1 == 0x00 && DATA0 == 0x01)
-                                                {
-                                                    delay_ms(1);
-                                                    RAMMODE = 0xAF;
-                                                    while (!APP_ACK)
-                                                        ;
-                                                    APP_EN = 1;
-                                                    while (APP_EN)
-                                                        ;
-                                                    RAMMODE = 0x00;
-                                                }
                                                 
                                                 ADR_H = Icon_Overlay_SP[Index] >> 17;
                                                 ADR_M = Icon_Overlay_SP[Index] >> 9;
@@ -1561,35 +1541,28 @@ void inter_extern1_1_fun_C ( void ) interrupt 2
                                             {
 
                                                 //在这里查询一次，如果GUI在忙就等待1ms再次查询
-                                                ADR_H = 0x00;
-												ADR_M = 0x00 >> 9;
-												ADR_L = 0x14 >> 1;
-												ADR_INC = 0x00;
-												
-												RAMMODE = 0xAF;
-												while ( !APP_ACK );
-												APP_EN = 1;
-												while ( APP_EN );
-                                                RAMMODE = 0x00;
-                                                // if(DATA3 == 0x00 && DATA2 == 0x01)
-                                                // {
-                                                //     //GUI忙，丢掉这一包
-                                                //     Rx3_Len++;
-                                                //     data_write_f = 0x10;
-                                                //     EX0 = 0;
-                                                //     EX1 = 0;
-                                                // }else
-                                                // {
-
-                                                while(DATA1 == 0x00 && DATA0 == 0x01)
-                                                {
-                                                    delay_ms(1);
+                                                // #define Judge_GUI_BUSY
+                                                    #ifdef Judge_GUI_BUSY
+                                                    // 查询 GUI 忙状态
+                                                    ADR_H = 0x00;
+                                                    ADR_M = 0x00 >> 9;
+                                                    ADR_L = 0x15 >> 1;
+                                                    ADR_INC = 0x00;
                                                     RAMMODE = 0xAF;
-												    while ( !APP_ACK );
-												    APP_EN = 1;
-												    while ( APP_EN );
-                                                    RAMMODE = 0x00;
-                                                }
+                                                    while ( !APP_ACK );
+                                                    APP_EN = 1;
+                                                    while ( APP_EN );
+                                                    //RAMMODE = 0x00;
+                                                    while ( DATA1 == 0x00 && DATA0 == 0x01 )
+                                                    {
+                                                        RAMMODE = 0x00;
+                                                        delay_us ( 100 );
+                                                        RAMMODE = 0xAF;
+                                                        while ( !APP_ACK );
+                                                        APP_EN = 1;
+                                                        while ( APP_EN );
+                                                    }
+                                                    #endif
                                                     ADR_H = JpegLaber_DGUSII_VP >> 17;
                                                     ADR_M = JpegLaber_DGUSII_VP >> 9;
                                                     ADR_L = JpegLaber_DGUSII_VP >> 1;
