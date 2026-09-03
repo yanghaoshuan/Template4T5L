@@ -449,4 +449,7 @@ extern uint32_t sysFCLK;
 
 #define _4G_AIR780E_ENABLED             0
 
+/* 判断GUi忙不忙标记*/
+#define Judge_GUI_BUSY
+
 #endif /* T5LOS_CONFIG_H */
