@@ -262,8 +262,8 @@
               </Ocr1>
               <Ocr2>
                 <Type>0</Type>
-                <StartAddress>0x0</StartAddress>
-                <Size>0x0</Size>
+                <StartAddress>0x8000</StartAddress>
+                <Size>0x8000</Size>
               </Ocr2>
               <Ocr3>
                 <Type>0</Type>
@@ -500,6 +500,16 @@
               <FileName>rtc.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\modules\rtc.h</FilePath>
+            </File>
+            <File>
+              <FileName>fw_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\fw_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>fw_protocol.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\modules\fw_protocol.h</FilePath>
             </File>
             <File>
               <FileName>r11_common.c</FileName>

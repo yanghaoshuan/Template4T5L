@@ -1,3 +1,4 @@
+#include "fw_protocol.h"
 #include "sys.h"
 #include "uart.h"
 #include "timer.h"
@@ -41,6 +42,9 @@ void main(void)
   #endif /* sysSET_FROM_LIB */
 
   T5LCpuInit();
+
+  FwProtocolInit();
+  SysTaskAdd(4, 10, FwProtocolTask);
 
   RtcInit();
   SysTaskAdd(0, RTC_INTERVAL, RtcTask);

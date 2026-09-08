@@ -1,3 +1,4 @@
+#include "fw_protocol.h"
 
 /**
  * @file    uart.c
@@ -602,6 +603,12 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 }
 
 
+#if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+/* FB frames are six bytes; only retain their incomplete header/body. */
+static uint8_t xdata r11_partial[6];
+static uint16_t r11_partial_size;
+#endif
+
 void UartReadFrame(UART_TYPE *uart)
 {
     uint8_t frame[uartUART_COMMON_FRAME_SIZE];
@@ -616,8 +623,16 @@ void UartReadFrame(UART_TYPE *uart)
          * @note:不再关闭中断，改为静态变量进行备份
          */
         i=0;
+        #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+        if(uart == &Uart_R11) {
+            i = r11_partial_size;
+            memcpy(frame, r11_partial, i);
+            r11_partial_size = 0;
+        }
+        #endif
         while(rx_head_bak != uart->RxTail)
         {
+            if(i == sizeof(frame)) { uart->RxFlag = UART_RECING; break; }
             #if uartUART2_ENABLED
             if(uart == &Uart2)
             {
@@ -649,9 +664,15 @@ void UartReadFrame(UART_TYPE *uart)
             }
             #endif /* uartUART5_ENABLED */
         }   
+        if(uart == &Uart2)
+        {
+            FwProtocolFeed(frame, i);
+            return;
+        }
         total_frame_len = i;
         while(1)
         {
+            if(i < 4) break;
             if(frame[total_frame_len - i] == 0x5a && frame[total_frame_len - i + 1] == 0xa5)
             {
                 one_frame_len = frame[total_frame_len - i + 2] + 3;
@@ -670,10 +691,12 @@ void UartReadFrame(UART_TYPE *uart)
             }else if(frame[total_frame_len - i] == 0xaa && frame[total_frame_len - i + 1] == 0x55)
             {
                 one_frame_len = (frame[total_frame_len - i + 2] << 8 | frame[total_frame_len - i + 3]) + 4;
+                if(one_frame_len < 5 || one_frame_len > sizeof(frame)) { --i; continue; }
                 if(i < one_frame_len)
                 {
                     break;
                 }
+                FwUsbProtocol(uart, &frame[total_frame_len - i], one_frame_len);
                 #if R11_WIFI_ENABLED
                 UartR11UserWifiProtocol(uart, &frame[total_frame_len - i], one_frame_len);
                 #endif /* R11_WIFI_ENABLED */
@@ -749,6 +772,12 @@ void UartReadFrame(UART_TYPE *uart)
                 }
             }
         }
+        #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
+        if(uart == &Uart_R11 && i && i < sizeof(r11_partial)) {
+            memcpy(r11_partial, &frame[total_frame_len - i], i);
+            r11_partial_size = i;
+        }
+        #endif
     }
 }
 

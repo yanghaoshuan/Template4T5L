@@ -152,3 +152,7 @@ void MyTask(void)
 
 ---
 
+
+## FW 参数与 USB 更新
+
+新增 UART2 Modbus 主机及 R11 FB 升级握手，参见 [协议及 VP 地址说明](fw-usb-protocol.md)。
