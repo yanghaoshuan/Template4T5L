@@ -268,7 +268,7 @@ extern uint32_t sysFCLK;
         #define uartUART2_TIMEOUTSET     5
     #endif /* uartUART2_TIMEOUT_ENABLED */
     
-    #define uartUART2_BAUDRATE              9600     /* UART2波特率设置 9600-460800 */
+    #define uartUART2_BAUDRATE              115200   /* FW UART2: 115200, 8N1 */
     #define uartUART2_485_ENABLED            0         /* UART2 RS485模式使能标志 0:禁用 1启用 */
     
     #if uartUART2_485_ENABLED

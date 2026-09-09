@@ -1,4 +1,6 @@
+#include "app_ota.h"
 #include "fw_protocol.h"
+#include "timer.h"
 
 /**
  * @file    uart.c
@@ -48,9 +50,13 @@ uint32_t sysFCLK;
 UART_TYPE Uart2;
 uint8_t Uart2TxBuffer[uartUART2_TXBUF_SIZE+1];
 uint8_t Uart2RxBuffer[uartUART2_RXBUF_SIZE+1];
+static uint8_t xdata uart2_partial[258];
+static uint16_t uart2_partial_size;
+static uint32_t uart2_last_rx;
 void Uart2Init(const uint32_t bdt)
 {
-    uint32_t baud;
+uint32_t baud;
+    uart2_partial_size = 0;
     memset((uint8_t *)&Uart2, 0, sizeof(UART_TYPE));
     memset((uint8_t *)Uart2TxBuffer, 0, uartUART2_TXBUF_SIZE);
     memset((uint8_t *)Uart2RxBuffer, 0, uartUART2_RXBUF_SIZE);
@@ -499,18 +505,20 @@ void UartSendData(UART_TYPE *uart, uint8_t *buf, uint16_t len)
 uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
 {
     uint16_t crc16,min_frame_len;
+    if(len < 6 || len != (uint16_t)frame[2] + 3) return 0;
     if(frame[3] == 0x83)
     {
         min_frame_len = 7;
     }else if(frame[3] == 0x82)
     {
         min_frame_len = 6;
-    }
+    }else return 0;
     read_dgus_vp(sysDGUS_SYSTEM_CONFIG,(uint8_t*)CrcFlag,1);
     *CrcFlag = *CrcFlag & 0x0080;
     if(*CrcFlag != 0)
     {
         min_frame_len += 2; 
+        if(len < min_frame_len) return 0;
         crc16 = crc_16(&frame[3],frame[2] - 2);
         if(crc16 != ((frame[frame[2] + 2] << 8) | frame[frame[2] + 1]))
         {
@@ -522,6 +530,8 @@ uint8_t prvDwin8283CrcCheck(uint8_t* frame,uint16_t len,uint16_t *CrcFlag)
         return 0; 
     }else
     {
+        if(frame[3] == 0x83 && len != min_frame_len) return 0;
+        if(frame[3] == 0x82 && (len == min_frame_len || ((len - min_frame_len) & 1))) return 0;
         return 1;
     }
 }
@@ -566,7 +576,8 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         send_return_frame[i++] = 0x4b;
         if(CrcFlag != 0)
         {
-            CrcResult = crc_16(&frame[3], frame[2] - 2);
+            send_return_frame[2] = 5;
+            CrcResult = crc_16(&send_return_frame[3], 3);
             send_return_frame[i++] = (uint8_t)CrcResult;
             send_return_frame[i++] = CrcResult >> 8;
         }
@@ -582,6 +593,8 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
         {
             return; 
         }
+        /* Keep the complete reply within the 256-byte TX ring (one slot free). */
+        if(frame[6] == 0 || frame[6] > (CrcFlag ? 123 : 124)) return;
         read_dgus_vp((frame[4] << 8) | frame[5], &send_return_frame[7], frame[6] >> 0);
         i=0;
         send_return_frame[i++] = 0x5a;  
@@ -604,9 +617,61 @@ static void UartStandardDwin8283Protocal(UART_TYPE *uart,uint8_t *frame, uint16_
 
 
 #if sysBEAUTY_MODE_ENABLED || sysN5CAMERA_MODE_ENABLED || sysADVERTISE_MODE_ENABLED
-/* FB frames are six bytes; only retain their incomplete header/body. */
-static uint8_t xdata r11_partial[6];
+/* Retain DGUS fragments as well as FB/BOOT controls. */
+static uint8_t xdata r11_partial[258];
 static uint16_t r11_partial_size;
+#endif
+
+#if uartUART2_ENABLED
+/* Dispatch complete frames: Modbus payload bytes must never become VP writes. */
+static void Uart2ProtocolFeed(uint8_t *bytes, uint16_t count)
+{
+    uint16_t n, length, drop, j, crc;
+    uint32_t now;
+    uint8_t enabled = ET0;
+    ET0 = 0; now = GetSysTick(); ET0 = enabled;
+    if(now - uart2_last_rx >= 500UL) uart2_partial_size = 0;
+    uart2_last_rx = now;
+    for(n = 0; n < count; ++n) {
+        if(uart2_partial_size == sizeof(uart2_partial)) uart2_partial_size = 0;
+        uart2_partial[uart2_partial_size++] = bytes[n];
+        while(uart2_partial_size) {
+            drop = 1;
+            if(uart2_partial[0] == 0x5A) {
+                if(uart2_partial_size < 2) break;
+                if(uart2_partial[1] == 0xA5) {
+                    if(uart2_partial_size < 4) break;
+                    length = (uint16_t)uart2_partial[2] + 3;
+                    if(length >= 6 && (uart2_partial[3] == 0x82 || uart2_partial[3] == 0x83)) {
+                        if(uart2_partial_size < length) break;
+                        UartStandardDwin8283Protocal(&Uart2, uart2_partial, length);
+                        drop = length;
+                    }
+                }
+            } else if(uart2_partial[0] == 1) {
+                if(uart2_partial_size < 2) break;
+                length = 0;
+                if(uart2_partial[1] == 3) {
+                    if(uart2_partial_size < 3) break;
+                    if(uart2_partial[2] && uart2_partial[2] <= 59 && !(uart2_partial[2] & 1))
+                        length = uart2_partial[2] + 5;
+                } else if(uart2_partial[1] == 6) length = 8;
+                else if(uart2_partial[1] == 0x83 || uart2_partial[1] == 0x86) length = 5;
+                if(length) {
+                    if(uart2_partial_size < length) break;
+                    crc = crc_16(uart2_partial, length - 2);
+                    if(uart2_partial[length - 2] == (uint8_t)crc && uart2_partial[length - 1] == (uint8_t)(crc >> 8)) {
+                        FwProtocolFeed(uart2_partial, length);
+                    }
+                    /* Even a corrupt RTU payload is not a DGUS command. */
+                    drop = length;
+                }
+            }
+            for(j = drop; j < uart2_partial_size; ++j) uart2_partial[j - drop] = uart2_partial[j];
+            uart2_partial_size -= drop;
+        }
+    }
+}
 #endif
 
 void UartReadFrame(UART_TYPE *uart)
@@ -666,7 +731,7 @@ void UartReadFrame(UART_TYPE *uart)
         }   
         if(uart == &Uart2)
         {
-            FwProtocolFeed(frame, i);
+            Uart2ProtocolFeed(frame, i);
             return;
         }
         total_frame_len = i;
@@ -680,6 +745,7 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
+                AppOtaControl(uart, &frame[total_frame_len - i], one_frame_len);
                 UartStandardDwin8283Protocal(uart, &frame[total_frame_len - i], one_frame_len);
                 #if sysBEAUTY_MODE_ENABLED
                 UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);

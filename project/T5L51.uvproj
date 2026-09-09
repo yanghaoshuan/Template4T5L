@@ -502,6 +502,11 @@
               <FilePath>..\modules\rtc.h</FilePath>
             </File>
             <File>
+              <FileName>app_ota.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\modules\app_ota.c</FilePath>
+            </File>
+            <File>
               <FileName>fw_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\modules\fw_protocol.c</FilePath>
