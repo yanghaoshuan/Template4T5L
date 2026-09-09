@@ -745,8 +745,8 @@ void UartReadFrame(UART_TYPE *uart)
                 {
                     break;
                 }
-                AppOtaControl(uart, &frame[total_frame_len - i], one_frame_len);
-                UartStandardDwin8283Protocal(uart, &frame[total_frame_len - i], one_frame_len);
+                if(!AppOtaControl(uart, &frame[total_frame_len - i], one_frame_len))
+                    UartStandardDwin8283Protocal(uart, &frame[total_frame_len - i], one_frame_len);
                 #if sysBEAUTY_MODE_ENABLED
                 UartR11UserBeautyProtocol(uart, &frame[total_frame_len - i], one_frame_len);
                 #endif /* sysBEAUTY_MODE_ENABLED */

@@ -1,4 +1,5 @@
 #include "fw_protocol.h"
+#include "app_ota.h"
 #include "sys.h"
 #include "uart.h"
 #include "timer.h"
@@ -43,6 +44,8 @@ void main(void)
 
   T5LCpuInit();
 
+  AppOtaInit();
+  SysTaskAdd(5, 10, AppOtaTask);
   FwProtocolInit();
   SysTaskAdd(4, 10, FwProtocolTask);
 
